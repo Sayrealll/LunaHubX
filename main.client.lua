@@ -197,7 +197,7 @@ VStackRight:Button({
 -- ============================================================
 -- ============================================================
 
-
+do
 	local InviteCode = "ftgs-development-hub-1300692552005189632"
 	local DiscordAPI = "https://discord.gg/Ev8k5RAU3" .. InviteCode .. "?with_counts=true&with_expiration=true"
 
