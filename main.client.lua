@@ -362,6 +362,29 @@ Section4:Toggle({
 	end,
 })
 
+local Section5 = Tab1:Section({
+	Title = "Pets",
+	Box = true,
+	BoxBorder = true,
+})
+
+Section5:Toggle({
+	Title = "Auto Equip Best Pets",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section5:Toggle({
+	Title = "Claim Offline Earnings",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
 
 
 --[[local EmptyTab = Window:Tab({
