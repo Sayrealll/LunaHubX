@@ -28,27 +28,55 @@ local LocalPlayer       = Players.LocalPlayer
 local networkingFolder = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Networking")
 local askWearStillRF = networkingFolder:WaitForChild("RF/Treadmill/AskWearStill")
 local askDoffRF = networkingFolder:WaitForChild("RF/Treadmill/AskDoff")
+local fetchStatusRF = networkingFolder:WaitForChild("RF/Haul/FetchWearBestStatus")
 
--- Helper Function: Hanapin ang Sariling Treadmill batay sa Owner/Plot
-local function getMyOwnTreadmill()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name:lower():find("treadmill") then
-            -- Check 1: Kung may Attribute/Value ng Owner o Player Name mo
-            local ownerVal = obj:FindFirstChild("Owner") or obj:FindFirstChild("Player") or obj:FindFirstChild("UserId")
-            if ownerVal and (ownerVal.Value == LocalPlayer.Name or ownerVal.Value == LocalPlayer.UserId or ownerVal.Value == LocalPlayer) then
-                return obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+-- Helper Function: Kukunin ang SARILI MONG treadmill gamit ang Status Remote
+local function getMyExactTreadmill()
+    -- 1. I-call ang remote para kunin ang status ng kagamitan/treadmill mo mula sa Server
+    local success, myStatus = pcall(function()
+        return fetchStatusRF:InvokeServer()
+    end)
+
+    if success and myStatus then
+        -- Kung nagbalik ito ng Instance o Model ng treadmill mo
+        if typeof(myStatus) == "Instance" then
+            return myStatus:IsA("Model") and (myStatus.PrimaryPart or myStatus:FindFirstChildWhichIsA("BasePart")) or myStatus
+        end
+
+        -- Kung nagbalik ito ng Table/Data, hahanapin natin ang pangalan nito sa Workspace
+        if type(myStatus) == "table" then
+            for _, val in pairs(myStatus) do
+                if typeof(val) == "Instance" and val.Name:lower():find("treadmill") then
+                    return val:IsA("Model") and (val.PrimaryPart or val:FindFirstChildWhichIsA("BasePart")) or val
+                end
             end
-            
-            -- Check 2: Kung ang Treadmill ay nasa loob ng iyong Plot/Tycoon Folder
-            local parentFolder = obj:FindFirstAncestorOfClass("Model") or obj:FindFirstAncestorOfClass("Folder")
-            if parentFolder then
-                local folderOwner = parentFolder:FindFirstChild("Owner") or parentFolder:FindFirstChild("Player")
-                if folderOwner and (folderOwner.Value == LocalPlayer.Name or folderOwner.Value == LocalPlayer.UserId or folderOwner.Value == LocalPlayer) then
+        end
+    end
+
+    -- 2. Fallback: Kung walang ibinalik na status, hanapin ang treadmill na pinakamalapit sa iyong pagpasok
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name:lower():find("treadmill") and (obj:IsA("BasePart") or obj:IsA("Model")) then
+                -- Tiyakin na walang ibang player na nakatayo rito
+                local isOccupied = false
+                for _, plr in pairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                        local partPos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetPivot().Position) or obj.Position
+                        if (plr.Character.HumanoidRootPart.Position - partPos).Magnitude < 4 then
+                            isOccupied = true
+                            break
+                        end
+                    end
+                end
+
+                if not isOccupied then
                     return obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
                 end
             end
         end
     end
+
     return nil
 end
 
@@ -153,7 +181,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v1.0.0.30",
+	Title = "v1.0.0.40",
 	Color = "ElementBackground",
 })
 
@@ -466,7 +494,6 @@ function Functions.OnToggleAutoUpgradePen(state)
     print("Auto Upgrade Pen state:", state)
 end
 
--- Toggle Function Implementation
 function Functions.OnToggleAutoTreadmillTraining(state)
     State.autoTreadmillTraining = state
     print("Auto Treadmill Training state:", state)
@@ -475,17 +502,17 @@ function Functions.OnToggleAutoTreadmillTraining(state)
         task.spawn(function()
             while State.autoTreadmillTraining do
                 local char = LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                
-                if root then
-                    local myTreadmill = getMyOwnTreadmill()
-                    
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+                if hrp then
+                    local myTreadmill = getMyExactTreadmill()
+
                     if myTreadmill then
-                        local distance = (root.Position - myTreadmill.Position).Magnitude
-                        
-                        -- Ilapit/Teleport lang kapag malayo sa sariling treadmill (mas malayo sa 6 studs)
-                        if distance > 6 then
-                            root.CFrame = myTreadmill.CFrame * CFrame.new(0, 3, 0)
+                        local distance = (hrp.Position - myTreadmill.Position).Magnitude
+
+                        -- Ilapit/Teleport lang kapag malayo sa SARILI MONG treadmill
+                        if distance > 5 then
+                            hrp.CFrame = myTreadmill.CFrame * CFrame.new(0, 3, 0)
                             task.wait(0.3)
                         end
 
@@ -494,15 +521,18 @@ function Functions.OnToggleAutoTreadmillTraining(state)
                             askWearStillRF:InvokeServer()
                         end)
                     else
-                        warn("Hindi mahanap ang Treadmill na nakapangalan sa 'yo!")
+                        -- Pag hindi mahanap ang eksaktong model, i-fire pa rin ang Remote
+                        pcall(function()
+                            askWearStillRF:InvokeServer()
+                        end)
                     end
                 end
 
-                task.wait(2) -- Check bawat 2 segundo
+                task.wait(1.5)
             end
         end)
     else
-        -- Kapag in-OFF: Bumaba sa treadmill
+        -- Turn OFF: Bumaba sa treadmill
         task.spawn(function()
             pcall(function()
                 askDoffRF:InvokeServer()
@@ -510,7 +540,6 @@ function Functions.OnToggleAutoTreadmillTraining(state)
         end)
     end
 end
-
 
 function Functions.OnToggleAutoTreadmillUpgrade(state)
     State.autoTreadmillUpgrade = state
