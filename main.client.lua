@@ -33,6 +33,30 @@ local LocalPlayer       = Players.LocalPlayer
 -- ============================================================
 -- ============================================================
 
+-- GLOBAL STATE & FUNCTIONS DECLARATION (FIXES CRASH)
+local State = {
+    hatchEnabled = false,
+    hatchInterval = 1,
+    autoStealEnabled = false,
+    autoPlaceEnabled = false,
+    autoSellEggsEnabled = false,
+    autoUpgradePen = false,
+    autoTreadmillTraining = false,
+    autoTreadmillUpgrade = false,
+    autoEquipBest = false,
+    claimOffline = false,
+    autoSellPets = false,
+    eggEsp = false,
+    fpsBoost = false,
+    selectedStealRarities = {},
+    selectedSellRarities = {},
+    selectedPetRarities = {},
+}
+
+local Functions = {}
+local EggState
+
+
 -- Shared Rarity List
 local RarityList = {
     "Common", "Uncommon", "Rare", "Epic",
@@ -97,7 +121,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v2.2.22.22",
+	Title = "v1.0.0.1,
 	Color = "ElementBackground",
 })
 
@@ -272,15 +296,6 @@ function Functions.OnPetFilterChange(selectedValue)
     print("Pet Filter Selected:", result)
 end
 
--- Background Hatch Loop
-task.spawn(function()
-    while true do
-        task.wait(State.hatchInterval)
-        if State.hatchEnabled then
-            pcall(Functions.runAutoHatch)
-        end
-    end
-end)
 
 -- ============================================================
 -- ============================================================
