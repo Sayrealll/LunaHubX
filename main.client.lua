@@ -22,9 +22,37 @@ local Workspace         = game:GetService("Workspace")
 local UserInputService  = game:GetService("UserInputService")
 local LocalPlayer       = Players.LocalPlayer
 
+
+
 local networkingFolder = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Networking")
 local askWearStillRF = networkingFolder:WaitForChild("RF/Treadmill/AskWearStill")
 local askDoffRF = networkingFolder:WaitForChild("RF/Treadmill/AskDoff")
+
+-- Helper Function: Hanapin ang pinakamalapit na Treadmill sa Workspace
+local function getNearestTreadmill()
+	local character = LocalPlayer.Character
+	if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+	
+	local hrp = character.HumanoidRootPart
+	local nearest = nil
+	local shortestDistance = math.huge
+
+	-- Hahanapin ang mga Treadmill model sa Workspace (I-adjust ang folder name kung nasa loob ng isang Model/Folder)
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj.Name:lower():find("treadmill") and (obj:IsA("BasePart") or obj:IsA("Model")) then
+			local targetPart = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+			if targetPart then
+				local distance = (hrp.Position - targetPart.Position).Magnitude
+				if distance < shortestDistance then
+					shortestDistance = distance
+					nearest = targetPart
+				end
+			end
+		end
+	end
+	return nearest, shortestDistance
+end
+
 -- ============================================================
 -- ============================================================
 -- ============================================================
@@ -443,25 +471,47 @@ function Functions.OnToggleAutoTreadmillTraining(state)
     State.autoTreadmillTraining = state
     print("Auto Treadmill Training state:", state)
 
-    task.spawn(function()
-        if state then
-            -- Turn ON: Hop on treadmill
-            local success, err = pcall(function()
-                askWearStillRF:InvokeServer()
-            end)
-            if not success then
-                warn("Failed to get on treadmill:", err)
+    if state then
+        -- Simulan ang Continuous Loop habang naka-ON ang toggle
+        task.spawn(function()
+            while State.autoTreadmillTraining do
+                local character = LocalPlayer.Character
+                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                
+                if hrp then
+                    local nearestPart, distance = getNearestTreadmill()
+                    
+                    -- Kung masyadong malayo (halimbawa: mahigit 10 studs), i-teleport o ilapit ang player sa treadmill
+                    if nearestPart and distance > 10 then
+                        hrp.CFrame = nearestPart.CFrame * CFrame.new(0, 3, 0)
+                        task.wait(0.5) -- Bigyan ng konting oras para mag-register ang bagong position
+                    end
+
+                    -- Subukang sumakay sa Treadmill
+                    local success, err = pcall(function()
+                        askWearStillRF:InvokeServer()
+                    end)
+
+                    if not success then
+                        warn("Failed to interact with treadmill:", err)
+                    end
+                end
+
+                -- Interval bago mag-check ulit (halimbawa: bawat 2-3 segundo)
+                task.wait(2)
             end
-        else
-            -- Turn OFF: Exit treadmill
+        end)
+    else
+        -- Kapag in-OFF ang toggle: Bumaba agad sa treadmill
+        task.spawn(function()
             local success, err = pcall(function()
                 askDoffRF:InvokeServer()
             end)
             if not success then
                 warn("Failed to exit treadmill:", err)
             end
-        end
-    end)
+        end)
+    end
 end
 
 function Functions.OnToggleAutoTreadmillUpgrade(state)
