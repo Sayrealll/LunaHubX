@@ -314,7 +314,7 @@ Section3:Dropdown({
 	end,
 })
 
-local Section4 = Tab1:Section({
+local Section4 = Tab2:Section({
 	Title = "Upgrades",
 	Box = true,
 	BoxBorder = true,
@@ -362,7 +362,7 @@ Section4:Toggle({
 	end,
 })
 
-local Section5 = Tab1:Section({
+local Section5 = Tab3:Section({
 	Title = "Pets",
 	Box = true,
 	BoxBorder = true,
