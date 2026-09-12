@@ -120,7 +120,7 @@ local Tab5 = Window:Tab({
 })
 
 local Tab6 = Window:Tab({
-	Title = "FUSE",
+	Title = "VISUAL",
 	Icon = "discord",
 })
 
@@ -208,16 +208,6 @@ local Section = Tab1:Section({
 	BoxBorder = true,
 })
 
-Section:Toggle({
-	Title = "Auto Steal Egg",
-	Desc = "",
-	Value = false,
-	Callback = function(state)
-		print("Toggle state:", state)
-	end,
-})
-
-
 local Section1 = Tab1:Section({
 	Title = "Auto Steal Filter",
 	Box = true,
@@ -247,6 +237,15 @@ Section1:Dropdown({
 		else
 			print("Selected: " .. tostring(selectedValue))
 		end
+	end,
+})
+
+Section:Toggle({
+	Title = "Auto Steal Egg",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
 	end,
 })
 
@@ -280,14 +279,6 @@ local Section3 = Tab1:Section({
 	BoxBorder = true,
 })
 
-Section3:Toggle({
-	Title = "Auto Sell Eggs",
-	Desc = "",
-	Value = false,
-	Callback = function(state)
-		print("Toggle state:", state)
-	end,
-})
 Section3:Dropdown({
 	Title = "Rarities",
 	Values = {
@@ -311,6 +302,15 @@ Section3:Dropdown({
 		else
 			print("Selected: " .. tostring(selectedValue))
 		end
+	end,
+})
+
+Section3:Toggle({
+	Title = "Auto Sell Eggs",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
 	end,
 })
 
@@ -386,6 +386,78 @@ Section5:Toggle({
 	end,
 })
 
+Section5:Paragraph({
+	Title = "Auto Sell Pets",
+	Box = false,
+	BoxBorder = false,	
+	Justify = "Center",
+})
+
+Section5:Dropdown({
+	Title = "Rarities",
+	Values = {
+		"Common",
+		"Uncommon",
+		"Rare",			
+		"Epic",
+		"Legendary",
+		"Mythic",	
+		"Cosmic",						
+		"Secret",
+		"Eternal",
+		"Divine",
+	},
+	Value = nil,
+	AllowNone = true,
+	Multi = true,
+	Callback = function(selectedValue)
+		if type(selectedValue) == "table" then
+			print("Selected: " .. table.concat(selectedValue, ", "))
+		else
+			print("Selected: " .. tostring(selectedValue))
+		end
+	end,
+})
+
+Section5:Toggle({
+	Title = "Auto Sell",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+local Section7 = Tab5:Section({
+	Title = "EGG ESP",
+	Box = true,
+	BoxBorder = true,
+})
+
+Section7:Toggle({
+	Title = "EGG ESP",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section7:Paragraph({
+	Title = "PERFORMANCE",
+	Box = false,
+	BoxBorder = false,	
+	Justify = "Center",
+})
+
+Section7:Toggle({
+	Title = "FPS BOOST",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
 
 --[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
