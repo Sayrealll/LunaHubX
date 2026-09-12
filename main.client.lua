@@ -126,7 +126,7 @@ Window:Tab({
 
 Window:Tab({
 	Title = "SETTINGS",
-	Icon = "setting",
+	Icon = "settings",
 })
 
 
@@ -185,14 +185,14 @@ VStackRight:Button({
 })
 ]]
 local Section = Tab1:Section({
-	Title = "Hi1",
+	Title = "Auto Steal",
 	Box = true,
 	BoxBorder = true,
 })
 
 Section:Toggle({
-	Title = "Auto Leave Raid",
-	Desc = "Automatically leave the raid when reaching the target wave",
+	Title = "Auto Steal Egg",
+	Desc = "",
 	Value = false,
 	Callback = function(state)
 		print("Toggle state:", state)
@@ -200,7 +200,30 @@ Section:Toggle({
 })
 
 
+local Section1 = Tab1:Section({
+	Title = "Auto Steal Filter",
+	Box = true,
+	BoxBorder = true,
+})
 
+Section1:Dropdown({
+	Title = "Rarities",
+	Values = {
+		"Secret",
+		"Eternal",
+		"Divine",
+	},
+	Value = nil,
+	AllowNone = true,
+	Multi = true,
+	Callback = function(selectedValue)
+		if type(selectedValue) == "table" then
+			print("Selected: " .. table.concat(selectedValue, ", "))
+		else
+			print("Selected: " .. tostring(selectedValue))
+		end
+	end,
+})
 
 --[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
