@@ -90,29 +90,37 @@ Window:Tab({
 	]]
 
 local Tab1 = Window:Tab({
-	Title = "FARM",
-	Icon = "terminal",
+	Title = "EGGS",
 })
 
 Window:Tab({
-	Title = "PROGRESS",
-	Icon = "locate-fixed",
+	Title = "PROGRESSION",
 })
 
 Window:Tab({
-	Title = "PREDICTOR",
-	Icon = "eye",
+	Title = "PETS",
 })
 
 Window:Tab({
-	Title = "ESP",
-	Icon = "eye",
+	Title = "RIFT",
+})
+
+Window:Tab({
+	Title = "CONTEST",
+})
+
+Window:Tab({
+	Title = "FUSE",
+})
+
+Window:Tab({
+	Title = "WEBHOOK",
 })
 
 Window:Tab({
 	Title = "SETTINGS",
-	Icon = "eye",
 })
+
 
 
 --[[local InfoTab = Window:Tab({
