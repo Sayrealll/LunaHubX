@@ -316,13 +316,10 @@ Section3:Dropdown({
 
 local Section4 = Tab2:Section({
 	Title = "Upgrades",
-	Box = true,
-	BoxBorder = true,
 })
 
 Section4:Paragraph({
 	Title = "Pen",
-	Box = false,
 	Justify = "Center",
 })
 
@@ -337,7 +334,6 @@ Section4:Toggle({
 
 Section4:Paragraph({
 	Title = "Treadmill",
-	Box = false,
 	Justify = "Center",
 })
 
