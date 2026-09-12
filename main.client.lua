@@ -217,11 +217,11 @@ do
 	})
 
 	if Response and Response.guild then
-		DiscordTab:Section({
+		Tabdc:Section({
 			Title = "Join our Discord server!",
 			TextSize = 20,
 		})
-		local DiscordServerParagraph = DiscordTab:Paragraph({
+		local DiscordServerParagraph = Tabdc:Paragraph({
 			Title = tostring(Response.guild.name),
 			Desc = tostring(Response.guild.description),
 			Image = "https://cdn.discordapp.com/icons/"
@@ -263,10 +263,76 @@ do
 						end
 					end,
 				},
+			},do
+	local InviteCode = "ftgs-development-hub-1300692552005189632"
+	local DiscordAPI = "https://discord.com/api/v10/invites/" .. InviteCode .. "?with_counts=true&with_expiration=true"
+
+	local Response = WindUI.cloneref(game:GetService("HttpService"))
+		:JSONDecode(WindUI.Creator.Request and WindUI.Creator.Request({
+			Url = DiscordAPI,
+			Method = "GET",
+			Headers = {
+				["User-Agent"] = "WindUI/Example",
+				["Accept"] = "application/json",
+			},
+		}).Body or "{}")
+
+	local Tabdc = OtherSection:Tab({
+		Title = "Discord",
+		Border = true,
+	})
+
+	if Response and Response.guild then
+		Tabdc:Section({
+			Title = "Join our Discord server!",
+			TextSize = 20,
+		})
+		local DiscordServerParagraph = Tabdc:Paragraph({
+			Title = tostring(Response.guild.name),
+			Desc = tostring(Response.guild.description),
+			Image = "https://cdn.discordapp.com/icons/"
+				.. Response.guild.id
+				.. "/"
+				.. Response.guild.icon
+				.. ".png?size=1024",
+			Thumbnail = "https://cdn.discordapp.com/banners/1300692552005189632/35981388401406a4b7dffd6f447a64c4.png?size=512",
+			ImageSize = 48,
+			Buttons = {
+				{
+					Title = "Copy link",
+					Icon = "link",
+					Callback = function()
+						setclipboard("https://discord.gg/" .. InviteCode)
+					end,
+				},
+			},
+		})
+	elseif RunService:IsStudio() or not writefile then
+		Tabdc:Paragraph({
+			Title = "Discord API is not available in Studio mode.",
+			TextSize = 20,
+			Justify = "Center",
+			Image = "solar:info-circle-bold",
+			Color = "Red",
+			Buttons = {
+				{
+					Title = "Get/Copy Invite Link",
+					Icon = "link",
+					Callback = function()
+						if setclipboard then
+							setclipboard("https://discord.gg/" .. InviteCode)
+						else
+							WindUI:Notify({
+								Title = "Discord Invite Link",
+								Content = "https://discord.gg/" .. InviteCode,
+							})
+						end
+					end,
+				},
 			},
 		})
 	else
-		DiscordTab:Paragraph({
+		Tabdc:Paragraph({
 			Title = "Failed to fetch Discord server info.",
 			TextSize = 20,
 			Justify = "Center",
@@ -275,6 +341,8 @@ do
 		})
 	end
 end
+
+				
 
 
 local Section = Tab1:Section({
