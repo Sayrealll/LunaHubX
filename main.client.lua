@@ -1,7 +1,30 @@
---[[
-    WindUI Example 2
-]]
+-- ============================================================
+-- ============================================================
+-- ============================================================
+--RUNNING BYPASS
+pcall(function(...)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Sayrealll/hub/refs/heads/main/bypass"))()
+end)
 
+-- ============================================================
+-- ============================================================
+-- ============================================================
+
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService        = game:GetService("RunService")
+local Workspace         = game:GetService("Workspace")
+local UserInputService  = game:GetService("UserInputService")
+local LocalPlayer       = Players.LocalPlayer
+
+
+
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
 local cloneref = (cloneref or clonereference or function(instance)
 	return instance
 end)
@@ -31,8 +54,8 @@ end
 local ThemeName = "Dark"
 
 local Window = WindUI:CreateWindow({
-	Title = "WindUI Library",
-	Author = "by .ftgs",
+	Title = " LUNA HUB X ",
+	Author = " STEAL AN EGG ",
 	Icon = "solar:wind-bold",
 	Theme = ThemeName,
 	--NewElements = true,
@@ -52,27 +75,33 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v1.6.64-fix",
+	Title = "v1.0.0",
 	Color = "ElementBackground",
 })
 
 Window:Tab({
-	Title = "Main",
+	Title = "HOME",
 	Icon = "warehouse",
 })
 
-Window:Section({
+--[[Window:Section({
 	Title = "Silent",
 })
+	]]
 
 local Tab1 = Window:Tab({
-	Title = "Exploits",
+	Title = "FARM",
 	Icon = "terminal",
 })
 
 Window:Tab({
-	Title = "Aimbot",
+	Title = "PROGRESS",
 	Icon = "locate-fixed",
+})
+
+Window:Tab({
+	Title = "PREDICTOR",
+	Icon = "eye",
 })
 
 Window:Tab({
@@ -80,10 +109,17 @@ Window:Tab({
 	Icon = "eye",
 })
 
-local InfoTab = Window:Tab({
-	Title = "Info",
+Window:Tab({
+	Title = "SETTINGS",
+	Icon = "eye",
+})
+
+
+--[[local InfoTab = Window:Tab({
+	Title = "ESP",
 	Icon = "badge-info",
 })
+
 
 InfoTab:Paragraph({
 	Title = "WindUI",
@@ -131,6 +167,7 @@ VStackRight:Button({
 		print("Rejoining place...")
 	end,
 })
+]]
 
 local Section = Tab1:Section({
 	Title = "Hi1",
@@ -163,7 +200,7 @@ Section:Input({
 	end,
 })
 
-local EmptyTab = Window:Tab({
+--[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
 
 	CustomEmptyPage = {
@@ -171,4 +208,4 @@ local EmptyTab = Window:Tab({
 		Title = "This is a cool empty tab",
 		Desc = "I like it. its so great tab with cool 'custom empty page'",
 	},
-})
+})]]
