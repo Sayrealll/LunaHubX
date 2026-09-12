@@ -75,7 +75,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v1.0.1",
+	Title = "v1.0.2",
 	Color = "ElementBackground",
 })
 
