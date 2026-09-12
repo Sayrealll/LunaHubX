@@ -184,37 +184,23 @@ VStackRight:Button({
 	end,
 })
 ]]
-
 local Section = Tab1:Section({
 	Title = "Hi1",
-	Icon = "rbxassetid://77799629590713",
-	IconThemed = true,
 	Box = true,
 	BoxBorder = true,
 })
 
-local Viewport = Section:Viewport({
-	Object = Instance.new("Part"),
-	Interactive = true,
-})
-
-Section:Input({
-	Title = "Leave at Wave",
-	Desc = "Enter a wave number to automatically leave the raid at that wave (0 = never leave)",
-	Icon = "log-out",
-	Type = "Default",
-	Placeholder = "e.g. 50",
-	Value = "0",
-	Flag = "ninja_raid_leave_wave",
-	Callback = function(text)
-		--[[local num = tonumber(text)
-		if num then
-			ninjaRaid_leaveWave = math.floor(num)
-		else
-			ninjaRaid_leaveWave = 0
-		end]]
+Section:Toggle({
+	Title = "Auto Leave Raid",
+	Desc = "Automatically leave the raid when reaching the target wave",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
 	end,
 })
+
+
+
 
 --[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
