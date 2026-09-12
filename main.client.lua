@@ -80,8 +80,8 @@ Window:Tag({
 })
 
 Window:Tab({
-	Title = "HOME",
-	Icon = "warehouse",
+	Title = "DISCORD",
+	Icon = "discord",
 })
 
 --[[Window:Section({
