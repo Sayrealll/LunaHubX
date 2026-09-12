@@ -2,10 +2,6 @@
 -- ============================================================
 -- ============================================================
 -- ============================================================
-pcall(function(...)
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Sayrealll/hub/refs/heads/main/bypass"))()
-end)
-
 -- ============================================================
 -- ============================================================
 -- ============================================================
@@ -21,64 +17,6 @@ local RunService        = game:GetService("RunService")
 local Workspace         = game:GetService("Workspace")
 local UserInputService  = game:GetService("UserInputService")
 local LocalPlayer       = Players.LocalPlayer
-
-
-
--- Remote Functions Setup
-local networkingFolder = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Networking")
-local askWearStillRF = networkingFolder:WaitForChild("RF/Treadmill/AskWearStill")
-local askDoffRF = networkingFolder:WaitForChild("RF/Treadmill/AskDoff")
-local fetchStatusRF = networkingFolder:WaitForChild("RF/Haul/FetchWearBestStatus")
-
--- Helper Function: Kukunin ang SARILI MONG treadmill gamit ang Status Remote
-local function getMyExactTreadmill()
-    -- 1. I-call ang remote para kunin ang status ng kagamitan/treadmill mo mula sa Server
-    local success, myStatus = pcall(function()
-        return fetchStatusRF:InvokeServer()
-    end)
-
-    if success and myStatus then
-        -- Kung nagbalik ito ng Instance o Model ng treadmill mo
-        if typeof(myStatus) == "Instance" then
-            return myStatus:IsA("Model") and (myStatus.PrimaryPart or myStatus:FindFirstChildWhichIsA("BasePart")) or myStatus
-        end
-
-        -- Kung nagbalik ito ng Table/Data, hahanapin natin ang pangalan nito sa Workspace
-        if type(myStatus) == "table" then
-            for _, val in pairs(myStatus) do
-                if typeof(val) == "Instance" and val.Name:lower():find("treadmill") then
-                    return val:IsA("Model") and (val.PrimaryPart or val:FindFirstChildWhichIsA("BasePart")) or val
-                end
-            end
-        end
-    end
-
-    -- 2. Fallback: Kung walang ibinalik na status, hanapin ang treadmill na pinakamalapit sa iyong pagpasok
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj.Name:lower():find("treadmill") and (obj:IsA("BasePart") or obj:IsA("Model")) then
-                -- Tiyakin na walang ibang player na nakatayo rito
-                local isOccupied = false
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                        local partPos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetPivot().Position) or obj.Position
-                        if (plr.Character.HumanoidRootPart.Position - partPos).Magnitude < 4 then
-                            isOccupied = true
-                            break
-                        end
-                    end
-                end
-
-                if not isOccupied then
-                    return obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
-                end
-            end
-        end
-    end
-
-    return nil
-end
 
 -- ============================================================
 -- ============================================================
@@ -497,50 +435,9 @@ end
 function Functions.OnToggleAutoTreadmillTraining(state)
     State.autoTreadmillTraining = state
     print("Auto Treadmill Training state:", state)
-
-    if state then
-        task.spawn(function()
-            while State.autoTreadmillTraining do
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-                if hrp then
-                    local myTreadmill = getMyExactTreadmill()
-
-                    if myTreadmill then
-                        local distance = (hrp.Position - myTreadmill.Position).Magnitude
-
-                        -- Ilapit/Teleport lang kapag malayo sa SARILI MONG treadmill
-                        if distance > 5 then
-                            hrp.CFrame = myTreadmill.CFrame * CFrame.new(0, 3, 0)
-                            task.wait(0.3)
-                        end
-
-                        -- Invoke remote para sumakay
-                        pcall(function()
-                            askWearStillRF:InvokeServer()
-                        end)
-                    else
-                        -- Pag hindi mahanap ang eksaktong model, i-fire pa rin ang Remote
-                        pcall(function()
-                            askWearStillRF:InvokeServer()
-                        end)
-                    end
-                end
-
-                task.wait(1.5)
-            end
-        end)
-    else
-        -- Turn OFF: Bumaba sa treadmill
-        task.spawn(function()
-            pcall(function()
-                askDoffRF:InvokeServer()
-            end)
-        end)
-    end
 end
 
+ 
 function Functions.OnToggleAutoTreadmillUpgrade(state)
     State.autoTreadmillUpgrade = state
     print("Auto Treadmill Upgrade state:", state)
