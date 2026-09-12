@@ -333,11 +333,11 @@ Section2:Toggle({
 	Callback = function(state)
 		State.hatchEnabled = state
 		print("Auto Hatch state:", state)
-		if state then
+        if state then
 			setclipboard("https://discord.gg/yourlink")
 		end
-	
-})
+	end, -- Added missing end
+}) -- Added missing closing parenthesis
 
 local Section3 = Tab1:Section({
 	Title = "Auto Sell Egg",
