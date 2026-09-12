@@ -142,7 +142,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v1.0.513",
+	Title = "v1.0.63",
 	Color = "ElementBackground",
 })
 
@@ -328,16 +328,12 @@ Section2:Toggle({
 
 Section2:Toggle({
 	Title = "Auto Hatch Ready",
-	Desc = "Automatically hatches owned eggs when ready",
-	Value = State.hatchEnabled,
+	Desc = "",
+	Value = false,
 	Callback = function(state)
-		State.hatchEnabled = state
-		print("Auto Hatch state:", state)
-        if state then
-			setclipboard("https://discord.gg/yourlink")
-		end
-	end, -- Added missing end
-}) -- Added missing closing parenthesis
+		print("Toggle state:", state)
+	end,
+})
 
 local Section3 = Tab1:Section({
 	Title = "Auto Sell Egg",
