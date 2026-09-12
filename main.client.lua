@@ -137,14 +137,14 @@ Window:Tag({
 -- ============================================================
 -- ============================================================
 
-local dc = Window:Tab({ Title = "DISCORD", Icon = "discord" })
+local Tab = Window:Tab({ Title = "DISCORD", Icon = "discord" })
 local Tab1  = Window:Tab({ Title = "EGGS", Icon = "egg" })
-local Tab2  = Window:Tab({ Title = "PROGRESSION", Icon = "discord" })
-local Tab3  = Window:Tab({ Title = "PETS", Icon = "discord" })
+local Tab2  = Window:Tab({ Title = "PROGRESSION", Icon = "money" })
+local Tab3  = Window:Tab({ Title = "PETS", Icon = "dog" })
 local Tab4  = Window:Tab({ Title = "RIFT", Icon = "discord" })
 local Tab5  = Window:Tab({ Title = "CONTEST", Icon = "sword" })
 local Tab6  = Window:Tab({ Title = "VISUAL", Icon = "discord" })
-local Tab7  = Window:Tab({ Title = "WEBHOOK", Icon = "discord" })
+local Tab7  = Window:Tab({ Title = "WEBHOOK", Icon = "hook" })
 local Tab8  = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 -- ============================================================
