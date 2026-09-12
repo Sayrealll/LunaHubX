@@ -226,7 +226,14 @@ local Section1 = Tab1:Section({
 
 Section1:Dropdown({
 	Title = "Rarities",
-	Values = {
+	Values = {			
+		"Common",
+		"Uncommon",
+		"Rare",			
+		"Epic",
+		"Legendary",
+		"Mythic",	
+		"Cosmic",						
 		"Secret",
 		"Eternal",
 		"Divine",
@@ -284,6 +291,13 @@ Section3:Toggle({
 Section3:Dropdown({
 	Title = "Rarities",
 	Values = {
+		"Common",
+		"Uncommon",
+		"Rare",			
+		"Epic",
+		"Legendary",
+		"Mythic",	
+		"Cosmic",						
 		"Secret",
 		"Eternal",
 		"Divine",
@@ -306,6 +320,10 @@ local Section4 = Tab2:Section({
 	BoxBorder = true,
 })
 
+Section4:Paragraph({
+	Title = "Pen",
+})
+
 Section4:Toggle({
 	Title = "Auto Upgrade Pen",
 	Desc = "",
@@ -313,6 +331,10 @@ Section4:Toggle({
 	Callback = function(state)
 		print("Toggle state:", state)
 	end,
+})
+
+Section4:Paragraph({
+	Title = "Treadmill",
 })
 
 Section4:Toggle({
