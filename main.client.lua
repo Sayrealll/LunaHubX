@@ -22,6 +22,9 @@ local Workspace         = game:GetService("Workspace")
 local UserInputService  = game:GetService("UserInputService")
 local LocalPlayer       = Players.LocalPlayer
 
+local networkingFolder = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Networking")
+local askWearStillRF = networkingFolder:WaitForChild("RF/Treadmill/AskWearStill")
+local askDoffRF = networkingFolder:WaitForChild("RF/Treadmill/AskDoff")
 -- ============================================================
 -- ============================================================
 -- ============================================================
@@ -64,6 +67,7 @@ local RarityList = {
     "Legendary", "Mythic", "Cosmic", "Secret",
     "Eternal", "Divine"
 }
+
 
 -- ============================================================
 -- ============================================================
@@ -573,6 +577,13 @@ end
 -- ============================================================
 
 
+
+
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
 -- Toggle Callback Handlers
 function Functions.OnToggleAutoSteal(state)
     State.autoStealEnabled = state
@@ -605,6 +616,26 @@ end
 function Functions.OnToggleAutoTreadmillTraining(state)
     State.autoTreadmillTraining = state
     print("Auto Treadmill Training state:", state)
+
+    task.spawn(function()
+        if state then
+            -- Turn ON: Hop on treadmill
+            local success, err = pcall(function()
+                askWearStillRF:InvokeServer()
+            end)
+            if not success then
+                warn("Failed to get on treadmill:", err)
+            end
+        else
+            -- Turn OFF: Exit treadmill
+            local success, err = pcall(function()
+                askDoffRF:InvokeServer()
+            end)
+            if not success then
+                warn("Failed to exit treadmill:", err)
+            end
+        end
+    end)
 end
 
 function Functions.OnToggleAutoTreadmillUpgrade(state)
