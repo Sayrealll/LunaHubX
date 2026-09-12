@@ -226,7 +226,7 @@ Section1:Dropdown({
 })
 
 local Section2 = Tab1:Section({
-	Title = "Auto Hatch & Sell",
+	Title = "Auto Place & Hatch",
 	Box = true,
 	BoxBorder = true,
 })
@@ -247,6 +247,12 @@ Section2:Toggle({
 	Callback = function(state)
 		print("Toggle state:", state)
 	end,
+})
+
+local Section3 = Tab1:Section({
+	Title = "Auto Sell Egg",
+	Box = true,
+	BoxBorder = true,
 })
 
 Section3:Toggle({
@@ -275,6 +281,41 @@ Section3:Dropdown({
 		end
 	end,
 })
+
+local Section4 = Tab2:Section({
+	Title = "Upgrades",
+	Box = true,
+	BoxBorder = true,
+})
+
+Section4:Toggle({
+	Title = "Auto Upgrade Pen",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section4:Toggle({
+	Title = "Auto Treadmill Training",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section4:Toggle({
+	Title = "Auto Treadmill Upgrade",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+
 
 --[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
