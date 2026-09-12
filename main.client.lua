@@ -94,7 +94,7 @@ local Tab1 = Window:Tab({
 	Icon = "egg",
 })
 
-Window:Tab({
+local Tab2 = Window:Tab({
 	Title = "PROGRESSION",
 	Icon = "discord",
 })
