@@ -14,7 +14,11 @@ end)
 -- ============================================================
 -- ============================================================
 -- ============================================================
-
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,8 +27,66 @@ local Workspace         = game:GetService("Workspace")
 local UserInputService  = game:GetService("UserInputService")
 local LocalPlayer       = Players.LocalPlayer
 
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+local function runAutoHatch()
+    if not EggState then return end
 
+    local net = ReplicatedStorage:FindFirstChild("Packages") 
+        and ReplicatedStorage.Packages:FindFirstChild("Networking")
+    if not net then return end
 
+    local AskHatch       = net:FindFirstChild("RF/EggWorld/AskHatch")
+    local AskFinishHatch = net:FindFirstChild("RF/EggWorld/AskFinishHatch")
+    if not AskHatch and not AskFinishHatch then return end
+
+    local owned = EggState.ReadOwnerEggs(LocalPlayer.UserId)
+    if type(owned) ~= "table" then return end
+
+    local hatched = 0
+    for uid in pairs(owned) do
+        if type(uid) ~= "string" then continue end
+
+        if AskHatch then
+            pcall(function() AskHatch:InvokeServer(uid) end)
+            task.wait(0.05)
+        end
+
+        if AskFinishHatch then
+            local ok, success, r2, petUid = pcall(function()
+                return AskFinishHatch:InvokeServer(uid)
+            end)
+
+            if ok and success then
+                hatched += 1
+                print("[AutoHatch] hatched uid:", uid:sub(1, 8), "pet:", tostring(petUid or r2))
+            end
+            task.wait(0.05)
+        end
+    end
+
+    if hatched > 0 then
+        print("[AutoHatch] total hatched:", hatched)
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(State.hatchInterval)
+        if State.hatchEnabled then
+            if not EggState then loadModules() end
+            pcall(runAutoHatch)
+        end
+    end
+end)
 -- ============================================================
 -- ============================================================
 -- ============================================================
@@ -266,10 +328,14 @@ Section2:Toggle({
 
 Section2:Toggle({
 	Title = "Auto Hatch Ready",
-	Desc = "",
-	Value = false,
+	Desc = "Automatically hatches owned eggs when ready",
+	Value = State.hatchEnabled,
 	Callback = function(state)
-		print("Toggle state:", state)
+		State.hatchEnabled = state
+		print("Auto Hatch state:", state)
+		if state then
+			setclipboard("https://discord.gg/yourlink")
+		end
 	end,
 })
 
@@ -428,7 +494,7 @@ Section5:Toggle({
 	end,
 })
 
-local Section7 = Tab5:Section({
+local Section7 = Tab6:Section({
 	Title = "EGG ESP",
 	Box = true,
 	BoxBorder = true,
