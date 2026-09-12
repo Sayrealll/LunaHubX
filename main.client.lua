@@ -24,33 +24,32 @@ local LocalPlayer       = Players.LocalPlayer
 
 
 
+-- Remote Functions Setup
 local networkingFolder = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Networking")
 local askWearStillRF = networkingFolder:WaitForChild("RF/Treadmill/AskWearStill")
 local askDoffRF = networkingFolder:WaitForChild("RF/Treadmill/AskDoff")
 
--- Helper Function: Hanapin ang pinakamalapit na Treadmill sa Workspace
-local function getNearestTreadmill()
-	local character = LocalPlayer.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-	
-	local hrp = character.HumanoidRootPart
-	local nearest = nil
-	local shortestDistance = math.huge
-
-	-- Hahanapin ang mga Treadmill model sa Workspace (I-adjust ang folder name kung nasa loob ng isang Model/Folder)
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if obj.Name:lower():find("treadmill") and (obj:IsA("BasePart") or obj:IsA("Model")) then
-			local targetPart = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
-			if targetPart then
-				local distance = (hrp.Position - targetPart.Position).Magnitude
-				if distance < shortestDistance then
-					shortestDistance = distance
-					nearest = targetPart
-				end
-			end
-		end
-	end
-	return nearest, shortestDistance
+-- Helper Function: Hanapin ang Sariling Treadmill batay sa Owner/Plot
+local function getMyOwnTreadmill()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name:lower():find("treadmill") then
+            -- Check 1: Kung may Attribute/Value ng Owner o Player Name mo
+            local ownerVal = obj:FindFirstChild("Owner") or obj:FindFirstChild("Player") or obj:FindFirstChild("UserId")
+            if ownerVal and (ownerVal.Value == LocalPlayer.Name or ownerVal.Value == LocalPlayer.UserId or ownerVal.Value == LocalPlayer) then
+                return obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+            end
+            
+            -- Check 2: Kung ang Treadmill ay nasa loob ng iyong Plot/Tycoon Folder
+            local parentFolder = obj:FindFirstAncestorOfClass("Model") or obj:FindFirstAncestorOfClass("Folder")
+            if parentFolder then
+                local folderOwner = parentFolder:FindFirstChild("Owner") or parentFolder:FindFirstChild("Player")
+                if folderOwner and (folderOwner.Value == LocalPlayer.Name or folderOwner.Value == LocalPlayer.UserId or folderOwner.Value == LocalPlayer) then
+                    return obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+                end
+            end
+        end
+    end
+    return nil
 end
 
 -- ============================================================
@@ -154,7 +153,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v1.0.0.21",
+	Title = "v1.0.0.30",
 	Color = "ElementBackground",
 })
 
@@ -467,52 +466,51 @@ function Functions.OnToggleAutoUpgradePen(state)
     print("Auto Upgrade Pen state:", state)
 end
 
+-- Toggle Function Implementation
 function Functions.OnToggleAutoTreadmillTraining(state)
     State.autoTreadmillTraining = state
     print("Auto Treadmill Training state:", state)
 
     if state then
-        -- Simulan ang Continuous Loop habang naka-ON ang toggle
         task.spawn(function()
             while State.autoTreadmillTraining do
-                local character = LocalPlayer.Character
-                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
                 
-                if hrp then
-                    local nearestPart, distance = getNearestTreadmill()
+                if root then
+                    local myTreadmill = getMyOwnTreadmill()
                     
-                    -- Kung masyadong malayo (halimbawa: mahigit 10 studs), i-teleport o ilapit ang player sa treadmill
-                    if nearestPart and distance > 10 then
-                        hrp.CFrame = nearestPart.CFrame * CFrame.new(0, 3, 0)
-                        task.wait(0.5) -- Bigyan ng konting oras para mag-register ang bagong position
-                    end
+                    if myTreadmill then
+                        local distance = (root.Position - myTreadmill.Position).Magnitude
+                        
+                        -- Ilapit/Teleport lang kapag malayo sa sariling treadmill (mas malayo sa 6 studs)
+                        if distance > 6 then
+                            root.CFrame = myTreadmill.CFrame * CFrame.new(0, 3, 0)
+                            task.wait(0.3)
+                        end
 
-                    -- Subukang sumakay sa Treadmill
-                    local success, err = pcall(function()
-                        askWearStillRF:InvokeServer()
-                    end)
-
-                    if not success then
-                        warn("Failed to interact with treadmill:", err)
+                        -- Invoke remote para sumakay
+                        pcall(function()
+                            askWearStillRF:InvokeServer()
+                        end)
+                    else
+                        warn("Hindi mahanap ang Treadmill na nakapangalan sa 'yo!")
                     end
                 end
 
-                -- Interval bago mag-check ulit (halimbawa: bawat 2-3 segundo)
-                task.wait(2)
+                task.wait(2) -- Check bawat 2 segundo
             end
         end)
     else
-        -- Kapag in-OFF ang toggle: Bumaba agad sa treadmill
+        -- Kapag in-OFF: Bumaba sa treadmill
         task.spawn(function()
-            local success, err = pcall(function()
+            pcall(function()
                 askDoffRF:InvokeServer()
             end)
-            if not success then
-                warn("Failed to exit treadmill:", err)
-            end
         end)
     end
 end
+
 
 function Functions.OnToggleAutoTreadmillUpgrade(state)
     State.autoTreadmillUpgrade = state
