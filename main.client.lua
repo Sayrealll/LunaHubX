@@ -336,7 +336,7 @@ Section2:Toggle({
 		if state then
 			setclipboard("https://discord.gg/yourlink")
 		end
-	end,
+	
 })
 
 local Section3 = Tab1:Section({
