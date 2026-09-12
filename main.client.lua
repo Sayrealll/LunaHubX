@@ -225,6 +225,57 @@ Section1:Dropdown({
 	end,
 })
 
+local Section2 = Tab1:Section({
+	Title = "Auto Hatch & Sell",
+	Box = true,
+	BoxBorder = true,
+})
+
+Section2:Toggle({
+	Title = "Auto Place All Eggs",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section2:Toggle({
+	Title = "Auto Hatch Ready",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+
+Section3:Toggle({
+	Title = "Auto Sell Eggs",
+	Desc = "",
+	Value = false,
+	Callback = function(state)
+		print("Toggle state:", state)
+	end,
+})
+Section3:Dropdown({
+	Title = "Rarities",
+	Values = {
+		"Secret",
+		"Eternal",
+		"Divine",
+	},
+	Value = nil,
+	AllowNone = true,
+	Multi = true,
+	Callback = function(selectedValue)
+		if type(selectedValue) == "table" then
+			print("Selected: " .. table.concat(selectedValue, ", "))
+		else
+			print("Selected: " .. tostring(selectedValue))
+		end
+	end,
+})
+
 --[[local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
 
