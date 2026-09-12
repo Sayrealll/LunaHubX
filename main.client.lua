@@ -91,34 +91,42 @@ Window:Tab({
 
 local Tab1 = Window:Tab({
 	Title = "EGGS",
+	Icon = "egg",
 })
 
 Window:Tab({
 	Title = "PROGRESSION",
+	Icon = "discord",
 })
 
 Window:Tab({
 	Title = "PETS",
+	Icon = "discord",
 })
 
 Window:Tab({
 	Title = "RIFT",
+	Icon = "discord",
 })
 
 Window:Tab({
 	Title = "CONTEST",
+	Icon = "sword",
 })
 
 Window:Tab({
 	Title = "FUSE",
+	Icon = "discord",
 })
 
 Window:Tab({
 	Title = "WEBHOOK",
+	Icon = "discord",
 })
 
 Window:Tab({
 	Title = "SETTINGS",
+	Icon = "setting",
 })
 
 
