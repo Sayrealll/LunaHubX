@@ -26,13 +26,13 @@ CurrentIDLabel.TextXAlignment = Enum.TextXAlignment.Right
 CurrentIDLabel.Font = Enum.Font.Code
 CurrentIDLabel.TextSize = 10
 
--- MAIN UI SETUP (RESIZED FOR MOBILE)
+-- MAIN UI SETUP (RESIZED BASE SA PICTURE: 360x280)
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 ScreenGui.Name = "AC_Test_Browser_V4"
 
 local MainContainer = Instance.new("Frame", ScreenGui)
-MainContainer.Size = UDim2.new(0, 320, 0, 260) -- Liitan ang UI size para sa Mobile
-MainContainer.Position = UDim2.new(0.5, -160, 0.5, -130)
+MainContainer.Size = UDim2.new(0, 360, 0, 280) 
+MainContainer.Position = UDim2.new(0.5, -180, 0.45, -140)
 MainContainer.BackgroundTransparency = 1
 
 local Frame = Instance.new("Frame", MainContainer)
@@ -41,7 +41,7 @@ Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
 
 local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, -70, 0, 30)
+Title.Size = UDim2.new(1, -70, 0, 32)
 Title.Position = UDim2.new(0, 5, 0, 0)
 Title.Text = "LUNA HUB | HOP SERVER"
 Title.TextColor3 = Color3.new(1, 1, 1)
@@ -52,8 +52,8 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 
 -- REFRESH BUTTON
 local RefreshBtn = Instance.new("TextButton", Frame)
-RefreshBtn.Size = UDim2.new(0, 25, 0, 25)
-RefreshBtn.Position = UDim2.new(1, -60, 0, 2.5)
+RefreshBtn.Size = UDim2.new(0, 26, 0, 26)
+RefreshBtn.Position = UDim2.new(1, -62, 0, 3)
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 75)
 RefreshBtn.Text = "↻"
 RefreshBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -61,16 +61,16 @@ RefreshBtn.TextSize = 14
 
 -- MINIMIZE BUTTON
 local ToggleBtn = Instance.new("TextButton", MainContainer)
-ToggleBtn.Size = UDim2.new(0, 25, 0, 25)
-ToggleBtn.Position = UDim2.new(1, -30, 0, 2.5)
+ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
+ToggleBtn.Position = UDim2.new(1, -31, 0, 3)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 ToggleBtn.Text = "-"
 ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
 ToggleBtn.TextSize = 14
 
 local ScrollingFrame = Instance.new("ScrollingFrame", Frame)
-ScrollingFrame.Size = UDim2.new(1, -10, 1, -40)
-ScrollingFrame.Position = UDim2.new(0, 5, 0, 35)
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -42)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 37)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.ScrollBarThickness = 4
 
