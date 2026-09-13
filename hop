@@ -1,5 +1,4 @@
---HOP SERVER BY LUNA
--- ADVANCED SERVER BROWSER V4 (Identifiers, Hover-Info, and Persistent ID)
+-- HOP SERVER BY LUNA (MOBILE OPTIMIZED WITH REFRESH BUTTON)
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
@@ -13,27 +12,27 @@ local joinHistory = {}
 local success, content = pcall(function() return readfile(HISTORY_FILE) end)
 if success then joinHistory = HttpService:JSONDecode(content) end
 
--- PERSISTENT TOP-RIGHT INFO (Always Visible)
+-- PERSISTENT TOP-RIGHT INFO
 local PersistentGui = Instance.new("ScreenGui", Player.PlayerGui)
 PersistentGui.Name = "CurrentServerDisplay"
 local CurrentIDLabel = Instance.new("TextLabel", PersistentGui)
-CurrentIDLabel.Size = UDim2.new(0, 300, 0, 20)
-CurrentIDLabel.Position = UDim2.new(1, -310, 0, 10)
+CurrentIDLabel.Size = UDim2.new(0, 200, 0, 15)
+CurrentIDLabel.Position = UDim2.new(1, -210, 0, 5)
 CurrentIDLabel.BackgroundTransparency = 1
-CurrentIDLabel.Text = "CURRENT JOBID: " .. (game.JobId ~= "" and game.JobId or "Studio/Local")
+CurrentIDLabel.Text = "JOBID: " .. (game.JobId ~= "" and game.JobId or "Studio/Local")
 CurrentIDLabel.TextColor3 = Color3.new(1, 1, 1)
 CurrentIDLabel.TextTransparency = 0.5
 CurrentIDLabel.TextXAlignment = Enum.TextXAlignment.Right
 CurrentIDLabel.Font = Enum.Font.Code
-CurrentIDLabel.TextSize = 14
+CurrentIDLabel.TextSize = 10
 
--- MAIN UI SETUP
+-- MAIN UI SETUP (RESIZED FOR MOBILE)
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 ScreenGui.Name = "AC_Test_Browser_V4"
 
 local MainContainer = Instance.new("Frame", ScreenGui)
-MainContainer.Size = UDim2.new(0, 480, 0, 400) -- Slightly wider for the new buttons
-MainContainer.Position = UDim2.new(0.5, -240, 0.5, -200)
+MainContainer.Size = UDim2.new(0, 320, 0, 260) -- Liitan ang UI size para sa Mobile
+MainContainer.Position = UDim2.new(0.5, -160, 0.5, -130)
 MainContainer.BackgroundTransparency = 1
 
 local Frame = Instance.new("Frame", MainContainer)
@@ -42,41 +41,66 @@ Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
 
 local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Size = UDim2.new(1, -70, 0, 30)
+Title.Position = UDim2.new(0, 5, 0, 0)
 Title.Text = "LUNA HUB | HOP SERVER"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.TextSize = 12
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
+-- REFRESH BUTTON
+local RefreshBtn = Instance.new("TextButton", Frame)
+RefreshBtn.Size = UDim2.new(0, 25, 0, 25)
+RefreshBtn.Position = UDim2.new(1, -60, 0, 2.5)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 75)
+RefreshBtn.Text = "↻"
+RefreshBtn.TextColor3 = Color3.new(1, 1, 1)
+RefreshBtn.TextSize = 14
+
+-- MINIMIZE BUTTON
 local ToggleBtn = Instance.new("TextButton", MainContainer)
-ToggleBtn.Size = UDim2.new(0, 30, 0, 30)
-ToggleBtn.Position = UDim2.new(1, -35, 0, 5)
+ToggleBtn.Size = UDim2.new(0, 25, 0, 25)
+ToggleBtn.Position = UDim2.new(1, -30, 0, 2.5)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 ToggleBtn.Text = "-"
 ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+ToggleBtn.TextSize = 14
 
 local ScrollingFrame = Instance.new("ScrollingFrame", Frame)
-ScrollingFrame.Size = UDim2.new(1, -20, 1, -60)
-ScrollingFrame.Position = UDim2.new(0, 10, 0, 50)
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -40)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 35)
 ScrollingFrame.BackgroundTransparency = 1
-ScrollingFrame.ScrollBarThickness = 6
+ScrollingFrame.ScrollBarThickness = 4
 
 local UIListLayout = Instance.new("UIListLayout", ScrollingFrame)
-UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.Padding = UDim.new(0, 4)
 
--- DRAGGING LOGIC
+-- DRAGGING LOGIC (SUPPORT FOR TOUCH & MOUSE)
 local dragging, dragStart, startPos
-ToggleBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    MainContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = MainContainer.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MainContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateInput(input)
     end
 end)
 
@@ -85,13 +109,11 @@ ToggleBtn.MouseButton1Click:Connect(function()
     ToggleBtn.Text = Frame.Visible and "-" or "+"
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
-
--- REFRESH LOGIC
+-- REFRESH FUNCTION
 local function refresh()
-    for _, child in pairs(ScrollingFrame:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
+    for _, child in pairs(ScrollingFrame:GetChildren()) do 
+        if child:IsA("Frame") then child:Destroy() end 
+    end
 
     local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=50"
     local ok, res = pcall(function() return game:HttpGet(url) end)
@@ -100,35 +122,37 @@ local function refresh()
         local data = HttpService:JSONDecode(res)
         for _, server in pairs(data.data) do
             local sFrame = Instance.new("Frame", ScrollingFrame)
-            sFrame.Size = UDim2.new(1, -10, 0, 60)
+            sFrame.Size = UDim2.new(1, -6, 0, 45)
             sFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 
             local lastJoined = joinHistory[server.id] or "Never"
             
             local info = Instance.new("TextLabel", sFrame)
             info.Size = UDim2.new(0.6, 0, 1, 0)
-            info.Text = string.format(" Ping: %dms | Players: %d/%d\n Last Joined: %s", server.ping or 0, server.playing, server.maxPlayers, lastJoined)
+            info.Text = string.format("Ping: %dms | P: %d/%d\nJoined: %s", server.ping or 0, server.playing, server.maxPlayers, lastJoined)
             info.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-            info.TextSize = 12
+            info.TextSize = 10
             info.BackgroundTransparency = 1
             info.TextXAlignment = Enum.TextXAlignment.Left
             info.Position = UDim2.new(0, 5, 0, 0)
 
             -- THE "?" INFO BUTTON
             local qBtn = Instance.new("TextButton", sFrame)
-            qBtn.Size = UDim2.new(0, 25, 0, 25)
-            qBtn.Position = UDim2.new(0.65, 0, 0.3, 0)
+            qBtn.Size = UDim2.new(0, 20, 0, 20)
+            qBtn.Position = UDim2.new(0.62, 0, 0.25, 0)
             qBtn.Text = "?"
             qBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
             qBtn.TextColor3 = Color3.new(1, 1, 1)
+            qBtn.TextSize = 10
 
-            local idLabel = Instance.new("TextBox", sFrame) -- TextBox so you can copy the ID
-            idLabel.Size = UDim2.new(0.9, 0, 0, 20)
-            idLabel.Position = UDim2.new(0.05, 0, 1, -20)
+            local idLabel = Instance.new("TextBox", sFrame)
+            idLabel.Size = UDim2.new(0.95, 0, 0, 18)
+            idLabel.Position = UDim2.new(0.025, 0, 0.5, -9)
             idLabel.Text = server.id
-            idLabel.BackgroundTransparency = 0.2
-            idLabel.BackgroundColor3 = Color3.new(0,0,0)
+            idLabel.BackgroundTransparency = 0.1
+            idLabel.BackgroundColor3 = Color3.new(0, 0, 0)
             idLabel.TextColor3 = Color3.new(1, 1, 0)
+            idLabel.TextSize = 9
             idLabel.Visible = false
             idLabel.ClearTextOnFocus = false
             idLabel.TextEditable = false
@@ -138,14 +162,16 @@ local function refresh()
             end)
 
             local joinBtn = Instance.new("TextButton", sFrame)
-            joinBtn.Size = UDim2.new(0.25, 0, 0.5, 0)
-            joinBtn.Position = UDim2.new(0.72, 0, 0.25, 0)
+            joinBtn.Size = UDim2.new(0.24, 0, 0.6, 0)
+            joinBtn.Position = UDim2.new(0.73, 0, 0.2, 0)
             joinBtn.Text = "JOIN"
+            joinBtn.TextSize = 11
             joinBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+            joinBtn.TextColor3 = Color3.new(1, 1, 1)
 
             joinBtn.MouseButton1Click:Connect(function()
                 joinHistory[server.id] = os.date("%x %X")
-                writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory))
+                pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, Player)
             end)
         end
@@ -153,4 +179,7 @@ local function refresh()
     end
 end
 
+RefreshBtn.MouseButton1Click:Connect(refresh)
+
+-- INITIAL LOAD
 refresh()
