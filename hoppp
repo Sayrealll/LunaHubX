@@ -1,4 +1,3 @@
---LOL
 -- HOP SERVER BY LUNA (MOBILE OPTIMIZED WITH RATE LIMIT FIX & INDEPENDENT AUTO JOIN)
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -71,7 +70,7 @@ RefreshBtn.Text = "↻"
 RefreshBtn.TextColor3 = Color3.new(1, 1, 1)
 RefreshBtn.TextSize = 14
 
--- MINIMIZE / CLOSE BUTTON
+-- MINIMIZE / CLOSE BUTTON (WITH LONG PRESS TO CLOSE)
 local ToggleBtn = Instance.new("TextButton", MainContainer)
 ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
 ToggleBtn.Position = UDim2.new(1, -31, 0, 3)
@@ -146,7 +145,7 @@ ToggleBtn.InputEnded:Connect(function(input)
     end
 end)
 
--- REFRESH FUNCTION WITH 1-6 PLAYER FILTER
+-- REFRESH FUNCTION WITH AUTO-RETRY LOOP (EXCLUDES 0, 7, 8 PLAYERS)
 local isRefreshing = false
 local refreshCount = 0
 
@@ -166,42 +165,51 @@ local function refresh()
     local loadingLabel = Instance.new("TextLabel", ScrollingFrame)
     loadingLabel.Size = UDim2.new(1, 0, 0, 30)
     loadingLabel.BackgroundTransparency = 1
-    loadingLabel.Text = "Filtering servers (1-6 players)..."
     loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     loadingLabel.TextSize = 12
 
     task.spawn(function()
-        refreshCount = refreshCount + 1
-        local maxAttempts = 6
-        local attempt = 0
         local filteredServers = {}
-        local cursor = ""
+        local searchAttempts = 0
 
-        -- Search loop to collect only 1-6 player servers
-        while attempt < maxAttempts and #filteredServers < 10 do
-            attempt = attempt + 1
-            local sortOrder = ((refreshCount + attempt) % 2 == 0) and "Desc" or "Asc"
-            local cursorParam = (cursor ~= "") and ("&cursor=" .. cursor) or ""
-            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=50" .. cursorParam
+        -- Continuous Loop until valid servers are found
+        while #filteredServers == 0 do
+            searchAttempts = searchAttempts + 1
+            loadingLabel.Text = "Filtering servers 1-6... (Attempt " .. searchAttempts .. ")"
+            
+            refreshCount = refreshCount + 1
+            local cursor = ""
+            local pageAttempts = 0
+            
+            while pageAttempts < 5 and #filteredServers < 10 do
+                pageAttempts = pageAttempts + 1
+                local sortOrder = ((refreshCount + pageAttempts) % 2 == 0) and "Desc" or "Asc"
+                local cursorParam = (cursor ~= "") and ("&cursor=" .. cursor) or ""
+                local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=50" .. cursorParam
 
-            local ok, res = pcall(function() return game:HttpGet(url) end)
+                local ok, res = pcall(function() return game:HttpGet(url) end)
 
-            if ok and res then
-                local parseOk, data = pcall(function() return HttpService:JSONDecode(res) end)
-                if parseOk and data and data.data then
-                    cursor = data.nextPageCursor or ""
-                    
-                    for _, server in pairs(data.data) do
-                        -- Strict filter: 1 to 6 players only & not current server
-                        if server.playing and server.playing >= 1 and server.playing <= 6 and server.id ~= game.JobId then
-                            table.insert(filteredServers, server)
+                if ok and res then
+                    local parseOk, data = pcall(function() return HttpService:JSONDecode(res) end)
+                    if parseOk and data and data.data then
+                        cursor = data.nextPageCursor or ""
+                        
+                        for _, server in pairs(data.data) do
+                            if server.playing and server.playing >= 1 and server.playing <= 6 and server.id ~= game.JobId then
+                                table.insert(filteredServers, server)
+                            end
                         end
                     end
                 end
+                
+                if cursor == "" then break end
+                task.wait(0.3)
             end
-            
-            if cursor == "" then break end
-            task.wait(0.3)
+
+            if #filteredServers == 0 then
+                loadingLabel.Text = "No 1-6 players found. Retrying..."
+                task.wait(0.5)
+            end
         end
 
         -- Destroy loading label
@@ -209,72 +217,63 @@ local function refresh()
             loadingLabel:Destroy()
         end
 
-        if #filteredServers > 0 then
-            for _, server in pairs(filteredServers) do
-                local sFrame = Instance.new("Frame", ScrollingFrame)
-                sFrame.Size = UDim2.new(1, -6, 0, 45)
-                sFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        for _, server in pairs(filteredServers) do
+            local sFrame = Instance.new("Frame", ScrollingFrame)
+            sFrame.Size = UDim2.new(1, -6, 0, 45)
+            sFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 
-                local lastJoined = joinHistory[server.id] or "Never"
-                
-                local info = Instance.new("TextLabel", sFrame)
-                info.Size = UDim2.new(0.6, 0, 1, 0)
-                info.Text = string.format("Ping: %dms | P: %d/%d\nJoined: %s", server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
-                info.TextColor3 = Color3.fromRGB(0, 255, 150) -- Green text for good servers
-                info.TextSize = 10
-                info.BackgroundTransparency = 1
-                info.TextXAlignment = Enum.TextXAlignment.Left
-                info.Position = UDim2.new(0, 5, 0, 0)
+            local lastJoined = joinHistory[server.id] or "Never"
+            
+            local info = Instance.new("TextLabel", sFrame)
+            info.Size = UDim2.new(0.6, 0, 1, 0)
+            info.Text = string.format("Ping: %dms | P: %d/%d\nJoined: %s", server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
+            info.TextColor3 = Color3.new(0.8, 0.8, 0.8) -- Restored original color
+            info.TextSize = 10
+            info.BackgroundTransparency = 1
+            info.TextXAlignment = Enum.TextXAlignment.Left
+            info.Position = UDim2.new(0, 5, 0, 0)
 
-                local qBtn = Instance.new("TextButton", sFrame)
-                qBtn.Size = UDim2.new(0, 20, 0, 20)
-                qBtn.Position = UDim2.new(0.62, 0, 0.25, 0)
-                qBtn.Text = "?"
-                qBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-                qBtn.TextColor3 = Color3.new(1, 1, 1)
-                qBtn.TextSize = 10
+            local qBtn = Instance.new("TextButton", sFrame)
+            qBtn.Size = UDim2.new(0, 20, 0, 20)
+            qBtn.Position = UDim2.new(0.62, 0, 0.25, 0)
+            qBtn.Text = "?"
+            qBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            qBtn.TextColor3 = Color3.new(1, 1, 1)
+            qBtn.TextSize = 10
 
-                local idLabel = Instance.new("TextBox", sFrame)
-                idLabel.Size = UDim2.new(0.95, 0, 0, 18)
-                idLabel.Position = UDim2.new(0.025, 0, 0.5, -9)
-                idLabel.Text = server.id
-                idLabel.BackgroundTransparency = 0.1
-                idLabel.BackgroundColor3 = Color3.new(0, 0, 0)
-                idLabel.TextColor3 = Color3.new(1, 1, 0)
-                idLabel.TextSize = 9
-                idLabel.Visible = false
-                idLabel.ClearTextOnFocus = false
-                idLabel.TextEditable = false
+            local idLabel = Instance.new("TextBox", sFrame)
+            idLabel.Size = UDim2.new(0.95, 0, 0, 18)
+            idLabel.Position = UDim2.new(0.025, 0, 0.5, -9)
+            idLabel.Text = server.id
+            idLabel.BackgroundTransparency = 0.1
+            idLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+            idLabel.TextColor3 = Color3.new(1, 1, 0)
+            idLabel.TextSize = 9
+            idLabel.Visible = false
+            idLabel.ClearTextOnFocus = false
+            idLabel.TextEditable = false
 
-                qBtn.MouseButton1Click:Connect(function()
-                    idLabel.Visible = not idLabel.Visible
-                end)
+            qBtn.MouseButton1Click:Connect(function()
+                idLabel.Visible = not idLabel.Visible
+            end)
 
-                local joinBtn = Instance.new("TextButton", sFrame)
-                joinBtn.Size = UDim2.new(0.24, 0, 0.6, 0)
-                joinBtn.Position = UDim2.new(0.73, 0, 0.2, 0)
-                joinBtn.Text = "JOIN"
-                joinBtn.TextSize = 11
-                joinBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-                joinBtn.TextColor3 = Color3.new(1, 1, 1)
+            local joinBtn = Instance.new("TextButton", sFrame)
+            joinBtn.Size = UDim2.new(0.24, 0, 0.6, 0)
+            joinBtn.Position = UDim2.new(0.73, 0, 0.2, 0)
+            joinBtn.Text = "JOIN"
+            joinBtn.TextSize = 11
+            joinBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+            joinBtn.TextColor3 = Color3.new(1, 1, 1)
 
-                joinBtn.MouseButton1Click:Connect(function()
-                    joinHistory[server.id] = os.date("%x %X")
-                    pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, Player)
-                end)
-            end
-
-            task.wait(0.05)
-            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
-        else
-            local errLabel = Instance.new("TextLabel", ScrollingFrame)
-            errLabel.Size = UDim2.new(1, 0, 0, 30)
-            errLabel.BackgroundTransparency = 1
-            errLabel.Text = "No 1-6 player servers found. Click Refresh."
-            errLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            errLabel.TextSize = 11
+            joinBtn.MouseButton1Click:Connect(function()
+                joinHistory[server.id] = os.date("%x %X")
+                pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, Player)
+            end)
         end
+
+        task.wait(0.05)
+        ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 
         task.wait(0.5)
         RefreshBtn.Text = "↻"
@@ -282,7 +281,7 @@ local function refresh()
     end)
 end
 
--- INDEPENDENT AUTO JOIN (1-6 PLAYERS ONLY)
+-- INDEPENDENT AUTO JOIN WITH RETRY LOGIC (EXCLUDES 0, 7, 8 PLAYERS)
 local isAutoJoining = false
 local function autoJoin()
     if isAutoJoining then return end
@@ -308,7 +307,6 @@ local function autoJoin()
                 local validServers = {}
 
                 for _, server in pairs(data.data) do
-                    -- Filter condition for Auto Join
                     if server.playing and server.playing >= 1 and server.playing <= 6 and server.id ~= game.JobId then
                         table.insert(validServers, server)
                     end
