@@ -27,7 +27,7 @@ CurrentIDLabel.TextXAlignment = Enum.TextXAlignment.Right
 CurrentIDLabel.Font = Enum.Font.Code
 CurrentIDLabel.TextSize = 10
 
--- MAIN UI SETUP
+-- MAIN UI SETUP (DINAGDAGAN NG +50 ANG LAPAD AT TAAS)
 local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
 ScreenGui.Name = "AC_Test_Browser_V4"
 
@@ -41,7 +41,7 @@ Frame.Size = UDim2.new(1, 0, 1, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
 
--- TITLE BAR
+-- TITLE BAR (LAKIHANG TITLE AT TAAS NG BAR)
 local Title = Instance.new("TextLabel", Frame)
 Title.Size = UDim2.new(1, -110, 0, 38)
 Title.Position = UDim2.new(0, 5, 0, 0)
@@ -52,7 +52,7 @@ Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- SERVER COUNTER BAR
+-- SERVER COUNTER BAR (LAKIHANG TEXT AT TAAS)
 local ServerCountLabel = Instance.new("TextLabel", Frame)
 ServerCountLabel.Size = UDim2.new(1, -10, 0, 26)
 ServerCountLabel.Position = UDim2.new(0, 5, 0, 38)
@@ -91,7 +91,7 @@ ToggleBtn.Text = "-"
 ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
 ToggleBtn.TextSize = 14
 
--- SCROLLING FRAME
+-- SCROLLING FRAME (INADJUST ANG Y-POSITION PARA SA MAS MALAKING BARS)
 local ScrollingFrame = Instance.new("ScrollingFrame", Frame)
 ScrollingFrame.Size = UDim2.new(1, -10, 1, -70)
 ScrollingFrame.Position = UDim2.new(0, 5, 0, 66)
@@ -158,7 +158,7 @@ ToggleBtn.InputEnded:Connect(function(input)
     end
 end)
 
--- REFRESH FUNCTION (WALANG GINALAW SA LOGIC)
+-- REFRESH FUNCTION
 local isRefreshing = false
 local refreshCount = 0
 
@@ -168,12 +168,14 @@ local function refresh()
     RefreshBtn.Text = "⏳"
     ServerCountLabel.Text = "Servers Found: Scanning..."
 
+    -- Clear existing frames
     for _, child in pairs(ScrollingFrame:GetChildren()) do 
         if child:IsA("Frame") or child:IsA("TextLabel") then 
             child:Destroy() 
         end 
     end
 
+    -- Loading Label
     local loadingLabel = Instance.new("TextLabel", ScrollingFrame)
     loadingLabel.Size = UDim2.new(1, 0, 0, 30)
     loadingLabel.BackgroundTransparency = 1
@@ -183,45 +185,43 @@ local function refresh()
 
     task.spawn(function()
         refreshCount = refreshCount + 1
-        local sortOrder = (refreshCount % 2 == 0) and "Desc" or "Asc"
-        local cursor = ""
-        local fetchedServers = {}
-        local maxRetries = 10 
-        local attempts = 0
+        local maxAttempts = 5
+        local attempt = 0
+        local filteredServers = {}
 
-        while attempts < maxRetries do
-            attempts = attempts + 1
-            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=100"
-            if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+        while attempt < maxAttempts and #filteredServers == 0 do
+            attempt = attempt + 1
+            local sortOrder = ((refreshCount + attempt) % 2 == 0) and "Desc" or "Asc"
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=50"
 
             local ok, res = pcall(function() return game:HttpGet(url) end)
-            
+
             if ok and res then
                 local parseOk, data = pcall(function() return HttpService:JSONDecode(res) end)
                 if parseOk and data and data.data then
                     for _, server in pairs(data.data) do
-                        -- TINANGGAL LANG ANG server.playing >= 1 AND server.playing <= 6
-                        if server.id ~= game.JobId then
-                            table.insert(fetchedServers, server)
+                        if server.playing and server.playing >= 1 and server.playing <= 6 and server.id ~= game.JobId then
+                            table.insert(filteredServers, server)
                         end
                     end
-                    
-                    if #fetchedServers >= 15 then break end
-                    cursor = data.nextPageCursor or ""
-                    if not cursor or cursor == "" then break end
                 end
             end
-            task.wait(0.2)
+
+            if #filteredServers > 0 then break end
+            task.wait(0.5)
         end
 
+        -- Destroy loading label
         if loadingLabel and loadingLabel.Parent then
             loadingLabel:Destroy()
         end
 
-        ServerCountLabel.Text = "  Servers Found: " .. #fetchedServers
+        -- Update Server Counter Display
+        ServerCountLabel.Text = "  Servers Found: " .. #filteredServers
 
-        if #fetchedServers > 0 then
-            for _, server in pairs(fetchedServers) do
+        -- Display filtered servers
+        if #filteredServers > 0 then
+            for _, server in pairs(filteredServers) do
                 local sFrame = Instance.new("Frame", ScrollingFrame)
                 sFrame.Size = UDim2.new(1, -6, 0, 45)
                 sFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -231,9 +231,7 @@ local function refresh()
                 local info = Instance.new("TextLabel", sFrame)
                 info.Size = UDim2.new(0.6, 0, 1, 0)
                 info.RichText = true
-                -- PING = GREEN (#00FF00) | JOINED = RED (#FF4444)
-                info.Text = string.format("<font color=\"#00FF00\">Ping: %dms</font> | P: %d/%d\n<font color=\"#FF4444\">Joined: %s</font>", server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
-                info.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+                info.Text = string.format('<font color="#FFFFFF">Ping: </font><font color="#00FF00">%dms</font><font color="#FFFFFF"> | P: %d/%d\nJoined: </font><font color="#FF0000">%s</font>', server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
                 info.TextSize = 10
                 info.BackgroundTransparency = 1
                 info.TextXAlignment = Enum.TextXAlignment.Left
@@ -289,64 +287,68 @@ local function refresh()
             errLabel.TextSize = 11
         end
 
-        task.wait(0.2)
+        task.wait(0.5)
         RefreshBtn.Text = "↻"
         isRefreshing = false
     end)
 end
 
--- INDEPENDENT AUTO JOIN (WALANG GINALAW SA LOGIC)
+-- INDEPENDENT AUTO JOIN
 local isAutoJoining = false
 local function autoJoin()
     if isAutoJoining then return end
     isAutoJoining = true
     AutoJoinBtn.Text = "⏳"
 
-    task.spawn(function()
-        local cursor = ""
-        local validServers = {}
-        local maxRetries = 15 
-        local attempts = 0
+    local maxAttempts = 15
+    local attempt = 0
+    local teleportSuccess = false
 
-        while attempts < maxRetries do
-            attempts = attempts + 1
-            local sortOrder = (attempts % 2 == 0) and "Desc" or "Asc"
-            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=100"
-            if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+    while attempt < maxAttempts and not teleportSuccess do
+        attempt = attempt + 1
 
-            local ok, res = pcall(function() return game:HttpGet(url) end)
+        local sortOrder = (attempt % 2 == 0) and "Desc" or "Asc"
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=50"
+        
+        local ok, res = pcall(function() return game:HttpGet(url) end)
+
+        if ok and res then
+            local parseOk, data = pcall(function() return HttpService:JSONDecode(res) end)
             
-            if ok and res then
-                local parseOk, data = pcall(function() return HttpService:JSONDecode(res) end)
-                if parseOk and data and data.data then
-                    for _, server in pairs(data.data) do
-                        -- TINANGGAL LANG ANG server.playing >= 1 AND server.playing <= 6
-                        if server.id ~= game.JobId then
-                            table.insert(validServers, server)
-                        end
+            if parseOk and data and data.data then
+                local validServers = {}
+
+                for _, server in pairs(data.data) do
+                    if server.playing and server.playing >= 1 and server.playing <= 6 and server.id ~= game.JobId then
+                        table.insert(validServers, server)
                     end
-                    
-                    if #validServers > 0 then break end
-                    cursor = data.nextPageCursor or ""
-                    if not cursor or cursor == "" then break end
+                end
+
+                if #validServers > 0 then
+                    local randomServer = validServers[math.random(1, #validServers)]
+
+                    local joinOk, err = pcall(function()
+                        joinHistory[randomServer.id] = os.date("%x %X")
+                        pcall(function() writefile(HISTORY_FILE, HttpService:JSONDecode(joinHistory)) end)
+                        
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer.id, Player)
+                    end)
+
+                    if joinOk then
+                        teleportSuccess = true
+                        break
+                    else
+                        warn("Teleport Error: " .. tostring(err) .. " | Retrying attempt #" .. attempt)
+                    end
                 end
             end
-            task.wait(0.2)
         end
 
-        if #validServers > 0 then
-            local targetServer = validServers[math.random(1, #validServers)]
-            joinHistory[targetServer.id] = os.date("%x %X")
-            pcall(function() writefile(HISTORY_FILE, HttpService:JSONDecode(joinHistory)) end)
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer.id, Player)
-        else
-            AutoJoinBtn.Text = "❌"
-            task.wait(1)
-        end
+        task.wait(0.5)
+    end
 
-        AutoJoinBtn.Text = "🔀"
-        isAutoJoining = false
-    end)
+    AutoJoinBtn.Text = "🔀"
+    isAutoJoining = false
 end
 
 AutoJoinBtn.MouseButton1Click:Connect(autoJoin)
