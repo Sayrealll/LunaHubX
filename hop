@@ -1,4 +1,3 @@
---ewan
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
@@ -46,7 +45,7 @@ Frame.BorderSizePixel = 0
 local Title = Instance.new("TextLabel", Frame)
 Title.Size = UDim2.new(1, -110, 0, 38)
 Title.Position = UDim2.new(0, 5, 0, 0)
-Title.Text = "LUNA HUB | HOP SERVER"
+Title.Text = "LUNA HUB | HOP SERVER. |  v 1.0.0.2"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 Title.TextSize = 18
@@ -222,6 +221,11 @@ local function refresh()
 
         -- Display filtered servers
         if #filteredServers > 0 then
+            -- I-SORT ANG SERVERS: MULA PINAKAMABABANG PING HANGGANG PINAKAMATAAS
+            table.sort(filteredServers, function(a, b)
+                return (a.ping or 999) < (b.ping or 999)
+            end)
+
             for _, server in pairs(filteredServers) do
                 local sFrame = Instance.new("Frame", ScrollingFrame)
                 sFrame.Size = UDim2.new(1, -6, 0, 45)
@@ -231,8 +235,8 @@ local function refresh()
                 
                 local info = Instance.new("TextLabel", sFrame)
                 info.Size = UDim2.new(0.6, 0, 1, 0)
-                info.Text = string.format("Ping: %dms | P: %d/%d\nJoined: %s", server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
-                info.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+                info.RichText = true
+                info.Text = string.format('<font color="#FFFFFF">Ping: </font><font color="#00FF00">%dms</font><font color="#FFFFFF"> | P: %d/%d\nJoined: </font><font color="#FF0000">%s</font>', server.ping or 0, server.playing or 0, server.maxPlayers or 0, lastJoined)
                 info.TextSize = 10
                 info.BackgroundTransparency = 1
                 info.TextXAlignment = Enum.TextXAlignment.Left
@@ -330,7 +334,7 @@ local function autoJoin()
 
                     local joinOk, err = pcall(function()
                         joinHistory[randomServer.id] = os.date("%x %X")
-                        pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
+                        pcall(function() writefile(HISTORY_FILE, HttpService:JSONDecode(joinHistory)) end)
                         
                         TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer.id, Player)
                     end)
