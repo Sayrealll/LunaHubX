@@ -1,4 +1,4 @@
--jajaja
+--jajaja
 -- HOP SERVER BY LUNA (MOBILE OPTIMIZED WITH RATE LIMIT FIX & INDEPENDENT AUTO JOIN)
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
