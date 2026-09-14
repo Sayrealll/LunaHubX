@@ -73,14 +73,15 @@ AutoJoinBtn.Text = "🔀"
 AutoJoinBtn.TextColor3 = Color3.new(1, 1, 1)
 AutoJoinBtn.TextSize = 14
 
--- REFRESH BUTTON
+-- REFRESH BUTTON (INAYOS ANG FONT AT CHARACTER PARA HINDI MAG-BOX)
 local RefreshBtn = Instance.new("TextButton", Frame)
 RefreshBtn.Size = UDim2.new(0, 28, 0, 28)
 RefreshBtn.Position = UDim2.new(1, -66, 0, 5)
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 75)
 RefreshBtn.Text = "↻"
+RefreshBtn.Font = Enum.Font.FredokaOne -- Gumamit ng Font na may buong Unicode rendering support sa Roblox
 RefreshBtn.TextColor3 = Color3.new(1, 1, 1)
-RefreshBtn.TextSize = 14
+RefreshBtn.TextSize = 18
 
 -- MINIMIZE / CLOSE BUTTON
 local ToggleBtn = Instance.new("TextButton", MainContainer)
@@ -276,7 +277,7 @@ local function refresh()
 
                 joinBtn.MouseButton1Click:Connect(function()
                     joinHistory[server.id] = os.date("%x %X")
-                    pcall(function() writefile(HISTORY_FILE, HttpService:JSONDecode(joinHistory)) end)
+                    pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
                     TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, Player)
                 end)
             end
@@ -334,7 +335,7 @@ local function autoJoin()
 
                     local joinOk, err = pcall(function()
                         joinHistory[randomServer.id] = os.date("%x %X")
-                        pcall(function() writefile(HISTORY_FILE, HttpService:JSONDecode(joinHistory)) end)
+                        pcall(function() writefile(HISTORY_FILE, HttpService:JSONEncode(joinHistory)) end)
                         
                         TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer.id, Player)
                     end)
