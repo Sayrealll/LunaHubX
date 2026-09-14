@@ -131,7 +131,7 @@ end)
 -- LONG PRESS CLOSE & SHORT CLICK MINIMIZE LOGIC
 local pressThread = nil
 local isLongPress = false
-local LONG_PRESS_TIME = 1.5
+local LONG_PRESS_TIME = 1.0
 
 ToggleBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
