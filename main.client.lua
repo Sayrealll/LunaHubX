@@ -4423,41 +4423,48 @@ local function oM(...)
         local tweenToggle = Fk.togTween
         local teleportToggle = Fk.togTeleport
 
-        -- Emergency recovery: stops movement controllers and restores normal character physics.
-        -- Does not unload WindUI or remove any feature; it only cancels the active farm state.
+        local tweenToggle = Fk.togTween
+        local teleportToggle = Fk.togTeleport
+
+        -- Emergency recovery: hard-cancels every movement session and restores normal character physics.
+        -- This intentionally does NOT unload WindUI or remove any feature.
         Fk.btnUnstick = MainTab:Button({
             Title = "Unstick / Reset Character",
-            Desc = "Stop Tween/Teleport movement and restore normal jump, physics & tool handling",
+            Desc = "Hard stop Tween/Teleport and restore normal character control",
             Icon = "solar:restart-bold",
             Callback = function()
                 task.spawn(function()
-                    -- Invalidate any active farm/glide session first so heartbeat loops exit.
+                    -- Invalidate all currently running farm/glide loops.
                     O4 = O4 + 1
                     Y4 = "NONE"
                     h.pureTweenFarm = false
                     h.autoFarmLoop = false
-                    h.isBatchPlacing = false
                     h.teleporting = false
                     h.glidingToTarget = false
                     h.securingEgg = false
                     h.isReturning = false
                     h.delivering = false
                     h.holdingEggForGuard = false
+                    h.isBatchPlacing = false
                     h.currentTargetModel = nil
                     h.targetPosition = nil
                     h.stateTime = os.clock()
 
-                    -- Sync the two visible farm toggles without firing their callbacks.
-                    pcall(function() if tweenToggle and tweenToggle.Set then tweenToggle:Set(false) end end)
-                    pcall(function() if teleportToggle and teleportToggle.Set then teleportToggle:Set(false) end end)
-
-                    -- Force active movement/tween code to release the character.
+                    -- Stop any active movement connections owned by the controller.
                     pcall(D4)
                     pcall(u4, true)
 
                     local char = o.Character
                     local hum = char and char:FindFirstChildOfClass("Humanoid")
                     local root = char and char:FindFirstChild("HumanoidRootPart")
+
+                    if root then
+                        pcall(function()
+                            root.Anchored = false
+                            root.AssemblyLinearVelocity = Vector3.zero
+                            root.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
 
                     if hum then
                         pcall(function()
@@ -4478,25 +4485,26 @@ local function oM(...)
                         end)
                     end
 
-                    if root then
-                        pcall(function()
-                            root.Anchored = false
-                            root.AssemblyLinearVelocity = Vector3.zero
-                            root.AssemblyAngularVelocity = Vector3.zero
-                        end)
-                    end
-
-                    -- Repair joints/constraints in case the movement sequence left the rig unstable.
+                    -- Repair rig joints after movement cancellation.
                     pcall(function() Z4(char) end)
+
+                    -- Give Roblox one frame to apply the restored Humanoid state.
+                    y.Heartbeat:Wait()
+                    if hum and hum.Parent then
+                        pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+                    end
 
                     notify({
                         Title = "Character Reset",
-                        Content = "Tween/Teleport stopped. Character physics and jump restored.",
+                        Content = "Movement stopped. Jump and normal character control restored.",
                         Icon = "check-circle"
                     })
                 end)
             end,
         })
+
+        -- Keep the original visible farm toggles and all other features untouched.
+        -- Emergency recovery: stops movement controllers and restores normal character physics.
 
         x4 = function(value, ...)
             pcall(function()
