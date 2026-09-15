@@ -776,8 +776,34 @@ if typeof(hookmetamethod)== "function" and not _G._DesyncAntiRagdollHooked then
     ))
 end
 S4=function(e,...)
-    -- Disabled: rigid WeldConstraints conflict with Roblox Motor6D animations.
-    return
+    e=e or o.Character
+    if not e then return end
+    -- Keep Auto Steal's A4 mechanism, but avoid permanent rigid welds during normal flight.
+    -- Rigid joints are only applied during the brief securing/guard phase.
+    if not (h and (h.securingEgg or h.holdingEggForGuard)) then
+        return
+    end
+    local r=e:FindFirstChild("HumanoidRootPart")
+    local y=e:FindFirstChild("Torso") or e:FindFirstChild("UpperTorso") or r
+    if not y then return end
+    for _,obj in ipairs(e:GetDescendants()) do
+        if obj:IsA("BallSocketConstraint") or obj:IsA("HingeConstraint") or obj:IsA("NoCollisionConstraint") then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+    for _,motor in ipairs(e:GetDescendants()) do
+        if motor:IsA("Motor6D") and motor.Part0 and motor.Part1 then
+            motor.Enabled=true
+            local name="RigidJointWeld_"..motor.Name
+            if not motor.Part1:FindFirstChild(name) then
+                local weld=Instance.new("WeldConstraint")
+                weld.Name=name
+                weld.Part0=motor.Part0
+                weld.Part1=motor.Part1
+                weld.Parent=motor.Part1
+            end
+        end
+    end
 end
 Z4=function(e,...)
     if h and h.onTreadmill then
@@ -914,122 +940,35 @@ local function disableDesyncGodmode()
 end
 
 A4=function(...)
-    local char=o.Character
-    local hum=char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hum then return false end
-    if h.swapped and h.swapCharacter==char then
-        return true
-    end
-
-    local oldHum=hum
-    local ok=false
-    pcall(function()
-        -- Keep the original Humanoid alive as a backup instead of destroying it.
-        h.swapBackup=oldHum
-        h.swapCharacter=char
-        oldHum.Parent=nil
-
-        local newHum=oldHum:Clone()
-        newHum.Name=oldHum.Name
-        newHum.Parent=char
-
-        local animator=newHum:FindFirstChildOfClass("Animator")
-        if not animator then
-            animator=Instance.new("Animator")
-            animator.Parent=newHum
-        end
-
-        newHum.BreakJointsOnDeath=false
-        newHum:SetStateEnabled(Enum.HumanoidStateType.Dead,false)
-        newHum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-        newHum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-        newHum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-        newHum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-        newHum.PlatformStand=false
-        newHum.Sit=false
-        newHum.JumpPower=math.max(50,newHum.JumpPower)
-        newHum.JumpHeight=math.max(7.2,newHum.JumpHeight)
-
-        r.CurrentCamera.CameraSubject=newHum
-
-        local animate=char:FindFirstChild("Animate")
-        if animate and animate:IsA("LocalScript") then
-            animate.Disabled=false
-        end
-
-        h.swapCharacter=char
-        h.swapped=true
-        ok=true
-    end)
-
-    if not ok then
-        if h.swapBackup and h.swapBackup.Parent==nil then
-            pcall(function() h.swapBackup.Parent=char end)
-        end
-        h.swapped=false
-        h.swapBackup=nil
-        h.swapCharacter=nil
-    end
-    return ok
-end
-
-restoreA4=function(...)
-    local char=o.Character
-    if not char then
-        h.swapped=false
-        h.swapBackup=nil
-        h.swapCharacter=nil
+    local e=o.Character
+    local y=e and e:FindFirstChildOfClass("Humanoid")
+    if not e or not y then
         return false
     end
-
-    local backup=h.swapBackup
-    local active=char:FindFirstChildOfClass("Humanoid")
-    local ok=false
-
-    pcall(function()
-        -- Remove only the temporary Humanoid created for Auto Steal.
-        if backup and active and active~=backup then
-            active:Destroy()
+    pcall(function(...) y.BreakJointsOnDeath=false
+        local w=y:Clone()w.Parent=e y:Destroy()
+        local j=w:FindFirstChildOfClass("Animator")
+        if not j then
+            j=Instance.new("Animator")j.Parent=w
         end
-
-        if backup and backup.Parent==nil then
-            backup.Parent=char
+        r.CurrentCamera.CameraSubject=w
+        local k=e:FindFirstChild("Animate")
+        if k and k:IsA("LocalScript")then
+            k.Disabled=true
+            task.defer(function(...) task.wait(0.05)k.Disabled=false end)
         end
-
-        local hum=char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.BreakJointsOnDeath=true
-            hum:SetStateEnabled(Enum.HumanoidStateType.Dead,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-            hum.PlatformStand=false
-            hum.Sit=false
-            hum.JumpPower=math.max(50,hum.JumpPower)
-            hum.JumpHeight=math.max(7.2,hum.JumpHeight)
-
-            local animator=hum:FindFirstChildOfClass("Animator")
-            if not animator then
-                animator=Instance.new("Animator")
-                animator.Parent=hum
-            end
-
-            r.CurrentCamera.CameraSubject=hum
-
-            local animate=char:FindFirstChild("Animate")
-            if animate and animate:IsA("LocalScript") then
-                animate.Disabled=false
-            end
-            hum:ChangeState(Enum.HumanoidStateType.Running)
-            ok=true
-        end
+        w:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+        w:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+        w:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+        w:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+        w.JumpPower=math.max(50,w.JumpPower)
+        w.JumpHeight=math.max(7.2,w.JumpHeight)
+        w:ChangeState(Enum.HumanoidStateType.Running)
     end)
-
-    h.swapped=false
-    h.swapBackup=nil
-    h.swapCharacter=nil
-    return ok
+    h.swapped=true
+    if h.godmode then b4(true) end
+    z4(e)
+    return true
 end
 t4=function(...)
     if h.plot and(h.plot.Parent and(h.pen and(h.origin and h.plotVerified )))then
@@ -4163,7 +4102,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
+            Title = "luna Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
