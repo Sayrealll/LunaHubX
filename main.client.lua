@@ -4352,7 +4352,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
+            Title = "Luna Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
