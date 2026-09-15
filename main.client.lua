@@ -272,7 +272,7 @@ local function x(...) pcall(function(...)
     end
     )
 end
-local W=T()h={[ "godmode" ]= true ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true ;
+local W=T()h={[ "godmode" ]= false ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true ;
 [ "autoPlaceEvery5" ]= false ;
 [ "batchStealCount" ]= 0 ,[ "isBatchPlacing" ]= false ,[ "isHatching" ]= false ;
 [ "autoFarmLoop" ]= false ,[ "pureTweenFarm" ]= false ;
@@ -5304,11 +5304,11 @@ local function oM(...)
         return
     end
 end
-H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )A4()b4( true )C4()
+H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )C4()
     if o.Character then
         z4(o.Character )
     end
-    u4()H( "[+] Auto Humanoid Swap & Rigid Joint Locking Active." )
+    u4()H( "[+] Character systems ready; Godmode remains optional." )
 end
 )o.CharacterAdded :Connect(function(e,...) task.wait ( 0.6 )
     if h.alive then
