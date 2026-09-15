@@ -4337,15 +4337,15 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
-            Author = "Steal An Egg V1",
+            Title = " LUNA HUB X",
+            Author = "Steal An Egg",
             Icon = dk,
             Theme = ThemeName,
             ToggleKey = Enum.KeyCode.F,
         })
 
         newWindow:Tag({
-            Title = "Status: Ready",
+            Title = "  v1.0.0.1",
             Color = "ElementBackground",
         })
 
