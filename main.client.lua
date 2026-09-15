@@ -272,7 +272,7 @@ local function x(...) pcall(function(...)
     end
     )
 end
-local W=T()h={[ "godmode" ]= false ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true ;
+local W=T()h={[ "godmode" ]= false ,[ "autoGodmode" ]= false ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true ;
 [ "autoPlaceEvery5" ]= false ;
 [ "batchStealCount" ]= 0 ,[ "isBatchPlacing" ]= false ,[ "isHatching" ]= false ;
 [ "autoFarmLoop" ]= false ,[ "pureTweenFarm" ]= false ;
@@ -881,7 +881,7 @@ C4=function(...)
             for r,y in ipairs(r:GetPlayingAnimationTracks())do
                 local u=y.Animation
                 local w=u and u.AnimationId or ""
-                if string.find (w, "10921259953" )or string.find (string.lower (y.Name ), "treadmill" )then
+                if string.find (w, "10921259953" )or string.find (string.lower (y.Name ), "treadmill" )or string.find (string.lower (y.Name ), "run" )then
                     y:Stop( 0 )
                 end
             end
@@ -901,9 +901,7 @@ C4=function(...)
     if y then
         y.AssemblyLinearVelocity =Vector3.zero y.AssemblyAngularVelocity =Vector3.zero
     end
-    if h and h.godmode then
-        Z4(e)
-    end
+    Z4(e)
 end
 local rk= 0
 local yk= false E4=function(...)
@@ -1123,7 +1121,7 @@ end
         end
     end
     )pcall(function(...)
-        if Z4 and e and h.godmode then
+        if Z4 and e then
             Z4(e)
         end
     end
@@ -1166,39 +1164,35 @@ d4=function(e,y,...)
         end
     end
 end
-b4=function(e,...) h.godmode =e
-    local r=o.Character
-    if not r then
+b4=function(e,...)
+    h.godmode = (e == true)
+    local char=o.Character
+    if not char then
         return
     end
-    local y=r:FindFirstChildOfClass( "Humanoid" )
-    if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
-        if e then
-            y.BreakJointsOnDeath = false
-            if y.Health < 100 then
-                y.Health = 100
-            end
-        else
-            y.BreakJointsOnDeath = true
-        end
-    end
-    for _,part in ipairs(r:GetDescendants())do
-        if part:IsA( "BasePart" )then
+
+    local hum=char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum.BreakJointsOnDeath = false
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, not e)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
             if e then
-                part.CanTouch = false
-                part.CanCollide = false
-            else
-                part.CanTouch = true
-                if part.Name == "HumanoidRootPart" then
-                    part.CanCollide = false
-                else
-                    part.CanCollide = true
+                if hum.MaxHealth < 100 then
+                    hum.MaxHealth = 100
                 end
+                if hum.Health <= 0 or hum.Health < 100 then
+                    hum.Health = hum.MaxHealth
+                end
+            else
+                hum.BreakJointsOnDeath = true
             end
-        end
+        end)
     end
 end
+
 local function enableDesyncGodmode()
     b4(true)
 end
@@ -3333,7 +3327,8 @@ l4=function(e,u,...)
         A4()
     end
     if not h.godmode then
-        b4( true )
+        h.autoGodmode = true
+        b4(true)
     end
     Z4(w)
     if not e then
@@ -3502,102 +3497,17 @@ l4=function(e,u,...)
         return true
     end
 end
-local function restoreNativeRobloxControls()
-    pcall(function()
-        local StarterGui = game:GetService("StarterGui")
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.SelfView, true)
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Captures, true)
-    end)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
-    end)
-end
-
-local function restoreNormalCharacterState()
-    -- Leave the character exactly like a normal Roblox character after Auto Steal stops.
-    h.godmode = false
-    h.swapped = false
-
-    pcall(restoreNativeRobloxControls)
-    pcall(disableDesyncGodmode)
-    pcall(D4)
-
-    local char = o.Character
-    if not char then return end
-
-    -- Remove only the rigid welds created by the custom godmode/anti-ragdoll system.
-    for _, obj in ipairs(char:GetDescendants()) do
-        if obj:IsA("WeldConstraint") and string.sub(obj.Name, 1, 15) == "RigidJointWeld_" then
-            pcall(function() obj:Destroy() end)
-        end
-    end
-
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            pcall(function()
-                part.CanTouch = true
-                part.CanCollide = (part.Name ~= "HumanoidRootPart")
-                part.Anchored = false
-                part.AssemblyLinearVelocity = Vector3.zero
-                part.AssemblyAngularVelocity = Vector3.zero
-            end)
-        end
-    end
-
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        pcall(function()
-            hum.PlatformStand = false
-            hum.Sit = false
-            hum.AutoRotate = true
-            hum.BreakJointsOnDeath = true
-            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
-            hum.UseJumpPower = true
-            hum.JumpPower = math.max(50, hum.JumpPower)
-            hum.JumpHeight = math.max(7.2, hum.JumpHeight)
-            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end)
-
-        local animator = hum:FindFirstChildOfClass("Animator")
-        if not animator then
-            pcall(function()
-                Instance.new("Animator", hum)
-            end)
-        end
-    end
-
-    local animate = char:FindFirstChild("Animate")
-    if animate and animate:IsA("LocalScript") then
-        pcall(function() animate.Disabled = false end)
-    end
-end
-
 T4=function(e,...)
     if Y4==e then
         return
     end
     O4=O4+ 1
-    local r=O4 Y4= "SWITCHING" h.pureTweenFarm = false h.autoFarmLoop = false
-    -- Auto Steal owns the temporary godmode. Release it BEFORE D4/C4 cleanup so
-    -- cleanup cannot rebuild the godmode weld/state while the farm is stopping.
-    if e ~= "TWEEN" and e ~= "WARP" then
-        h.godmode = false
-        pcall(disableDesyncGodmode)
-    end
-    pcall(D4)pcall(u4)
+    local r=O4 Y4= "SWITCHING" h.pureTweenFarm = false h.autoFarmLoop = false pcall(D4)pcall(u4)
     if e== "TWEEN" then
+        if not h.godmode then
+            h.autoGodmode = true
+            b4(true)
+        end
         if W4 then
             W4( false , true )
         end
@@ -3605,6 +3515,10 @@ T4=function(e,...)
             x4( true , true )
         end
     elseif e== "WARP" then
+        if not h.godmode then
+            h.autoGodmode = true
+            b4(true)
+        end
         if x4 then
             x4( false , true )
         end
@@ -3612,6 +3526,10 @@ T4=function(e,...)
             W4( true , true )
         end
     else
+        if h.autoGodmode then
+            h.autoGodmode = false
+            b4(false)
+        end
         if x4 then
             x4( false , true )
         end
@@ -3628,9 +3546,6 @@ T4=function(e,...)
                 h.autoFarmLoop = true h.pureTweenFarm = false pcall(u4)H( "[FarmController] Snipe Auto Loop (Warp) ACTIVATED exclusively." )
             else
                 h.pureTweenFarm = false h.autoFarmLoop = false
-                -- Auto Steal owns the temporary godmode/movement state. When it stops,
-                -- immediately return the character to the same normal state as script startup.
-                pcall(restoreNormalCharacterState)
                 if not h.isBatchPlacing then
                     h.batchStealCount = 0
                 end
@@ -3664,13 +3579,14 @@ local Ck=os.clock ()task.spawn (function(...)
                             end
                             h.currentTargetModel =w.Model h.targetPosition =w.Position h.glidingToTarget = true h.stateTime =os.clock ()
                             local a=((w.Scale and w.Scale > 1.05 ))and string.format ( " | %.1fx" ,w.Scale )or "" h.statusText =string.format ( "[AutoSteal] Flying to %s (%s%s)..." ,tostring(w.Category or "Egg" ),tostring(w.Area or "Field" ),a)H(string.format ( "[AutoSteal] Flying to %s | Zone: %s%s | Rank: %d (Corridor Z=-360)" ,tostring(w.Category or "Egg" ),tostring(w.Area or "Field" ),a,tonumber(w.Rank )or 1 ))
-                            -- Auto Steal uses lightweight protection only. Never swap/clone the Humanoid
-                            -- or rigid-weld the rig; those operations can break native controls/animations
-                            -- and cause duplicated-looking tool slots after respawn.
-                            if not h.godmode then
-                                enableDesyncGodmode()
+                            if not h.swapped then
+                                A4()
                             end
-                            pcall(function(...) o:RequestStreamAroundAsync(w.Position )
+                            if not h.godmode then
+                                h.autoGodmode = true
+                                b4(true)
+                            end
+                            Z4(r)pcall(function(...) o:RequestStreamAroundAsync(w.Position )
                             end
                             )
                             local V=w.CFrame *CFrame.new ( 0 , 0.4 , 0 )
@@ -4443,7 +4359,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "idk Hub",
+            Title = "aaa Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
@@ -4528,125 +4444,6 @@ local function oM(...)
 
         local tweenToggle = Fk.togTween
         local teleportToggle = Fk.togTeleport
-
-        -- Emergency recovery: hard-cancels every movement session and restores normal character physics.
-        -- This intentionally does NOT unload WindUI or remove any feature.
-        Fk.btnUnstick = MainTab:Button({
-            Title = "Unstick / Reset Character",
-            Desc = "Hard stop Tween/Teleport and restore normal character control",
-            Icon = "solar:restart-bold",
-            Callback = function()
-                task.spawn(function()
-                    -- Invalidate all currently running farm/glide loops.
-                    O4 = O4 + 1
-                    Y4 = "NONE"
-                    h.pureTweenFarm = false
-                    h.autoFarmLoop = false
-                    h.teleporting = false
-                    h.glidingToTarget = false
-                    h.securingEgg = false
-                    h.isReturning = false
-                    h.delivering = false
-                    h.holdingEggForGuard = false
-                    h.isBatchPlacing = false
-                    h.currentTargetModel = nil
-                    h.targetPosition = nil
-                    h.stateTime = os.clock()
-
-                    -- The script starts with desync godmode enabled. Fully disable it here so
-                    -- Roblox can enter Dead state normally and the Reset Character button works.
-                    h.godmode = false
-                    pcall(disableDesyncGodmode)
-
-                    -- Stop any active movement connections owned by the controller.
-                    pcall(D4)
-                    pcall(u4, true)
-
-                    local char = o.Character
-                    local hum = char and char:FindFirstChildOfClass("Humanoid")
-                    local root = char and char:FindFirstChild("HumanoidRootPart")
-
-                    if root then
-                        pcall(function()
-                            root.Anchored = false
-                            root.AssemblyLinearVelocity = Vector3.zero
-                            root.AssemblyAngularVelocity = Vector3.zero
-                        end)
-                    end
-
-                    if hum then
-                        pcall(function()
-                            hum.PlatformStand = false
-                            hum.Sit = false
-                            hum.AutoRotate = true
-                            hum.UseJumpPower = true
-                            hum.JumpPower = math.max(50, hum.JumpPower)
-                            hum.JumpHeight = math.max(7.2, hum.JumpHeight)
-                            hum.BreakJointsOnDeath = true
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, true)
-                            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-                            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-                        end)
-                    end
-
-                    -- Restore normal body collision/touch flags that godmode may have changed.
-                    if char then
-                        for _, part in ipairs(char:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                pcall(function()
-                                    if part.Name == "HumanoidRootPart" then
-                                        part.CanCollide = false
-                                    else
-                                        part.CanCollide = true
-                                    end
-                                    part.CanTouch = true
-                                end)
-                            end
-                        end
-                    end
-
-                    -- Remove the rigid welds created by the anti-ragdoll/joint-lock system.
-                    -- Those welds can block normal Roblox animations (bat swing, jump, etc.).
-                    if char then
-                        for _, obj in ipairs(char:GetDescendants()) do
-                            if obj:IsA("WeldConstraint") and string.sub(obj.Name, 1, 15) == "RigidJointWeld_" then
-                                pcall(function() obj:Destroy() end)
-                            end
-                        end
-
-                        -- Re-enable the normal Animate script so tool/character animations can play.
-                        local animate = char:FindFirstChild("Animate")
-                        if animate and animate:IsA("LocalScript") then
-                            pcall(function() animate.Disabled = false end)
-                        end
-                    end
-
-                    -- Do NOT call z4/Z4 here: recovery must leave the rig in normal Roblox state.
-
-                    -- Give Roblox one frame to apply the restored Humanoid state.
-                    y.Heartbeat:Wait()
-                    if hum and hum.Parent then
-                        pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
-                    end
-
-                    notify({
-                        Title = "Character Reset",
-                        Content = "Movement stopped. Jump, animations and normal respawn control restored.",
-                        Icon = "check-circle"
-                    })
-                end)
-            end,
-        })
-
-        -- Keep the original visible farm toggles and all other features untouched.
-        -- Emergency recovery: stops movement controllers and restores normal character physics.
 
         x4 = function(value, ...)
             pcall(function()
@@ -5392,53 +5189,48 @@ local function oM(...)
         return
     end
 end
-H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )C4()
-    if o.Character and h.godmode then
-        z4(o.Character )
-    end
-    u4()H( "[+] Character systems ready; Godmode remains optional." )
-end
-)o.CharacterAdded :Connect(function(e,...) task.wait ( 0.6 )
-    if h.alive then
-        D4()n4()C4()
-        -- Only restore the anti-death/godmode rig when godmode is actually enabled.
-        -- Recovery sets h.godmode=false so normal jump, animations and respawn remain native.
+-- Soft Godmode guard: preserves the normal Humanoid/Animate/physics lifecycle.
+task.spawn(function()
+    while h and h.alive do
+        task.wait(0.12)
         if h.godmode then
-            A4()
-            b4(true)
-            z4(e)
-        else
-            pcall(restoreNativeRobloxControls)
-            local hum = e:FindFirstChildOfClass("Humanoid")
+            local char=o.Character
+            local hum=char and char:FindFirstChildOfClass("Humanoid")
             if hum then
                 pcall(function()
-                    hum.BreakJointsOnDeath = true
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
-                    hum.PlatformStand = false
-                    hum.Sit = false
-                    hum.AutoRotate = true
-                    hum.UseJumpPower = true
-                    hum.JumpPower = math.max(50, hum.JumpPower)
-                    hum.JumpHeight = math.max(7.2, hum.JumpHeight)
-                end)
-            end
-            local animate = e:FindFirstChild("Animate")
-            if animate and animate:IsA("LocalScript") then
-                pcall(function() animate.Disabled = false end)
-            end
-            local animator = hum and hum:FindFirstChildOfClass("Animator")
-            if hum and not animator then
-                pcall(function()
-                    animator = Instance.new("Animator")
-                    animator.Parent = hum
+                    hum.BreakJointsOnDeath = false
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                    if hum.MaxHealth < 100 then
+                        hum.MaxHealth = 100
+                    end
+                    if hum.Health <= 0 or hum.Health < 100 then
+                        hum.Health = hum.MaxHealth
+                    end
                 end)
             end
         end
-        u4()
+    end
+end)
+
+H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )C4()
+    if o.Character then
+        z4(o.Character )
+    end
+    u4()H( "[+] Auto Humanoid Swap & Rigid Joint Locking Active." )
+end
+)o.CharacterAdded :Connect(function(e,...)
+    task.wait(0.6)
+    if h.alive then
+        h.swapped = false
+        D4()
+        n4()
+        C4()
+        if h.godmode then
+            b4(true)
+        end
+        if h.pureTweenFarm or h.autoFarmLoop then
+            u4()
+        end
     end
 end
 )
