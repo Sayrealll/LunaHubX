@@ -4659,27 +4659,6 @@ local function oM(...)
     end
 
     if WindUI then
-        pcall(function()
-            local oldNotify = WindUI.Notify
-            if oldNotify then
-                WindUI.Notify = function(self, data, ...)
-                    local ok = pcall(function()
-                        oldNotify(self, data, ...)
-                    end)
-
-                    if not ok then
-                        pcall(function()
-                            game:GetService("StarterGui"):SetCore("SendNotification", {
-                                Title = tostring(data and data.Title or "Ken Hub"),
-                                Text = tostring(data and data.Content or ""),
-                                Duration = 3
-                            })
-                        end)
-                    end
-                end
-            end
-        end)
-
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
