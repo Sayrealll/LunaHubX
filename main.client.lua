@@ -4185,17 +4185,7 @@ local function Zk(e,...)
     end
     return table.concat (u)
 end
-local zk= "Ken_Hub_Icon.png"
-local dk= "rbxassetid://10734950309" pcall(function(...)
-    if writefile and((getcustomasset or getsynasset))then
-        local e=getcustomasset or getsynasset
-        if not((isfile and isfile(zk)))then
-            writefile(zk,Zk(Sk))
-        end
-        dk=e(zk)
-    end
-end
-)
+local dk=nil
 local Xk=currentLang or "EN"
 local Gk={[ "EN" ]={[ "StatusTagReady" ]= "Status: Ready" ,[ "Tabs" ]={[ "Farm" ]= "Auto Farm" ;
 [ "EggSelect" ]= "Egg Selection" ;
@@ -4558,35 +4548,7 @@ local function jM(...)
     end
     return s
 end
-local kM={}kM.Gui =Instance.new ( "ScreenGui" )kM.Gui.Name = "Dice_RESTORE_BAR" kM.Gui.ResetOnSpawn = false kM.Gui.DisplayOrder = 999999 kM.Gui.ZIndexBehavior =Enum.ZIndexBehavior.Sibling kM.Gui.AutoLocalize = false pcall(function(...)
-    if syn and syn.protect_gui then
-        syn.protect_gui (kM.Gui )kM.Gui.Parent =game:GetService( "CoreGui" )
-    else
-        kM.Gui.Parent =o:FindFirstChild( "PlayerGui" )or game:GetService( "CoreGui" )
-    end
-end
-)
-if not kM.Gui.Parent then
-    kM.Gui.Parent =game:GetService( "CoreGui" )
-end
-kM.Btn =Instance.new ( "ImageButton" )kM.Btn.Name = "Dice_SquareLogoButton" kM.Btn.Size =UDim2.fromOffset ( 46 , 46 )kM.Btn.Position =UDim2.new ( 0 , 20 , 0 , 20 )kM.Btn.BackgroundColor3 =Color3.fromRGB ( 18 , 18 , 24 )kM.Btn.Active = true kM.Btn.Selectable = true kM.Btn.Visible = false kM.Btn.ZIndex = 999999 kM.Btn.AutoLocalize = false kM.Btn.Parent =kM.Gui ;
-(Instance.new ( "UICorner" ,kM.Btn )).CornerRadius =UDim.new ( 0 , 10 )kM.Stroke =Instance.new ( "UIStroke" ,kM.Btn )kM.Stroke.Color =Color3.fromRGB ( 0 , 185 , 255 )kM.Stroke.Thickness = 1.6 kM.Stroke.ApplyStrokeMode =Enum.ApplyStrokeMode.Border kM.Logo =Instance.new ( "ImageLabel" ,kM.Btn )kM.Logo.Name = "LogoIcon" kM.Logo.Size =UDim2.fromOffset ( 36 , 36 )kM.Logo.Position =UDim2.new ( 0.5 , 0 , 0.5 , 0 )kM.Logo.AnchorPoint =Vector2.new ( 0.5 , 0.5 )kM.Logo.BackgroundTransparency = 1 kM.Logo.Image =dk kM.Logo.ImageColor3 =Color3.fromRGB ( 255 , 255 , 255 )kM.Logo.ZIndex = 1000000 ;
-(Instance.new ( "UICorner" ,kM.Logo )).CornerRadius =UDim.new ( 0 , 8 )kM.isDragging = false kM.dragStart =nil kM.startPos =nil kM.Btn.InputBegan :Connect(function(e,...)
-    if e.UserInputType ==Enum.UserInputType.MouseButton1 or e.UserInputType ==Enum.UserInputType.Touch then
-        kM.isDragging = true kM.dragStart =e.Position kM.startPos =kM.Btn.Position
-    end
-end
-)w.InputEnded :Connect(function(e,...)
-    if e.UserInputType ==Enum.UserInputType.MouseButton1 or e.UserInputType ==Enum.UserInputType.Touch then
-        kM.isDragging = false
-    end
-end
-)w.InputChanged :Connect(function(e,...)
-    if kM.isDragging and((e.UserInputType ==Enum.UserInputType.MouseMovement or e.UserInputType ==Enum.UserInputType.Touch ))then
-        local y=e.Position -kM.dragStart kM.Btn.Position =UDim2.new (kM.startPos.X .Scale ,kM.startPos.X .Offset +y.X ,kM.startPos.Y .Scale ,kM.startPos.Y .Offset +y.Y )
-    end
-end
-)
+local kM={Gui=nil}
 local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:Set3dRenderingEnabled( true )
     end
     )pcall(function(...)
@@ -4664,7 +4626,6 @@ local function oM(...)
         local newWindow = WindUI:CreateWindow({
             Title = "Ken Hub",
             Author = "Steal An Egg V1",
-            Icon = dk,
             Theme = ThemeName,
             ToggleKey = Enum.KeyCode.F,
         })
@@ -5487,10 +5448,6 @@ local function oM(...)
 
                 task.wait(0.5)
             end
-        end)
-
-        e(function()
-            kM.Btn.Visible = true
         end)
 
         return
