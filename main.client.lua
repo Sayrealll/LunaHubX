@@ -4337,15 +4337,15 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = " LUNA HUB X",
-            Author = "Steal An Egg",
+            Title = "Ken Hub",
+            Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
             ToggleKey = Enum.KeyCode.F,
         })
 
         newWindow:Tag({
-            Title = "  v1.0.0.1",
+            Title = "Status: Ready",
             Color = "ElementBackground",
         })
 
@@ -4422,6 +4422,81 @@ local function oM(...)
 
         local tweenToggle = Fk.togTween
         local teleportToggle = Fk.togTeleport
+
+        -- Emergency recovery: stops movement controllers and restores normal character physics.
+        -- Does not unload WindUI or remove any feature; it only cancels the active farm state.
+        Fk.btnUnstick = MainTab:Button({
+            Title = "Unstick / Reset Character",
+            Desc = "Stop Tween/Teleport movement and restore normal jump, physics & tool handling",
+            Icon = "solar:restart-bold",
+            Callback = function()
+                task.spawn(function()
+                    -- Invalidate any active farm/glide session first so heartbeat loops exit.
+                    O4 = O4 + 1
+                    Y4 = "NONE"
+                    h.pureTweenFarm = false
+                    h.autoFarmLoop = false
+                    h.isBatchPlacing = false
+                    h.teleporting = false
+                    h.glidingToTarget = false
+                    h.securingEgg = false
+                    h.isReturning = false
+                    h.delivering = false
+                    h.holdingEggForGuard = false
+                    h.currentTargetModel = nil
+                    h.targetPosition = nil
+                    h.stateTime = os.clock()
+
+                    -- Sync the two visible farm toggles without firing their callbacks.
+                    pcall(function() if tweenToggle and tweenToggle.Set then tweenToggle:Set(false) end end)
+                    pcall(function() if teleportToggle and teleportToggle.Set then teleportToggle:Set(false) end end)
+
+                    -- Force active movement/tween code to release the character.
+                    pcall(D4)
+                    pcall(u4, true)
+
+                    local char = o.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+
+                    if hum then
+                        pcall(function()
+                            hum.PlatformStand = false
+                            hum.Sit = false
+                            hum.AutoRotate = true
+                            hum.UseJumpPower = true
+                            hum.JumpPower = math.max(50, hum.JumpPower)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, true)
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                        end)
+                    end
+
+                    if root then
+                        pcall(function()
+                            root.Anchored = false
+                            root.AssemblyLinearVelocity = Vector3.zero
+                            root.AssemblyAngularVelocity = Vector3.zero
+                        end)
+                    end
+
+                    -- Repair joints/constraints in case the movement sequence left the rig unstable.
+                    pcall(function() Z4(char) end)
+
+                    notify({
+                        Title = "Character Reset",
+                        Content = "Tween/Teleport stopped. Character physics and jump restored.",
+                        Icon = "check-circle"
+                    })
+                end)
+            end,
+        })
 
         x4 = function(value, ...)
             pcall(function()
