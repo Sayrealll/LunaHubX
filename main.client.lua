@@ -125,6 +125,14 @@ local S=CFrame.new ( 4773.7587890625 , 70.392112731934 , -315.73501586914 )
 
 local Z= "KenHub_FlightSpeed.txt"
 local z= "KenHub_EggSelectConfig.json"
+local CONFIG_FILE = "KenHub_Config.json"
+local function readAutoLoadPreference()
+    if not readfile or not a then return false end
+    local ok, raw = pcall(readfile, CONFIG_FILE)
+    if not ok or type(raw) ~= "string" or raw == "" then return false end
+    local ok2, data = pcall(function() return a:JSONDecode(raw) end)
+    return ok2 and type(data) == "table" and type(data.toggles) == "table" and data.toggles.autoLoadConfig == true
+end
 local d={[ "Light Dark" ]=Color3.fromRGB ( 168 , 85 , 247 ),[ "Titan Temple" ]=Color3.fromRGB ( 245 , 158 , 11 );
 [ "Cherry Blossom" ]=Color3.fromRGB ( 236 , 72 , 153 );
 [ "Cosmic" ]=Color3.fromRGB ( 6 , 182 , 212 ),[ "Prehistoric" ]=Color3.fromRGB ( 16 , 185 , 129 ),[ "Abyss Ocean" ]=Color3.fromRGB ( 59 , 130 , 246 );
@@ -282,7 +290,7 @@ local W=T()h={[ "godmode" ]= true ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true 
 [ "selectedRarities" ]=W.selectedRarities ;
 [ "alwaysCollectSecretPlus" ]=W.alwaysCollectSecretPlus ,[ "minRarityTier" ]=W.minRarityTier ,[ "autoTreadmill" ]=(W.autoTreadmill ~= false );
 [ "autoUpgradeTreadmill" ]=(W.autoUpgradeTreadmill ~= false ),[ "autoBuyTrails" ]=(W.autoBuyTrails ~= false ),[ "hideNotEnoughMoney" ]= true ;
-[ "performanceMode" ]=(W.performanceMode == true ),[ "disable3D" ]=(W.disable3D == true ),[ "antiAFK" ]=(W.antiAFK ~= false ),[ "onTreadmill" ]= false ,[ "lastTreadmillMount" ]= 0 ,[ "laneZ" ]= -360 ,[ "swapped" ]= false ;
+[ "performanceMode" ]=(W.performanceMode == true ),[ "disable3D" ]=(W.disable3D == true ),[ "antiAFK" ]=(W.antiAFK ~= false ),[ "autoLoadConfig" ]=readAutoLoadPreference(),[ "windowTransparency" ]=0,[ "theme" ]="Dark",[ "onTreadmill" ]= false ,[ "lastTreadmillMount" ]= 0 ,[ "laneZ" ]= -360 ,[ "swapped" ]= false ;
 [ "teleporting" ]= false ,[ "isReturning" ]= false ;
 [ "delivering" ]= false ,[ "holdingEggForGuard" ]= false ,[ "currentTargetModel" ]=nil,[ "targetPosition" ]=nil;
 [ "stateTime" ]=os.clock (),[ "statusText" ]= "Ready" ,[ "bestEggInfo" ]= "Scanning..." ;
@@ -831,29 +839,36 @@ z4=function(e,...)
     if not e then
         return
     end
-    -- Animation-safe character protection:
-    -- Do NOT create permanent WeldConstraints or disable ragdoll/fall scripts here.
-    -- A4 is still kept for Auto Steal, but the character's Motor6D animation rig
-    -- must remain untouched so run/swing/jump/respawn can continue normally.
-    local hum=e:FindFirstChildOfClass("Humanoid")
-    if hum then
-        pcall(function()
-            hum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-            hum.PlatformStand=false
-            hum.Sit=false
-        end)
-    end
-    -- Keep the Tool hook used by Auto Steal; don't interfere with animations.
-    e.ChildAdded:Connect(function(child,...)
-        if child:IsA("Tool") and (h.pureTweenFarm or h.autoFarmLoop) and not h.holdingEggForGuard then
-            task.defer(function()
-                pcall(u4)
-            end)
+    Z4(e)
+    for e,y in ipairs(e:GetDescendants())do
+        if y:IsA( "Motor6D" )then
+            (y:GetPropertyChangedSignal( "Enabled" )):Connect(function(...)
+                if not y.Enabled then
+                    y.Enabled = true
+                end
+            end
+            )
         end
-    end)
+    end
+    e.DescendantAdded :Connect(function(y,...)
+        if y:IsA( "BallSocketConstraint" )or y:IsA( "HingeConstraint" )or y:IsA( "NoCollisionConstraint" )then
+            task.defer (function(...) pcall(function(...) y:Destroy()
+                end
+                )Z4(e)
+            end
+            )
+        elseif y:IsA( "LocalScript" )and((string.find (string.lower (y.Name ), "ragdoll" )or string.find (string.lower (y.Name ), "fall" )))then
+            y.Disabled = true
+        end
+    end
+    )e.ChildAdded :Connect(function(e,...)
+        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
+            task.defer (function(...) u4()
+            end
+            )
+        end
+    end
+    )
 end
 C4=function(...)
     if h then
@@ -1157,52 +1172,26 @@ d4=function(e,y,...)
         end
     end
 end
-b4=function(e,...)
-    h.godmode = e
-    local char = o.Character
-    if not char then
+b4=function(e,...) h.godmode =e
+    local r=o.Character
+    if not r then
         return
     end
-    h._godParts = h._godParts or {}
-    if e then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-                hum.BreakJointsOnDeath = false
-                if hum.Health <= 0 or hum.Health < hum.MaxHealth then
-                    hum.Health = hum.MaxHealth > 0 and hum.MaxHealth or 100
-                end
-            end)
-        end
-        table.clear(h._godParts)
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                h._godParts[part] = {CanTouch = part.CanTouch, CanCollide = part.CanCollide}
-                pcall(function()
-                    part.CanTouch = false
-                    part.CanCollide = false
-                end)
-            end
-        end
-    else
-        for part, old in pairs(h._godParts) do
-            if part and part.Parent then
-                pcall(function()
-                    part.CanTouch = old.CanTouch
-                    part.CanCollide = old.CanCollide
-                end)
-            end
-        end
-        table.clear(h._godParts)
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-                hum.BreakJointsOnDeath = true
-            end)
+    local y=r:FindFirstChildOfClass( "Humanoid" )
+    if y then
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
+        if e and y.Health < 100 then
+            y.Health = 100
         end
     end
+    for r,y in ipairs(r:GetDescendants())do
+        if y:IsA( "BasePart" )then
+            if e then
+                y.CanTouch = false y.CanCollide = false
+            end
+        end
+    end
+    Z4(r)
 end
 local function enableDesyncGodmode()
     b4(true)
@@ -3340,6 +3329,7 @@ l4=function(e,u,...)
     if not h.godmode then
         b4( true )
     end
+    Z4(w)
     if not e then
         e=N4()
     end
@@ -3527,7 +3517,6 @@ T4=function(e,...)
             W4( true , true )
         end
     else
-        pcall(function() b4(false) end)
         if x4 then
             x4( false , true )
         end
@@ -4356,15 +4345,15 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
-            Author = "Steal An Egg V1",
+            Title = "Luna Hub X",
+            Author = "Steal An Egg",
             Icon = dk,
             Theme = ThemeName,
             ToggleKey = Enum.KeyCode.F,
         })
 
         newWindow:Tag({
-            Title = "Status: Ready",
+            Title = " v 1.0.2",
             Color = "ElementBackground",
         })
 
@@ -4938,10 +4927,11 @@ local function oM(...)
             Value = {
                 Min = 0,
                 Max = 90,
-                Default = 0
+                Default = h.windowTransparency or 0
             },
             Callback = function(value)
                 local amount = math.clamp(tonumber(value) or 0, 0, 90)
+                h.windowTransparency = amount
 
                 pcall(function()
                     local main = Window.UIElements and Window.UIElements.Main
@@ -4972,6 +4962,7 @@ local function oM(...)
             Values = {"Dark", "Rose", "Plant", "Red", "Sky", "Purple"},
             Value = "Dark",
             Callback = function(value)
+                h.theme = value
                 pcall(function()
                     WindUI:SetTheme(value)
                 end)
@@ -5098,6 +5089,229 @@ local function oM(...)
             end,
         })
 
+        ----------------------------------------------------------------------
+        -- CONFIG SYSTEM
+        -- Saves/restores every Toggle, Dropdown and Slider.
+        -- Buttons are intentionally NOT saved because they have no state.
+        ----------------------------------------------------------------------
+        local function configFileExists()
+            if isfile then
+                local ok, exists = pcall(function() return isfile(CONFIG_FILE) end)
+                return ok and exists == true
+            end
+            if readfile then
+                local ok, data = pcall(readfile, CONFIG_FILE)
+                return ok and data ~= nil and data ~= ""
+            end
+            return false
+        end
+
+        local function copyBoolMap(source)
+            local out = {}
+            if type(source) == "table" then
+                for key, value in pairs(source) do
+                    if type(key) == "string" then
+                        out[key] = value == true
+                    end
+                end
+            end
+            return out
+        end
+
+        local function configSnapshot()
+            return {
+                version = 1,
+                toggles = {
+                    autoStealTween = h.pureTweenFarm == true,
+                    autoStealTeleport = h.autoFarmLoop == true,
+                    autoPlaceEvery5 = h.autoPlaceEvery5 == true,
+                    autoHatch = h.autoHatch == true,
+                    autoReturn = h.autoGlide == true,
+                    autoTreadmill = h.autoTreadmill == true,
+                    autoUpgradeTreadmill = h.autoUpgradeTreadmill == true,
+                    autoBuyTrails = h.autoBuyTrails == true,
+                    alwaysCollectSecret = h.alwaysCollectSecretPlus == true,
+                    godmode = h.godmode == true,
+                    performanceMode = h.performanceMode == true,
+                    disable3D = h.disable3D == true,
+                    antiAFK = h.antiAFK == true,
+                    autoLoadConfig = h.autoLoadConfig == true,
+                },
+                dropdowns = {
+                    selectedZones = copyBoolMap(h.selectedZones),
+                    selectedRarities = copyBoolMap(h.selectedRarities),
+                    language = Xk == "TH" and "ไทย" or "English",
+                    theme = h.theme or "Dark",
+                },
+                sliders = {
+                    flightSpeed = tonumber(h.glideSpeed) or 600,
+                    windowTransparency = tonumber(h.windowTransparency) or 0,
+                },
+            }
+        end
+
+        local function saveConfig(showNotification)
+            if not writefile or not a then
+                if showNotification then
+                    notify({Title = "Config", Content = "writefile/JSON support is unavailable.", Icon = "x-circle"})
+                end
+                return false
+            end
+
+            local ok, err = pcall(function()
+                writefile(CONFIG_FILE, a:JSONEncode(configSnapshot()))
+            end)
+
+            if showNotification then
+                notify({
+                    Title = ok and "Config Saved" or "Config Error",
+                    Content = ok and ("Saved to " .. CONFIG_FILE) or tostring(err),
+                    Icon = ok and "check-circle" or "x-circle"
+                })
+            end
+            return ok
+        end
+
+        local function createConfig()
+            if configFileExists() then
+                notify({Title = "Config", Content = "Config already exists. Use Save Config to overwrite it.", Icon = "info"})
+                return false
+            end
+            return saveConfig(true)
+        end
+
+        local function labelsFromMap(map, reverseMap)
+            local out = {}
+            if type(map) == "table" then
+                for name, selected in pairs(map) do
+                    if selected and reverseMap[name] then
+                        table.insert(out, reverseMap[name])
+                    end
+                end
+            end
+            table.sort(out)
+            return out
+        end
+
+        local function setControl(control, value)
+            if control and control.Set then
+                return pcall(function() control:Set(value) end)
+            end
+            return false
+        end
+
+        local function loadConfig(showNotification)
+            if not readfile or not a or not configFileExists() then
+                if showNotification then
+                    notify({Title = "Config", Content = "No saved config found.", Icon = "info"})
+                end
+                return false
+            end
+
+            local ok, data = pcall(function()
+                return a:JSONDecode(readfile(CONFIG_FILE))
+            end)
+            if not ok or type(data) ~= "table" then
+                if showNotification then
+                    notify({Title = "Config Error", Content = "Saved config is invalid.", Icon = "x-circle"})
+                end
+                return false
+            end
+
+            local t = data.toggles or {}
+            local d = data.dropdowns or {}
+            local sl = data.sliders or {}
+
+            -- Assign state first so callbacks which call x()/n4() see the new values.
+            if t.autoPlaceEvery5 ~= nil then h.autoPlaceEvery5 = t.autoPlaceEvery5 == true end
+            if t.autoHatch ~= nil then h.autoHatch = t.autoHatch == true end
+            if t.autoReturn ~= nil then h.autoGlide = t.autoReturn == true end
+            if t.autoTreadmill ~= nil then h.autoTreadmill = t.autoTreadmill == true end
+            if t.autoUpgradeTreadmill ~= nil then h.autoUpgradeTreadmill = t.autoUpgradeTreadmill == true end
+            if t.autoBuyTrails ~= nil then h.autoBuyTrails = t.autoBuyTrails == true end
+            if t.alwaysCollectSecret ~= nil then h.alwaysCollectSecretPlus = t.alwaysCollectSecret == true end
+            if t.performanceMode ~= nil then h.performanceMode = t.performanceMode == true end
+            if t.disable3D ~= nil then h.disable3D = t.disable3D == true end
+            if t.antiAFK ~= nil then h.antiAFK = t.antiAFK == true end
+
+            if type(d.selectedZones) == "table" then h.selectedZones = copyBoolMap(d.selectedZones) end
+            if type(d.selectedRarities) == "table" then h.selectedRarities = copyBoolMap(d.selectedRarities) end
+            if type(sl.flightSpeed) == "number" then h.glideSpeed = math.clamp(math.floor(sl.flightSpeed), 100, 1000) end
+            if type(sl.windowTransparency) == "number" then h.windowTransparency = math.clamp(sl.windowTransparency, 0, 90) end
+            if type(d.theme) == "string" then h.theme = d.theme end
+            if d.language == "ไทย" or d.language == "TH" then Xk = "TH" else Xk = "EN" end
+
+            -- Restore dropdowns/sliders first, then toggles so the callbacks activate the features.
+            setControl(Fk.dropTargetZones, labelsFromMap(h.selectedZones, reverseZoneMap))
+            setControl(Fk.dropTargetRarities, labelsFromMap(h.selectedRarities, reverseRarityMap))
+            setControl(Fk.sliderSpeed, h.glideSpeed)
+            setControl(Fk.sliderTransp, h.windowTransparency)
+            if h.theme then setControl(Fk.dropTheme, h.theme) end
+            setControl(Fk.dropLang, Xk == "TH" and "ไทย" or "English")
+
+            setControl(Fk.togAutoPlaceEvery5, h.autoPlaceEvery5)
+            setControl(Fk.togAutoHatch, h.autoHatch)
+            setControl(Fk.togAutoReturn, h.autoGlide)
+            setControl(Fk.togAutoTreadmill, h.autoTreadmill)
+            setControl(Fk.togAutoUpgradeTreadmill, h.autoUpgradeTreadmill)
+            setControl(Fk.togAutoBuyTrails, h.autoBuyTrails)
+            setControl(Fk.togAlwaysSecret, h.alwaysCollectSecretPlus)
+            setControl(Fk.togPerformance, h.performanceMode)
+            setControl(Fk.togDisable3D, h.disable3D)
+            setControl(Fk.togAntiAFK, h.antiAFK)
+
+            -- Auto Steal modes are mutually exclusive through their normal callbacks.
+            if t.autoStealTween ~= nil then setControl(Fk.togTween, t.autoStealTween == true) end
+            if t.autoStealTeleport ~= nil then setControl(Fk.togTeleport, t.autoStealTeleport == true) end
+            if t.godmode ~= nil then setControl(Fk.togGodmode, t.godmode == true) end
+
+            if showNotification then
+                notify({Title = "Config Loaded", Content = "Saved settings have been restored.", Icon = "check-circle"})
+            end
+            return true
+        end
+
+        Fk.secConfig = InfoTab:Section({
+            Title = "Configuration"
+        })
+
+        InfoTab:Button({
+            Title = "Create Config",
+            Desc = "Create the default Ken Hub config file",
+            Icon = "file-plus-2",
+            Callback = function()
+                createConfig()
+            end,
+        })
+
+        InfoTab:Button({
+            Title = "Save Config",
+            Desc = "Save all current toggles, dropdowns and sliders",
+            Icon = "save",
+            Callback = function()
+                saveConfig(true)
+            end,
+        })
+
+        InfoTab:Button({
+            Title = "Load Config",
+            Desc = "Load the saved Ken Hub config",
+            Icon = "folder-open",
+            Callback = function()
+                loadConfig(true)
+            end,
+        })
+
+        Fk.togAutoLoadConfig = InfoTab:Toggle({
+            Title = "Auto Load Config",
+            Desc = "Automatically load the saved config when the script opens",
+            Icon = "refresh-cw",
+            Value = h.autoLoadConfig == true,
+            Callback = function(value)
+                h.autoLoadConfig = value == true
+            end,
+        })
+
         InfoTab:Paragraph({
             Title = "Ken Hub",
             Desc = "Steal an Egg V1 • WindUI interface\nAll existing automation, configuration, and safety controls are kept in the script.",
@@ -5147,6 +5361,14 @@ local function oM(...)
             end,
         })
 
+        -- Auto-load only after every control has been created.
+        task.defer(function()
+            if h.autoLoadConfig and configFileExists() then
+                task.wait(0.15)
+                loadConfig(false)
+            end
+        end)
+
         task.spawn(function()
             while h.alive do
                 pcall(function()
@@ -5186,12 +5408,15 @@ local function oM(...)
         return
     end
 end
-H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )b4( false )C4()
-    u4()H( "[+] Normal character mode active; Auto Steal protection loads only when farming." )
+H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )A4()b4( true )C4()
+    if o.Character then
+        z4(o.Character )
+    end
+    u4()H( "[+] Auto Humanoid Swap & Rigid Joint Locking Active." )
 end
 )o.CharacterAdded :Connect(function(e,...) task.wait ( 0.6 )
     if h.alive then
-        D4()n4()C4()b4( false )u4()
+        D4()n4()C4()A4()b4( true )z4(e)u4()
     end
 end
 )
