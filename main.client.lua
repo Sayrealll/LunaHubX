@@ -3505,6 +3505,70 @@ l4=function(e,u,...)
         return true
     end
 end
+local function restoreNormalCharacterState()
+    -- Leave the character exactly like a normal Roblox character after Auto Steal stops.
+    h.godmode = false
+    h.swapped = false
+
+    pcall(disableDesyncGodmode)
+    pcall(D4)
+
+    local char = o.Character
+    if not char then return end
+
+    -- Remove only the rigid welds created by the custom godmode/anti-ragdoll system.
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("WeldConstraint") and string.sub(obj.Name, 1, 15) == "RigidJointWeld_" then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            pcall(function()
+                part.CanTouch = true
+                part.CanCollide = (part.Name ~= "HumanoidRootPart")
+                part.Anchored = false
+                part.AssemblyLinearVelocity = Vector3.zero
+                part.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+    end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum.PlatformStand = false
+            hum.Sit = false
+            hum.AutoRotate = true
+            hum.BreakJointsOnDeath = true
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+            hum.UseJumpPower = true
+            hum.JumpPower = math.max(50, hum.JumpPower)
+            hum.JumpHeight = math.max(7.2, hum.JumpHeight)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end)
+
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if not animator then
+            pcall(function()
+                Instance.new("Animator", hum)
+            end)
+        end
+    end
+
+    local animate = char:FindFirstChild("Animate")
+    if animate and animate:IsA("LocalScript") then
+        pcall(function() animate.Disabled = false end)
+    end
+end
+
 T4=function(e,...)
     if Y4==e then
         return
@@ -3542,6 +3606,9 @@ T4=function(e,...)
                 h.autoFarmLoop = true h.pureTweenFarm = false pcall(u4)H( "[FarmController] Snipe Auto Loop (Warp) ACTIVATED exclusively." )
             else
                 h.pureTweenFarm = false h.autoFarmLoop = false
+                -- Auto Steal owns the temporary godmode/movement state. When it stops,
+                -- immediately return the character to the same normal state as script startup.
+                pcall(restoreNormalCharacterState)
                 if not h.isBatchPlacing then
                     h.batchStealCount = 0
                 end
@@ -3578,8 +3645,9 @@ local Ck=os.clock ()task.spawn (function(...)
                             if not h.swapped then
                                 A4()
                             end
+                            -- Auto Steal temporarily owns godmode while the tween is active.
                             if not h.godmode then
-                                b4( true )
+                                enableDesyncGodmode()
                             end
                             Z4(r)pcall(function(...) o:RequestStreamAroundAsync(w.Position )
                             end
@@ -4354,7 +4422,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
+            Title = "lol Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
