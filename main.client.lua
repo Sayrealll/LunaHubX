@@ -1172,18 +1172,33 @@ b4=function(e,...) h.godmode =e
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
         y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
-        if e and y.Health < 100 then
-            y.Health = 100
+        if e then
+            y.BreakJointsOnDeath = false
+            if y.Health < 100 then
+                y.Health = 100
+            end
+        else
+            y.BreakJointsOnDeath = true
         end
     end
-    for r,y in ipairs(r:GetDescendants())do
-        if y:IsA( "BasePart" )then
+    for _,part in ipairs(r:GetDescendants())do
+        if part:IsA( "BasePart" )then
             if e then
-                y.CanTouch = false y.CanCollide = false
+                part.CanTouch = false
+                part.CanCollide = false
+            else
+                part.CanTouch = true
+                if part.Name == "HumanoidRootPart" then
+                    part.CanCollide = false
+                else
+                    part.CanCollide = true
+                end
             end
         end
     end
-    Z4(r)
+    if e then
+        Z4(r)
+    end
 end
 local function enableDesyncGodmode()
     b4(true)
@@ -4509,8 +4524,23 @@ local function oM(...)
                         end
                     end
 
-                    -- Repair rig joints after movement cancellation.
-                    pcall(function() Z4(char) end)
+                    -- Remove the rigid welds created by the anti-ragdoll/joint-lock system.
+                    -- Those welds can block normal Roblox animations (bat swing, jump, etc.).
+                    if char then
+                        for _, obj in ipairs(char:GetDescendants()) do
+                            if obj:IsA("WeldConstraint") and string.sub(obj.Name, 1, 15) == "RigidJointWeld_" then
+                                pcall(function() obj:Destroy() end)
+                            end
+                        end
+
+                        -- Re-enable the normal Animate script so tool/character animations can play.
+                        local animate = char:FindFirstChild("Animate")
+                        if animate and animate:IsA("LocalScript") then
+                            pcall(function() animate.Disabled = false end)
+                        end
+                    end
+
+                    -- Do NOT call z4/Z4 here: recovery must leave the rig in normal Roblox state.
 
                     -- Give Roblox one frame to apply the restored Humanoid state.
                     y.Heartbeat:Wait()
@@ -5282,7 +5312,29 @@ H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()tas
 end
 )o.CharacterAdded :Connect(function(e,...) task.wait ( 0.6 )
     if h.alive then
-        D4()n4()C4()A4()b4( true )z4(e)u4()
+        D4()n4()C4()
+        -- Only restore the anti-death/godmode rig when godmode is actually enabled.
+        -- Recovery sets h.godmode=false so normal jump, animations and respawn remain native.
+        if h.godmode then
+            A4()
+            b4(true)
+            z4(e)
+        else
+            local hum = e:FindFirstChildOfClass("Humanoid")
+            if hum then
+                pcall(function()
+                    hum.BreakJointsOnDeath = true
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+                    hum.PlatformStand = false
+                    hum.Sit = false
+                    hum.AutoRotate = true
+                end)
+            end
+        end
+        u4()
     end
 end
 )
