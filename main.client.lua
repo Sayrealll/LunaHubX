@@ -3505,11 +3505,29 @@ l4=function(e,u,...)
         return true
     end
 end
+local function restoreNativeRobloxControls()
+    pcall(function()
+        local StarterGui = game:GetService("StarterGui")
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.SelfView, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Captures, true)
+    end)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
+    end)
+end
+
 local function restoreNormalCharacterState()
     -- Leave the character exactly like a normal Roblox character after Auto Steal stops.
     h.godmode = false
     h.swapped = false
 
+    pcall(restoreNativeRobloxControls)
     pcall(disableDesyncGodmode)
     pcall(D4)
 
@@ -3574,7 +3592,14 @@ T4=function(e,...)
         return
     end
     O4=O4+ 1
-    local r=O4 Y4= "SWITCHING" h.pureTweenFarm = false h.autoFarmLoop = false pcall(D4)pcall(u4)
+    local r=O4 Y4= "SWITCHING" h.pureTweenFarm = false h.autoFarmLoop = false
+    -- Auto Steal owns the temporary godmode. Release it BEFORE D4/C4 cleanup so
+    -- cleanup cannot rebuild the godmode weld/state while the farm is stopping.
+    if e ~= "TWEEN" and e ~= "WARP" then
+        h.godmode = false
+        pcall(disableDesyncGodmode)
+    end
+    pcall(D4)pcall(u4)
     if e== "TWEEN" then
         if W4 then
             W4( false , true )
@@ -4422,7 +4447,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "lol Hub",
+            Title = "Ken Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
@@ -5390,6 +5415,7 @@ end
             b4(true)
             z4(e)
         else
+            pcall(restoreNativeRobloxControls)
             local hum = e:FindFirstChildOfClass("Humanoid")
             if hum then
                 pcall(function()
@@ -5398,9 +5424,13 @@ end
                     hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
                     hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
                     hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
                     hum.PlatformStand = false
                     hum.Sit = false
                     hum.AutoRotate = true
+                    hum.UseJumpPower = true
+                    hum.JumpPower = math.max(50, hum.JumpPower)
+                    hum.JumpHeight = math.max(7.2, hum.JumpHeight)
                 end)
             end
             local animate = e:FindFirstChild("Animate")
