@@ -881,7 +881,7 @@ C4=function(...)
             for r,y in ipairs(r:GetPlayingAnimationTracks())do
                 local u=y.Animation
                 local w=u and u.AnimationId or ""
-                if string.find (w, "10921259953" )or string.find (string.lower (y.Name ), "treadmill" )or string.find (string.lower (y.Name ), "run" )then
+                if string.find (w, "10921259953" )or string.find (string.lower (y.Name ), "treadmill" )then
                     y:Stop( 0 )
                 end
             end
@@ -901,7 +901,9 @@ C4=function(...)
     if y then
         y.AssemblyLinearVelocity =Vector3.zero y.AssemblyAngularVelocity =Vector3.zero
     end
-    Z4(e)
+    if h and h.godmode then
+        Z4(e)
+    end
 end
 local rk= 0
 local yk= false E4=function(...)
@@ -1121,7 +1123,7 @@ end
         end
     end
     )pcall(function(...)
-        if Z4 and e then
+        if Z4 and e and h.godmode then
             Z4(e)
         end
     end
@@ -4352,7 +4354,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Luna Hub",
+            Title = "Ken Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
@@ -5305,7 +5307,7 @@ local function oM(...)
     end
 end
 H( "[+] Initializing Ken Hub x WindUI v42.64 (Steal an Egg Edition)..." )oM()task.spawn (function(...) task.wait ( 0.5 )C4()
-    if o.Character then
+    if o.Character and h.godmode then
         z4(o.Character )
     end
     u4()H( "[+] Character systems ready; Godmode remains optional." )
@@ -5331,6 +5333,17 @@ end
                     hum.PlatformStand = false
                     hum.Sit = false
                     hum.AutoRotate = true
+                end)
+            end
+            local animate = e:FindFirstChild("Animate")
+            if animate and animate:IsA("LocalScript") then
+                pcall(function() animate.Disabled = false end)
+            end
+            local animator = hum and hum:FindFirstChildOfClass("Animator")
+            if hum and not animator then
+                pcall(function()
+                    animator = Instance.new("Animator")
+                    animator.Parent = hum
                 end)
             end
         end
