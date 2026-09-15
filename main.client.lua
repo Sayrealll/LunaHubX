@@ -4450,6 +4450,11 @@ local function oM(...)
                     h.targetPosition = nil
                     h.stateTime = os.clock()
 
+                    -- The script starts with desync godmode enabled. Fully disable it here so
+                    -- Roblox can enter Dead state normally and the Reset Character button works.
+                    h.godmode = false
+                    pcall(disableDesyncGodmode)
+
                     -- Stop any active movement connections owned by the controller.
                     pcall(D4)
                     pcall(u4, true)
@@ -4473,6 +4478,9 @@ local function oM(...)
                             hum.AutoRotate = true
                             hum.UseJumpPower = true
                             hum.JumpPower = math.max(50, hum.JumpPower)
+                            hum.JumpHeight = math.max(7.2, hum.JumpHeight)
+                            hum.BreakJointsOnDeath = true
+                            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
                             hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
                             hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
                             hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
@@ -4483,6 +4491,22 @@ local function oM(...)
                             hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
                             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
                         end)
+                    end
+
+                    -- Restore normal body collision/touch flags that godmode may have changed.
+                    if char then
+                        for _, part in ipairs(char:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                pcall(function()
+                                    if part.Name == "HumanoidRootPart" then
+                                        part.CanCollide = false
+                                    else
+                                        part.CanCollide = true
+                                    end
+                                    part.CanTouch = true
+                                end)
+                            end
+                        end
                     end
 
                     -- Repair rig joints after movement cancellation.
@@ -4496,7 +4520,7 @@ local function oM(...)
 
                     notify({
                         Title = "Character Reset",
-                        Content = "Movement stopped. Jump and normal character control restored.",
+                        Content = "Movement stopped. Jump, animations and normal respawn control restored.",
                         Icon = "check-circle"
                     })
                 end)
