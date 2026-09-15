@@ -775,32 +775,9 @@ if typeof(hookmetamethod)== "function" and not _G._DesyncAntiRagdollHooked then
     end
     ))
 end
-S4=function(e,...) e=e or o.Character
-    if not e then
-        return
-    end
-    local r=e:FindFirstChild( "HumanoidRootPart" )
-    local y=e:FindFirstChild( "Torso" )or e:FindFirstChild( "UpperTorso" )or r
-    if not y then
-        return
-    end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
-            pcall(function(...) r:Destroy()
-            end
-            )
-        end
-    end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
-            r.Enabled = true
-            local e= "RigidJointWeld_" ..r.Name
-            local y=r.Part1 :FindFirstChild(e)
-            if not y then
-                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
-            end
-        end
-    end
+S4=function(e,...)
+    -- Disabled: rigid WeldConstraints conflict with Roblox Motor6D animations.
+    return
 end
 Z4=function(e,...)
     if h and h.onTreadmill then
@@ -828,286 +805,22 @@ Z4=function(e,...)
     S4(e)
 end
 z4=function(e,...)
-    if not e then
-        return
-    end
-    Z4(e)
-    for e,y in ipairs(e:GetDescendants())do
-        if y:IsA( "Motor6D" )then
-            (y:GetPropertyChangedSignal( "Enabled" )):Connect(function(...)
-                if not y.Enabled then
-                    y.Enabled = true
-                end
+    if not e then return end
+    local hum=e:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
+            hum.PlatformStand=false
+            hum.Sit=false
+            if not hum:FindFirstChildOfClass("Animator") then
+                local animator=Instance.new("Animator") animator.Parent=hum
             end
-            )
-        end
+            r.CurrentCamera.CameraSubject=hum
+        end)
     end
-    e.DescendantAdded :Connect(function(y,...)
-        if y:IsA( "BallSocketConstraint" )or y:IsA( "HingeConstraint" )or y:IsA( "NoCollisionConstraint" )then
-            task.defer (function(...) pcall(function(...) y:Destroy()
-                end
-                )Z4(e)
-            end
-            )
-        elseif y:IsA( "LocalScript" )and((string.find (string.lower (y.Name ), "ragdoll" )or string.find (string.lower (y.Name ), "fall" )))then
-            y.Disabled = true
-        end
-    end
-    )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
-            task.defer (function(...) u4()
-            end
-            )
-        end
-    end
-    )
 end
-C4=function(...)
-    if h then
-        h.onTreadmill = false
-    end
-    local e=o.Character
-    local r=e and e:FindFirstChildOfClass( "Humanoid" )
-    local y=e and e:FindFirstChild( "HumanoidRootPart" )
-    if U then
-        task.spawn (function(...) pcall(function(...) U:InvokeServer()
-            end
-            )
-        end
-        )
-    end
-    if r then
-        pcall(function(...)
-            for r,y in ipairs(r:GetPlayingAnimationTracks())do
-                local u=y.Animation
-                local w=u and u.AnimationId or ""
-                if string.find (w, "10921259953" )or string.find (string.lower (y.Name ), "treadmill" )or string.find (string.lower (y.Name ), "run" )then
-                    y:Stop( 0 )
-                end
-            end
-            r.PlatformStand = false r.Sit = false r:SetStateEnabled(Enum.HumanoidStateType.Running , true )r:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )r:ChangeState(Enum.HumanoidStateType.Running )
-        end
-        )
-    end
-    local u=o:FindFirstChild( "PlayerGui" )
-    if u then
-        local e=u:FindFirstChild( "SpeedGainAnimation" )
-        if e then
-            pcall(function(...) e:Destroy()
-            end
-            )
-        end
-    end
-    if y then
-        y.AssemblyLinearVelocity =Vector3.zero y.AssemblyAngularVelocity =Vector3.zero
-    end
-    Z4(e)
-end
-local rk= 0
-local yk= false E4=function(...)
-    local e=o:FindFirstChild( "PlayerGui" )
-    if not e then
-        return false
-    end
-    local r= false pcall(function(...)
-        for e,u in ipairs(e:GetChildren())do
-            if u:IsA( "ScreenGui" )and u.Enabled then
-                for e,u in ipairs(u:GetDescendants())do
-                    if((u:IsA( "TextButton" )or u:IsA( "ImageButton" )))and u.Visible then
-                        local e=(u:IsA( "TextButton" )and u.Text )or u.Name
-                        local w=string.lower (e or "" )
-                        if string.find (w, "get out" )or string.find (w, "treadmill" )or string.find (w, "doff" )or string.find (w, "leave" )or string.find (w, "exit" )then
-                            if typeof(firesignal)== "function" and u.Activated then
-                                pcall(firesignal,u.Activated )
-                            elseif typeof(firesignal)== "function" and u.MouseButton1Click then
-                                pcall(firesignal,u.MouseButton1Click )
-                            elseif typeof(getconnections)== "function" then
-                                local e=getconnections(u.MouseButton1Click )or getconnections(u.Activated )or{}
-                                for e,r in ipairs(e)do
-                                    pcall(function(...) r:Fire()
-                                    end
-                                    )
-                                    break
-                                end
-                            end
-                            r= true
-                            break
-                        end
-                    end
-                end
-                if r then
-                    break
-                end
-            end
-        end
-    end
-    )
-    return r
-end
-L4=function(...)
-    local e=o.Character
-    local r=e and e:FindFirstChild( "HumanoidRootPart" )
-    if not r then
-        return false
-    end
-    local y=(typeof(I4)== "function" )and I4()or nil
-    if y then
-        local e=y.Position +Vector3.new ( 0 , 1.8 , 0 )
-        local u=((r.Position -e)).Magnitude
-        if u> 6 then
-            if h then
-                h.onTreadmill = false
-            end
-            return false
-        end
-    else
-        if r.Position.X > 535 then
-            if h then
-                h.onTreadmill = false
-            end
-            return false
-        end
-    end
-    if h and h.onTreadmill then
-        return true
-    end
-    local u=e and e:FindFirstChildOfClass( "Humanoid" )
-    if u then
-        for e,r in ipairs(u:GetPlayingAnimationTracks())do
-            local y=r.Animation
-            local u=y and y.AnimationId or ""
-            local w=string.lower (r.Name or "" )
-            if string.find (u, "10921259953" )or string.find (w, "treadmill" )or string.find (w, "run" )then
-                return true
-            end
-        end
-    end
-    local w=o:FindFirstChild( "PlayerGui" )
-    if w and w:FindFirstChild( "SpeedGainAnimation" )then
-        return true
-    end
-    return false
-end
-M4=function(...)
-    if yk then
-        return
-    end
-    if os.clock ()-rk< 0.8 then
-        if h then
-            h.onTreadmill = false
-        end
-        return
-    end
-    yk= true rk=os.clock ()
-    if h then
-        h.onTreadmill = false
-    end
-    E4()
-    if U then
-        pcall(function(...) U:InvokeServer()
-        end
-        )
-    end
-    local e=o.Character
-    local r=e and e:FindFirstChildOfClass( "Humanoid" )
-    local y=e and e:FindFirstChild( "HumanoidRootPart" )
-    if r then
-        pcall(function(...)
-            for r,y in ipairs(r:GetPlayingAnimationTracks())do
-                local u=y.Animation
-                local w=u and u.AnimationId or ""
-                local j=string.lower (y.Name or "" )
-                if string.find (w, "10921259953" )or string.find (j, "treadmill" )or string.find (j, "run" )then
-                    y:Stop( 0 )
-                end
-            end
-            r.PlatformStand = false r.Sit = false r:SetStateEnabled(Enum.HumanoidStateType.Running , true )r:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )r:ChangeState(Enum.HumanoidStateType.Running )
-        end
-        )
-    end
-    local u=o:FindFirstChild( "PlayerGui" )
-    if u then
-        local e=u:FindFirstChild( "SpeedGainAnimation" )
-        if e then
-            pcall(function(...) e:Destroy()
-            end
-            )
-        end
-    end
-    if y then
-        y.AssemblyLinearVelocity =Vector3.zero y.AssemblyAngularVelocity =Vector3.zero
-    end
-    Z4(e)task.wait ( 0.15 )yk= false
-end
-q4=M4 n4=function(...) pcall(function(...)
-        local e=r:FindFirstChild( "Plots" )
-        if e then
-            local r=h and h.plot
-            if not r and t4 then
-                r=select( 1 ,t4())
-            end
-            for e,u in ipairs(e:GetChildren())do
-                local w=(r~=nil and u==r)
-                local j=u:FindFirstChild( "TreadmillBottom" )
-                if j and j:IsA( "BasePart" )then
-                    if w and(h and h.autoTreadmill )then
-                        j.CanTouch = true j.CanCollide = true
-                    else
-                        j.CanTouch = false j.CanCollide = false
-                    end
-                end
-                local k=u:FindFirstChild( "TreadmillUpgrade" )
-                if k then
-                    for e,r in ipairs(k:GetDescendants())do
-                        if r:IsA( "BasePart" )then
-                            if w and(h and h.autoTreadmill )then
-                                r.CanTouch = true
-                            else
-                                r.CanTouch = false r.CanCollide = false
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    )
-end
-n4()r.DescendantAdded :Connect(function(e,...) pcall(function(...)
-        local r=(e.Name == "TreadmillBottom" and e:IsA( "BasePart" ))
-        local y=(e.Name == "TreadmillUpgrade" and e:IsA( "Model" ))
-        if r or y then
-            local y=h and h.plot
-            if not y and t4 then
-                y=select( 1 ,t4())
-            end
-            local w=y and e:IsDescendantOf(y)
-            if w and(h and h.autoTreadmill )then
-                if r then
-                    e.CanTouch = true e.CanCollide = true
-                else
-                    for e,r in ipairs(e:GetDescendants())do
-                        if r:IsA( "BasePart" )then
-                            r.CanTouch = true
-                        end
-                    end
-                end
-            else
-                if r then
-                    e.CanTouch = false e.CanCollide = false
-                else
-                    for e,r in ipairs(e:GetDescendants())do
-                        if r:IsA( "BasePart" )then
-                            r.CanTouch = false r.CanCollide = false
-                        end
-                    end
-                end
-            end
-        end
-    end
-    )
-end
-)D4=function(...) h.onTreadmill = false h.teleporting = false h.glidingToTarget = false h.securingEgg = false h.isReturning = false h.delivering = false h.holdingEggForGuard = false h.currentTargetModel =nil h.targetPosition =nil h.stateTime =os.clock ()
+D4=function(...) h.onTreadmill = false h.teleporting = false h.glidingToTarget = false h.securingEgg = false h.isReturning = false h.delivering = false h.holdingEggForGuard = false h.currentTargetModel =nil h.targetPosition =nil h.stateTime =os.clock ()
     local e=o.Character
     local r=e and e:FindFirstChild( "HumanoidRootPart" )
     if r then
@@ -1201,77 +914,57 @@ local function disableDesyncGodmode()
 end
 
 A4=function(...)
-    local e=o.Character
-    local y=e and e:FindFirstChildOfClass( "Humanoid" )
-    if not e or not y then
-        return false
-    end
-    pcall(function(...)
-        if h.swapCharacter ~= e or not h.swapBackup then
-            pcall(function(...) h.swapBackup = y:Clone() end)
-            h.swapCharacter = e
+    local char=o.Character
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hum then return false end
+    pcall(function()
+        hum.BreakJointsOnDeath=false
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead,false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+        hum.PlatformStand=false
+        hum.Sit=false
+        if hum.JumpPower < 50 then hum.JumpPower=50 end
+        if hum.JumpHeight < 7.2 then hum.JumpHeight=7.2 end
+        if not hum:FindFirstChildOfClass("Animator") then
+            local animator=Instance.new("Animator") animator.Parent=hum
         end
-        y.BreakJointsOnDeath = false
-        local w=y:Clone()w.Parent =e y:Destroy()
-        local j=w:FindFirstChildOfClass( "Animator" )
-        if not j then
-            j=Instance.new ( "Animator" )j.Parent =w
-        end
-        r.CurrentCamera.CameraSubject =w
-        local k=e:FindFirstChild( "Animate" )
-        if k and k:IsA( "LocalScript" )then
-            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
-            end
-            )
-        end
-        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
-    end
-    )h.swapped = true
-    if h.godmode then
-        b4( true )
-    end
-    z4(e)
+        r.CurrentCamera.CameraSubject=hum
+    end)
+    h.swapped=true
+    h.swapBackup=nil
+    h.swapCharacter=char
     return true
 end
 restoreA4=function(...)
-    local e=o.Character
-    local y=e and e:FindFirstChildOfClass( "Humanoid" )
-    local backup=h.swapBackup
-    if not e or h.swapCharacter ~= e or not backup then
+    local char=o.Character
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hum then
         h.swapped=false h.swapBackup=nil h.swapCharacter=nil
         return false
     end
-    local ok=false
-    pcall(function(...)
-        if y then y:Destroy() end
-        local restored=backup:Clone()
-        restored.Parent=e
-        restored.BreakJointsOnDeath=true
-        restored.PlatformStand=false
-        restored.Sit=false
-        local animator=restored:FindFirstChildOfClass( "Animator" )
-        if not animator then
-            animator=Instance.new( "Animator" ) animator.Parent=restored
+    pcall(function()
+        hum.BreakJointsOnDeath=true
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+        hum.PlatformStand=false
+        hum.Sit=false
+        if hum.JumpPower < 50 then hum.JumpPower=50 end
+        if hum.JumpHeight < 7.2 then hum.JumpHeight=7.2 end
+        if not hum:FindFirstChildOfClass("Animator") then
+            local animator=Instance.new("Animator") animator.Parent=hum
         end
-        r.CurrentCamera.CameraSubject=restored
-        local animate=e:FindFirstChild( "Animate" )
-        if animate and animate:IsA( "LocalScript" ) then
-            animate.Disabled=true
-            task.defer(function(...)
-                task.wait(0.05)
-                if animate.Parent then animate.Disabled=false end
-            end)
-        end
-        restored:SetStateEnabled(Enum.HumanoidStateType.Dead,true)
-        restored:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
-        restored:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
-        restored:SetStateEnabled(Enum.HumanoidStateType.Running,true)
-        restored:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
-        restored:ChangeState(Enum.HumanoidStateType.Running)
-        ok=true
+        r.CurrentCamera.CameraSubject=hum
+        local animate=char:FindFirstChild("Animate")
+        if animate and animate:IsA("LocalScript") then animate.Disabled=false end
     end)
     h.swapped=false h.swapBackup=nil h.swapCharacter=nil
-    return ok
+    return true
 end
 t4=function(...)
     if h.plot and(h.plot.Parent and(h.pen and(h.origin and h.plotVerified )))then
@@ -3576,16 +3269,6 @@ T4=function(e,...)
             b4(false)
         end
         local restoreOk, restoredOk = pcall(restoreA4)
-        if (not restoreOk) or (not restoredOk) then
-            -- Last-resort clean character reload if the Humanoid backup cannot
-            -- be restored (for example after an unexpected character reset).
-            task.defer(function(...)
-                task.wait(0.15)
-                if not h.pureTweenFarm and not h.autoFarmLoop and h.alive then
-                    pcall(function(...) o:LoadCharacter() end)
-                end
-            end)
-        end
         if x4 then
             x4( false , true )
         end
@@ -4415,7 +4098,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
+            Title = "lol Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
