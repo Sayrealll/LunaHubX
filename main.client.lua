@@ -275,7 +275,7 @@ end
 local W=T()h={[ "godmode" ]= false ,[ "autoGodmode" ]= false ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true ;
 [ "autoPlaceEvery5" ]= false ;
 [ "batchStealCount" ]= 0 ,[ "isBatchPlacing" ]= false ,[ "isHatching" ]= false ;
-[ "autoFarmLoop" ]= false ,[ "pureTweenFarm" ]= false ;
+[ "autoFarmLoop" ]= false ,[ "pureTweenFarm" ]= false ,[ "swapBackup" ]= nil ,[ "swapCharacter" ]= nil ;
 [ "glidingToTarget" ]= false ;
 [ "securingEgg" ]= false ,[ "glideSpeed" ]=O();
 [ "selectedZones" ]=W.selectedZones ;
@@ -1206,7 +1206,12 @@ A4=function(...)
     if not e or not y then
         return false
     end
-    pcall(function(...) y.BreakJointsOnDeath = false
+    pcall(function(...)
+        if h.swapCharacter ~= e or not h.swapBackup then
+            pcall(function(...) h.swapBackup = y:Clone() end)
+            h.swapCharacter = e
+        end
+        y.BreakJointsOnDeath = false
         local w=y:Clone()w.Parent =e y:Destroy()
         local j=w:FindFirstChildOfClass( "Animator" )
         if not j then
@@ -1227,6 +1232,46 @@ A4=function(...)
     end
     z4(e)
     return true
+end
+restoreA4=function(...)
+    local e=o.Character
+    local y=e and e:FindFirstChildOfClass( "Humanoid" )
+    local backup=h.swapBackup
+    if not e or h.swapCharacter ~= e or not backup then
+        h.swapped=false h.swapBackup=nil h.swapCharacter=nil
+        return false
+    end
+    local ok=false
+    pcall(function(...)
+        if y then y:Destroy() end
+        local restored=backup:Clone()
+        restored.Parent=e
+        restored.BreakJointsOnDeath=true
+        restored.PlatformStand=false
+        restored.Sit=false
+        local animator=restored:FindFirstChildOfClass( "Animator" )
+        if not animator then
+            animator=Instance.new( "Animator" ) animator.Parent=restored
+        end
+        r.CurrentCamera.CameraSubject=restored
+        local animate=e:FindFirstChild( "Animate" )
+        if animate and animate:IsA( "LocalScript" ) then
+            animate.Disabled=true
+            task.defer(function(...)
+                task.wait(0.05)
+                if animate.Parent then animate.Disabled=false end
+            end)
+        end
+        restored:SetStateEnabled(Enum.HumanoidStateType.Dead,true)
+        restored:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+        restored:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+        restored:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+        restored:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+        restored:ChangeState(Enum.HumanoidStateType.Running)
+        ok=true
+    end)
+    h.swapped=false h.swapBackup=nil h.swapCharacter=nil
+    return ok
 end
 t4=function(...)
     if h.plot and(h.plot.Parent and(h.pen and(h.origin and h.plotVerified )))then
@@ -3530,6 +3575,17 @@ T4=function(e,...)
             h.autoGodmode = false
             b4(false)
         end
+        local restoreOk, restoredOk = pcall(restoreA4)
+        if (not restoreOk) or (not restoredOk) then
+            -- Last-resort clean character reload if the Humanoid backup cannot
+            -- be restored (for example after an unexpected character reset).
+            task.defer(function(...)
+                task.wait(0.15)
+                if not h.pureTweenFarm and not h.autoFarmLoop and h.alive then
+                    pcall(function(...) o:LoadCharacter() end)
+                end
+            end)
+        end
         if x4 then
             x4( false , true )
         end
@@ -4359,7 +4415,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "aaa Hub",
+            Title = "Ken Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
@@ -5222,6 +5278,8 @@ end
     task.wait(0.6)
     if h.alive then
         h.swapped = false
+        h.swapBackup = nil
+        h.swapCharacter = nil
         D4()
         n4()
         C4()
