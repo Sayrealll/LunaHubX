@@ -831,36 +831,29 @@ z4=function(e,...)
     if not e then
         return
     end
-    Z4(e)
-    for e,y in ipairs(e:GetDescendants())do
-        if y:IsA( "Motor6D" )then
-            (y:GetPropertyChangedSignal( "Enabled" )):Connect(function(...)
-                if not y.Enabled then
-                    y.Enabled = true
-                end
-            end
-            )
-        end
+    -- Animation-safe character protection:
+    -- Do NOT create permanent WeldConstraints or disable ragdoll/fall scripts here.
+    -- A4 is still kept for Auto Steal, but the character's Motor6D animation rig
+    -- must remain untouched so run/swing/jump/respawn can continue normally.
+    local hum=e:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+            hum.PlatformStand=false
+            hum.Sit=false
+        end)
     end
-    e.DescendantAdded :Connect(function(y,...)
-        if y:IsA( "BallSocketConstraint" )or y:IsA( "HingeConstraint" )or y:IsA( "NoCollisionConstraint" )then
-            task.defer (function(...) pcall(function(...) y:Destroy()
-                end
-                )Z4(e)
-            end
-            )
-        elseif y:IsA( "LocalScript" )and((string.find (string.lower (y.Name ), "ragdoll" )or string.find (string.lower (y.Name ), "fall" )))then
-            y.Disabled = true
+    -- Keep the Tool hook used by Auto Steal; don't interfere with animations.
+    e.ChildAdded:Connect(function(child,...)
+        if child:IsA("Tool") and (h.pureTweenFarm or h.autoFarmLoop) and not h.holdingEggForGuard then
+            task.defer(function()
+                pcall(u4)
+            end)
         end
-    end
-    )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
-            task.defer (function(...) u4()
-            end
-            )
-        end
-    end
-    )
+    end)
 end
 C4=function(...)
     if h then
@@ -4363,7 +4356,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "sab Hub",
+            Title = "Ken Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
