@@ -4846,6 +4846,7 @@ local function oM(...)
             Icon = "solar:shield-check-bold",
             Value = false,
             Callback = function(value)
+                h.godmode = value == true
                 if value then
                     enableDesyncGodmode()
                     notify({
@@ -5140,6 +5141,47 @@ local function saveConfigMeta()
     return ok
 end
 
+local function listConfigs()
+    local configs = {}
+    if not listfiles then return configs end
+
+    local ok, files = pcall(listfiles)
+    if not ok or type(files) ~= "table" then return configs end
+
+    for _, filePath in ipairs(files) do
+        local fileName = tostring(filePath):match("([^\\/]+)$") or tostring(filePath)
+        if fileName:sub(1, #CONFIG_PREFIX) == CONFIG_PREFIX
+            and fileName:sub(-5) == ".json"
+            and fileName ~= CONFIG_META_FILE then
+
+            local rawName = fileName:sub(#CONFIG_PREFIX + 1, -6)
+            if rawName ~= "" then
+                table.insert(configs, rawName)
+            end
+        end
+    end
+
+    table.sort(configs, function(a, b)
+        return string.lower(a) < string.lower(b)
+    end)
+
+    return configs
+end
+
+local function refreshConfigList()
+    local configs = listConfigs()
+
+    if Fk.dropConfigList then
+        pcall(function()
+            if Fk.dropConfigList.Refresh then
+                Fk.dropConfigList:Refresh(configs)
+            end
+        end)
+    end
+
+    return configs
+end
+
 local function copyBoolMap(source)
     local out = {}
     if type(source) == "table" then
@@ -5168,6 +5210,7 @@ local function configSnapshot()
             performanceMode = h.performanceMode == true,
             disable3D = h.disable3D == true,
             antiAFK = h.antiAFK == true,
+            autoLoadConfig = h.autoLoadConfig == true,
         },
         dropdowns = {
             selectedZones = copyBoolMap(h.selectedZones),
@@ -5256,6 +5299,7 @@ local function loadConfig(showNotification, name)
     if t.performanceMode ~= nil then h.performanceMode = t.performanceMode == true end
     if t.disable3D ~= nil then h.disable3D = t.disable3D == true end
     if t.antiAFK ~= nil then h.antiAFK = t.antiAFK == true end
+    if t.autoLoadConfig ~= nil then h.autoLoadConfig = t.autoLoadConfig == true end
     if type(d.selectedZones) == "table" then h.selectedZones = copyBoolMap(d.selectedZones) end
     if type(d.selectedRarities) == "table" then h.selectedRarities = copyBoolMap(d.selectedRarities) end
     if type(sl.flightSpeed) == "number" then h.glideSpeed = math.clamp(math.floor(sl.flightSpeed), 100, 1000) end
@@ -5278,6 +5322,7 @@ local function loadConfig(showNotification, name)
     setControl(Fk.togPerformance, h.performanceMode)
     setControl(Fk.togDisable3D, h.disable3D)
     setControl(Fk.togAntiAFK, h.antiAFK)
+    setControl(Fk.togAutoLoadConfig, h.autoLoadConfig)
     if t.autoStealTween ~= nil then setControl(Fk.togTween, t.autoStealTween == true) end
     if t.autoStealTeleport ~= nil then setControl(Fk.togTeleport, t.autoStealTeleport == true) end
     if t.godmode ~= nil then setControl(Fk.togGodmode, t.godmode == true) end
@@ -5288,14 +5333,36 @@ end
 
 Fk.secConfig = InfoTab:Section({ Title = "Configuration" })
 
+Fk.dropConfigList = InfoTab:Dropdown({
+    Title = "Saved Configs",
+    Desc = "Select one of the configs you created",
+    Values = listConfigs(),
+    Value = h.selectedConfig or nil,
+    Callback = function(value)
+        local clean = sanitizeConfigName(value)
+        if clean ~= "" then
+            h.selectedConfig = clean
+            pcall(function()
+                if Fk.inputConfigName and Fk.inputConfigName.Set then
+                    Fk.inputConfigName:Set(clean)
+                end
+            end)
+            saveConfigMeta()
+        end
+    end,
+})
+
 Fk.inputConfigName = InfoTab:Input({
     Title = "Config Name",
-    Desc = "Name your config, e.g. Farm, AFK, Hatch",
-    Placeholder = "Enter config name...",
+    Desc = "Enter a name for your config, e.g. Farm, AFK, Hatch",
+    Placeholder = "Farm",
     Value = h.selectedConfig or "",
     Callback = function(value)
         local clean = sanitizeConfigName(value)
-        if clean ~= "" then h.selectedConfig = clean end
+        if clean ~= "" then
+            h.selectedConfig = clean
+            saveConfigMeta()
+        end
     end,
 })
 
@@ -5304,22 +5371,49 @@ InfoTab:Button({
     Desc = "Create a new config using the name above",
     Icon = "file-plus-2",
     Callback = function()
-        createConfig(h.selectedConfig)
+        if createConfig(h.selectedConfig) then
+            refreshConfigList()
+            pcall(function()
+                if Fk.dropConfigList and Fk.dropConfigList.Set then
+                    Fk.dropConfigList:Set(h.selectedConfig)
+                end
+            end)
+        end
     end,
 })
 
 InfoTab:Button({
     Title = "Save Config",
-    Desc = "Save all current toggles, dropdowns and sliders to this config",
+    Desc = "Save ALL toggles, dropdowns and sliders to the selected config",
     Icon = "save",
-    Callback = function() saveConfig(true) end,
+    Callback = function()
+        if saveConfig(true) then
+            refreshConfigList()
+        end
+    end,
 })
 
 InfoTab:Button({
     Title = "Load Config",
-    Desc = "Load the config name above",
+    Desc = "Load every saved toggle, dropdown and slider",
     Icon = "folder-open",
-    Callback = function() loadConfig(true, h.selectedConfig) end,
+    Callback = function()
+        loadConfig(true, h.selectedConfig)
+    end,
+})
+
+InfoTab:Button({
+    Title = "Refresh Config List",
+    Desc = "Refresh the saved config dropdown",
+    Icon = "refresh-cw",
+    Callback = function()
+        local configs = refreshConfigList()
+        notify({
+            Title = "Configs Refreshed",
+            Content = (#configs > 0) and (tostring(#configs) .. " config(s) found.") or "No configs found.",
+            Icon = "refresh-cw"
+        })
+    end,
 })
 
 Fk.togAutoLoadConfig = InfoTab:Toggle({
