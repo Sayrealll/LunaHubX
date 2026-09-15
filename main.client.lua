@@ -1198,9 +1198,6 @@ b4=function(e,...) h.godmode =e
             end
         end
     end
-    if e then
-        Z4(r)
-    end
 end
 local function enableDesyncGodmode()
     b4(true)
@@ -3667,14 +3664,13 @@ local Ck=os.clock ()task.spawn (function(...)
                             end
                             h.currentTargetModel =w.Model h.targetPosition =w.Position h.glidingToTarget = true h.stateTime =os.clock ()
                             local a=((w.Scale and w.Scale > 1.05 ))and string.format ( " | %.1fx" ,w.Scale )or "" h.statusText =string.format ( "[AutoSteal] Flying to %s (%s%s)..." ,tostring(w.Category or "Egg" ),tostring(w.Area or "Field" ),a)H(string.format ( "[AutoSteal] Flying to %s | Zone: %s%s | Rank: %d (Corridor Z=-360)" ,tostring(w.Category or "Egg" ),tostring(w.Area or "Field" ),a,tonumber(w.Rank )or 1 ))
-                            if not h.swapped then
-                                A4()
-                            end
-                            -- Auto Steal temporarily owns godmode while the tween is active.
+                            -- Auto Steal uses lightweight protection only. Never swap/clone the Humanoid
+                            -- or rigid-weld the rig; those operations can break native controls/animations
+                            -- and cause duplicated-looking tool slots after respawn.
                             if not h.godmode then
                                 enableDesyncGodmode()
                             end
-                            Z4(r)pcall(function(...) o:RequestStreamAroundAsync(w.Position )
+                            pcall(function(...) o:RequestStreamAroundAsync(w.Position )
                             end
                             )
                             local V=w.CFrame *CFrame.new ( 0 , 0.4 , 0 )
@@ -4447,7 +4443,7 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "Ken Hub",
+            Title = "idk Hub",
             Author = "Steal An Egg V1",
             Icon = dk,
             Theme = ThemeName,
@@ -4529,9 +4525,6 @@ local function oM(...)
                 end
             end,
         })
-
-        local tweenToggle = Fk.togTween
-        local teleportToggle = Fk.togTeleport
 
         local tweenToggle = Fk.togTween
         local teleportToggle = Fk.togTeleport
