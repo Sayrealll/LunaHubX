@@ -3952,6 +3952,17 @@ local function Zk(e,...)
     return table.concat (u)
 end
 local dk=nil
+local zk= "Ken_Hub_Icon.png"
+local dk= "rbxassetid://10734950309" pcall(function(...)
+    if writefile and((getcustomasset or getsynasset))then
+        local e=getcustomasset or getsynasset
+        if not((isfile and isfile(zk)))then
+            writefile(zk,Zk(Sk))
+        end
+        dk=e(zk)
+    end
+end
+)
 local Xk=currentLang or "EN"
 local Gk={[ "EN" ]={[ "StatusTagReady" ]= "Status: Ready" ,[ "Tabs" ]={[ "Farm" ]= "Auto Farm" ;
 [ "EggSelect" ]= "Egg Selection" ;
@@ -4252,68 +4263,6 @@ local function wM(e,...)
     end
     eM(Fk.secSafety ,r.Character.SecSafety )eM(Fk.togGodmode ,r.Character.GodmodeTitle ,r.Character.GodmodeDesc )eM(Fk.btnUnstick ,r.Character.UnstickTitle ,r.Character.UnstickDesc )eM(Fk.secFlight ,r.Character.SecFlight )eM(Fk.sliderSpeed ,r.Character.SpeedTitle ,r.Character.SpeedDesc )eM(Fk.secDashboard ,r.Settings.SecDashboard )eM(Fk.paraLiveDash ,r.Settings.DashTitle )eM(Fk.secBlacklist ,r.Settings.SecBlacklist )eM(Fk.secUI ,r.Settings.SecUI )eM(Fk.dropLang ,r.Settings.LangTitle )eM(Fk.sliderTransp ,r.Settings.TranspTitle ,r.Settings.TranspDesc )eM(Fk.dropTheme ,r.Settings.ThemeTitle )eM(Fk.secPerformance ,r.Settings.SecPerformance )eM(Fk.togPerformance ,r.Settings.PerformanceTitle ,r.Settings.PerformanceDesc )eM(Fk.togDisable3D ,r.Settings.Disable3DTitle ,r.Settings.Disable3DDesc )eM(Fk.secSystem ,r.Settings.SecSystem )eM(Fk.togAntiAFK ,r.Settings.AntiAFKTitle ,r.Settings.AntiAFKDesc )eM(Fk.btnReset ,r.Settings.ResetTitle ,r.Settings.ResetDesc )eM(Fk.btnRejoin ,r.Settings.RejoinTitle ,r.Settings.RejoinDesc )eM(Fk.btnUnload ,r.Settings.UnloadTitle ,r.Settings.UnloadDesc )yM()
 end
-local function jM(...)
-    local e=Instance.new ( "ScreenGui" )e.Name = "Dice_LOADER_SCREEN" e.ResetOnSpawn = false e.DisplayOrder = 9999999 e.ZIndexBehavior =Enum.ZIndexBehavior.Sibling e.AutoLocalize = false pcall(function(...)
-        if syn and syn.protect_gui then
-            syn.protect_gui (e)e.Parent =game:GetService( "CoreGui" )
-        else
-            e.Parent =o:FindFirstChild( "PlayerGui" )or game:GetService( "CoreGui" )
-        end
-    end
-    )
-    if not e.Parent then
-        e.Parent =game:GetService( "CoreGui" )
-    end
-    local r=Instance.new ( "Frame" )r.Name = "Card" r.Size =UDim2.fromOffset ( 336 , 140 )r.Position =UDim2.new ( 0.5 , -168 , 0.5 , -70 )r.BackgroundColor3 =Color3.fromRGB ( 16 , 16 , 22 )r.BorderSizePixel = 0 r.Parent =e;
-    (Instance.new ( "UICorner" ,r)).CornerRadius =UDim.new ( 0 , 14 )
-    local y=Instance.new ( "UIStroke" ,r)y.Color =Color3.fromRGB ( 0 , 185 , 255 )y.Thickness = 1.4 y.ApplyStrokeMode =Enum.ApplyStrokeMode.Border
-    local w=Instance.new ( "TextLabel" )w.Size =UDim2.new ( 1 , -28 , 0 , 24 )w.Position =UDim2.new ( 0 , 14 , 0 , 14 )w.BackgroundTransparency = 1 w.Text = "Ken Hub" w.TextColor3 =Color3.fromRGB ( 245 , 248 , 255 )w.TextSize = 18 w.Font =Enum.Font.GothamBold w.TextXAlignment =Enum.TextXAlignment.Left w.AutoLocalize = false w.Parent =r
-    local j=Instance.new ( "TextLabel" )j.Size =UDim2.new ( 1 , -28 , 0 , 16 )j.Position =UDim2.new ( 0 , 14 , 0 , 38 )j.BackgroundTransparency = 1 j.Text = "Steal an Egg Suite v42.64" j.TextColor3 =Color3.fromRGB ( 140 , 150 , 175 )j.TextSize = 12 j.Font =Enum.Font.Gotham j.TextXAlignment =Enum.TextXAlignment.Left j.AutoLocalize = false j.Parent =r
-    local k=Instance.new ( "TextLabel" )k.Size =UDim2.new ( 0 , 50 , 0 , 24 )k.Position =UDim2.new ( 1 , -64 , 0 , 14 )k.BackgroundTransparency = 1 k.Text = "0%" k.TextColor3 =Color3.fromRGB ( 0 , 255 , 160 )k.TextSize = 14 k.Font =Enum.Font.GothamBold k.TextXAlignment =Enum.TextXAlignment.Right k.AutoLocalize = false k.Parent =r
-    local a=Instance.new ( "Frame" )a.Size =UDim2.new ( 1 , -28 , 0 , 10 )a.Position =UDim2.new ( 0 , 14 , 0 , 74 )a.BackgroundColor3 =Color3.fromRGB ( 25 , 27 , 38 )a.BorderSizePixel = 0 a.Parent =r;
-    (Instance.new ( "UICorner" ,a)).CornerRadius =UDim.new ( 0 , 5 )
-    local V=Instance.new ( "Frame" )V.Size =UDim2.new ( 0 , 0 , 1 , 0 )V.BackgroundColor3 =Color3.fromRGB ( 0 , 185 , 255 )V.BorderSizePixel = 0 V.Parent =a;
-    (Instance.new ( "UICorner" ,V)).CornerRadius =UDim.new ( 0 , 5 )
-    local H=Instance.new ( "UIGradient" ,V)H.Color =ColorSequence.new ({ColorSequenceKeypoint.new ( 0 ,Color3.fromRGB ( 0 , 185 , 255 )),ColorSequenceKeypoint.new ( 1 ,Color3.fromRGB ( 0 , 255 , 160 ))})
-    local t=Instance.new ( "TextLabel" )t.Size =UDim2.new ( 1 , -28 , 0 , 16 )t.Position =UDim2.new ( 0 , 14 , 0 , 94 )t.BackgroundTransparency = 1 t.Text = "Initializing Ken Hub..." t.TextColor3 =Color3.fromRGB ( 130 , 140 , 165 )t.TextSize = 11 t.Font =Enum.Font.Gotham t.TextXAlignment =Enum.TextXAlignment.Left t.AutoLocalize = false t.Parent =r task.spawn (function(...)
-        for y= 1 , 100 , 1 do
-            if not e.Parent then
-                break
-            end
-            k.Text =tostring(y).. "%" V.Size =UDim2.new (y/ 100 , 0 , 1 , 0 )
-            if y== 25 then
-                t.Text = "Loading interface modules..."
-            elseif y== 60 then
-                t.Text = "Setting up auto-steal controllers..."
-            elseif y== 85 then
-                t.Text = "Syncing server telemetry..."
-            elseif y== 100 then
-                t.Text = "Ready!"
-            end
-            task.wait ( 0.008 )
-        end
-    end
-    )
-    local function s(o,...) task.spawn (function(...) task.wait ( 0.9 )
-            local H=TweenInfo.new ( 0.35 ,Enum.EasingStyle.Quart ,Enum.EasingDirection.Out );
-            (u:Create(r,H,{[ "BackgroundTransparency" ]= 1 })):Play();
-            (u:Create(y,H,{[ "Transparency" ]= 1 })):Play();
-            (u:Create(w,H,{[ "TextTransparency" ]= 1 })):Play();
-            (u:Create(j,H,{[ "TextTransparency" ]= 1 })):Play();
-            (u:Create(k,H,{[ "TextTransparency" ]= 1 })):Play();
-            (u:Create(a,H,{[ "BackgroundTransparency" ]= 1 })):Play();
-            (u:Create(V,H,{[ "BackgroundTransparency" ]= 1 })):Play();
-            (u:Create(t,H,{[ "TextTransparency" ]= 1 })):Play()task.wait ( 0.4 )pcall(function(...) e:Destroy()
-            end
-            )
-            if o then
-                o()
-            end
-        end
-        )
-    end
-    return s
-end
 local kM={Gui=nil}
 local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:Set3dRenderingEnabled( true )
     end
@@ -4344,8 +4293,6 @@ local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:S
     )
 end
 local function oM(...)
-    local e = jM()
-
     local WindUI
     do
         local ok, result = pcall(function()
@@ -4390,14 +4337,15 @@ local function oM(...)
         local ThemeName = "Dark"
 
         local newWindow = WindUI:CreateWindow({
-            Title = "  Luna Hub X  ",
-            Author = "  Steal An Egg  ",
+            Title = "Ken Hub",
+            Author = "Steal An Egg V1",
+            Icon = dk,
             Theme = ThemeName,
             ToggleKey = Enum.KeyCode.F,
         })
 
         newWindow:Tag({
-            Title = "Sv.1.0.3",
+            Title = "Status: Ready",
             Color = "ElementBackground",
         })
 
