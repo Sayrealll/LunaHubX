@@ -1,6 +1,6 @@
 -- LOCAL STANDALONE TEST COPY. This Maintenance build intentionally does not use
 -- the KeySystem/runtime-capability gate. Re-executing it is supported: the
--- existing CloverHub instance is unloaded below before this copy takes ownership.
+-- existing LunaHUB instance is unloaded below before this copy takes ownership.
 
 -- Production payloads still require the private loader capability. Only this
 -- local Maintenance copy skips that requirement for direct executor testing.
@@ -16,11 +16,11 @@ end
 getgenv().__CHSAE_PayloadReady = nil
 
 -- This is the maintained autoexec copy. Potassium currently contains several
--- archived CloverHub(StealAnEgg) files under other autoexec folders; mark this
+-- archived LunaHUB(StealAnEgg) files under other autoexec folders; mark this
 -- session so those older files can return before replacing the fixed engine.
 getgenv().__CHSAE_CanonicalLoaded = true
 
--- CloverHub is now the only Auto-Steal owner. Retire any standalone AutoStealEgg
+-- LunaHUB is now the only Auto-Steal owner. Retire any standalone AutoStealEgg
 -- script that autoexec loaded earlier so two CFrame loops can never fight.
 if type(_G.AutoStealCtl) == "table" and type(_G.AutoStealCtl.panic) == "function" then
     pcall(_G.AutoStealCtl.panic)
@@ -43,9 +43,9 @@ end
 do
 local previousBuild = getgenv().__CHSAE_BuildId
 local previousCharacter = game:GetService("Players").LocalPlayer.Character
-if getgenv().__CloverHubSAE_Unload or getgenv().__VoidHubSAE_Unload then
-    pcall(getgenv().__CloverHubSAE_Unload or getgenv().__VoidHubSAE_Unload)
-    getgenv().__CloverHubSAE_Unload = nil
+if getgenv().__LunaHUBSAE_Unload or getgenv().__VoidHubSAE_Unload then
+    pcall(getgenv().__LunaHUBSAE_Unload or getgenv().__VoidHubSAE_Unload)
+    getgenv().__LunaHUBSAE_Unload = nil
     getgenv().__VoidHubSAE_Unload = nil -- one-release compatibility cleanup
     task.wait(0.15)
 end
@@ -67,7 +67,7 @@ if previousBuild == "2026-09-08-v1.7-arena-sell-v175"
     end
 end
 end
--- Belt-and-suspenders: destroy any leftover CloverHub UI (a failed prior unload
+-- Belt-and-suspenders: destroy any leftover LunaHUB UI (a failed prior unload
 -- can strand a duplicate). The former title is accepted once for migration.
 -- title, so other Obsidian-based scripts are left alone.
 do
@@ -82,7 +82,7 @@ do
                 if g:IsA("ScreenGui") and g.Name == "Obsidian" then
                     for _, d in ipairs(g:GetDescendants()) do
                         if (d:IsA("TextLabel") or d:IsA("TextButton"))
-                            and (tostring(d.Text):find("CloverHub", 1, true)
+                            and (tostring(d.Text):find("LunaHUB", 1, true)
                                 or tostring(d.Text):find("VoidHub", 1, true)) then
                             pcall(function() g:Destroy() end)
                             break
@@ -97,14 +97,14 @@ end
 -- Session token: background loops check this and exit when a newer script
 -- instance takes over (Library:Unload doesn't kill task.spawn loops).
 local SESSION = { Marker = {} }
-getgenv().__CloverHubSAE_Session = SESSION.Marker
+getgenv().__LunaHUBSAE_Session = SESSION.Marker
 getgenv().__CHSAE_ConfigControllers = {}
 local RELEASE_VERSION = "v2.1"
 local BUILD_ID = "2026-09-10-v2.1-rift-handoff-v214"
 getgenv().__CHSAE_ReleaseVersion = RELEASE_VERSION
 getgenv().__CHSAE_BuildId = BUILD_ID
 local function sessionAlive()
-    return getgenv().__CloverHubSAE_Session == SESSION.Marker
+    return getgenv().__LunaHUBSAE_Session == SESSION.Marker
 end
 
 -- Disabled feature workers share one rare wake signal instead of polling forever.
@@ -166,7 +166,7 @@ do
         Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
     end)
     if not ok or not Library then
-        warn("[CloverHub-SAE] ❌ Failed to load Obsidian UI: " .. tostring(err))
+        warn("[LunaHUB-SAE] ❌ Failed to load Obsidian UI: " .. tostring(err))
         return
     end
     end
@@ -185,7 +185,7 @@ do
         end
     end
 
-    getgenv().__CloverHubSAE_Unload = function()
+    getgenv().__LunaHUBSAE_Unload = function()
     if getgenv().__CHSAE_VelocityStop then pcall(getgenv().__CHSAE_VelocityStop, "unload") end
     getgenv().__CHSAE_VelocityStop = nil
     -- Between two waypoint segments the cruise presentation is active with no
@@ -201,7 +201,7 @@ do
         if ok and restored ~= false and getgenv().__CHSAE_TPRestore == tpRestore then
             getgenv().__CHSAE_TPRestore = nil
         elseif not ok then
-            warn("[CloverHub-SAE][TP] controller restore failed; respawn may be required: "
+            warn("[LunaHUB-SAE][TP] controller restore failed; respawn may be required: "
                 .. tostring(restored))
         end
     end
@@ -210,7 +210,7 @@ do
     end
     getgenv().__CHSAE_RestoreRouteObstacles = nil
     getgenv().__CHSAE_PayloadReady = nil
-    getgenv().__CloverHubSAE_Session = nil -- stop background loops
+    getgenv().__LunaHUBSAE_Session = nil -- stop background loops
     local idleWorkerWake = SESSION.IdleWorkerWake
     local scanWake = getgenv().__CHSAE_ScanWake
     if scanWake then pcall(function() scanWake:Fire("unload") end) end
@@ -294,7 +294,7 @@ do
     getgenv().__CHSAE_GuardRestore = nil
     pcall(function() Library:Unload() end)
     getgenv().__CHSAE_CanonicalLoaded = nil
-    getgenv().__CloverHubSAE_Unload = nil
+    getgenv().__LunaHUBSAE_Unload = nil
     getgenv().__VoidHubSAE_Unload = nil
 end
 
@@ -422,7 +422,7 @@ local function MakeCollapsible(Groupbox, startsCollapsed)
 end
 
 -- ════════════════════════════════════════════
--- [[ CH UI KIT — the CloverHub styling standard (GAG2/TradingWorld) ]] --
+-- [[ CH UI KIT — the LunaHUB styling standard (GAG2/TradingWorld) ]] --
 -- ════════════════════════════════════════════
 
 local function StyleGroupboxPanel(groupbox)
@@ -521,7 +521,7 @@ local function getSharedTargetOverlay()
     if not parentGui then parentGui = LocalPlayer:WaitForChild("PlayerGui") end
 
     local root = Instance.new("Frame")
-    root.Name = "CloverHubSharedPicker"
+    root.Name = "LunaHUBSharedPicker"
     root.Size = UDim2.fromScale(1, 1)
     root.BackgroundColor3 = Color3.new(0, 0, 0)
     root.BackgroundTransparency = 0.45
@@ -876,7 +876,7 @@ local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
         if not holder then return end
         local val = summary()
         for _, e in ipairs(holder:GetDescendants()) do
-            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "CloverHubOverlayCatcher" then
+            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "LunaHUBOverlayCatcher" then
                 pcall(function()
                     e.TextXAlignment = Enum.TextXAlignment.Left
                     e.TextYAlignment = Enum.TextYAlignment.Center
@@ -1004,7 +1004,7 @@ local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
         local anchorTo = displayBtn or holder
 
         local cover = Instance.new("TextButton")
-        cover.Name = "CloverHubOverlayCatcher"
+        cover.Name = "LunaHUBOverlayCatcher"
         cover.BackgroundTransparency = 1
         cover.Text = ""
         cover.Size = UDim2.fromScale(1, 1)
@@ -1148,7 +1148,7 @@ function CHK.DeferTabBuild(tab, build, cleanup)
                 if state.phase == "cancelled" then
                     disconnect()
                 else
-                    warn("[CloverHub] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
+                    warn("[LunaHUB] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
                     pcall(function()
                         Library:Notify("Could not build " .. tostring(tab.Name) .. ". Reopen the tab to retry.", 5)
                     end)
@@ -1198,8 +1198,8 @@ function CHK.Merge(groupbox, buildFn)
     if #set == 0 then return nil end
 
     local card = Instance.new("Frame")
-    card.Name = "CloverStatusCard"
-    card:SetAttribute("CloverHubStatusCard", true)
+    card.Name = "LunaHUBStatusCard"
+    card:SetAttribute("LunaHUBStatusCard", true)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     card.BorderSizePixel = 0
@@ -1254,7 +1254,7 @@ function CHK.Merge(groupbox, buildFn)
     return card
 end
 
--- Compact CloverHub slider: a card, clear value, full-width accent track, and a
+-- Compact LunaHUB slider: a card, clear value, full-width accent track, and a
 -- larger invisible drag target. This replaces Obsidian's default slider visual.
 function CHK.Slider(groupbox, id, info)
     local minimum = tonumber(info.Min) or 0
@@ -1266,7 +1266,7 @@ function CHK.Slider(groupbox, id, info)
     local inputService = game:GetService("UserInputService")
 
     local card = Instance.new("Frame")
-    card.Name = "CloverSlider_" .. tostring(id)
+    card.Name = "LunaHUBSlider_" .. tostring(id)
     card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     card.BorderSizePixel = 0
     card.Size = UDim2.new(1, 0, 0, 54)
@@ -1543,7 +1543,7 @@ function CHK.Metrics(groupbox, id, definitions, columns)
     local values = {}
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverMetrics_" .. tostring(id)
+    panel.Name = "LunaHUBMetrics_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, totalHeight)
@@ -1632,7 +1632,7 @@ function CHK.Notice(groupbox, id, info)
     local z = tonumber(info.zIndex) or 2
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverNotice_" .. tostring(id)
+    panel.Name = "LunaHUBNotice_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, height)
@@ -1711,7 +1711,7 @@ function CHK.SalePreview(groupbox, id, info)
     local accent = info.accent or Color3.fromRGB(248, 113, 113)
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverSalePreview_" .. tostring(id)
+    panel.Name = "LunaHUBSalePreview_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, height)
@@ -1858,7 +1858,7 @@ end
 
 -- [[ 3. WINDOW + TABS ]] --
 local Window = Library:CreateWindow({
-    Title            = "CloverHub",
+    Title            = "LunaHUB",
     Footer           = RELEASE_VERSION .. "  •  Steal An Egg",
     Size             = UDim2.fromOffset(680, 540),
     ToggleKeybind    = Enum.KeyCode.LeftControl,
@@ -1878,7 +1878,7 @@ local Window = Library:CreateWindow({
 do
     if type(Library.AddDraggableButton) == "function" then
         Window.__VisibilityButton = Library:AddDraggableButton(
-            "Clover",
+            "LunaHUB",
             function() end,
             true,
             false
@@ -1897,14 +1897,14 @@ do
                 (Library.WindowAnimationInfo and Library.WindowAnimationInfo.Time or 0.2) + 0.04
             )
             local pressScale = Instance.new("UIScale")
-            pressScale.Name = "CloverPressScale"
+            pressScale.Name = "LunaHUBPressScale"
             pressScale.Scale = 1
             pressScale.Parent = visibilityButton
             local pressTween
             local pressInInfo = TweenInfo.new(0.075, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             local pressOutInfo = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
-            visibilityButton.Name = "CloverHubVisibilityButton"
+            visibilityButton.Name = "LunaHUBVisibilityButton"
             visibilityButton.Active = true
             visibilityButton.Selectable = true
             visibilityButton.Interactable = true
@@ -1913,9 +1913,9 @@ do
             visibilityButton.TextSize = 15
             visibilityButton.Size = UDim2.fromOffset(92, 32)
             visibilityButton.ZIndex = 100
-            visibilityButton:SetAttribute("CloverHubInputMode", "Activated")
-            visibilityButton:SetAttribute("CloverHubDragTolerance", dragTolerance)
-            visibilityButton:SetAttribute("CloverHubPressScale", 0.965)
+            visibilityButton:SetAttribute("LunaHUBInputMode", "Activated")
+            visibilityButton:SetAttribute("LunaHUBDragTolerance", dragTolerance)
+            visibilityButton:SetAttribute("LunaHUBPressScale", 0.965)
 
             local function tweenVisibilityButtonScale(targetScale, tweenInfo)
                 if not pressScale.Parent then return end
@@ -1931,10 +1931,10 @@ do
                 if Window.MainFrame then
                     windowOpen = Window.MainFrame.Visible
                 end
-                visibilityButton:SetAttribute("CloverHubWindowOpen", windowOpen)
+                visibilityButton:SetAttribute("LunaHUBWindowOpen", windowOpen)
                 visibilityButton.Text = windowOpen
-                    and '<b><font color="#58E083">Clover</font></b>'
-                    or '<b><font color="#C4C9D1">Clover</font></b>'
+                    and '<b><font color="#58E083">LunaHUB</font></b>'
+                    or '<b><font color="#C4C9D1">LunaHUB</font></b>'
             end
 
             local function applyVisibilityRequest(requestId, desiredOpen, attempt)
@@ -1947,17 +1947,17 @@ do
                 Window:Toggle(desiredOpen)
                 refreshVisibilityButton()
                 if Library.Toggled == desiredOpen then
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                    visibilityButton:SetAttribute("LunaHUBToggleQueued", false)
                     return
                 end
 
                 if attempt < 4 then
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", true)
+                    visibilityButton:SetAttribute("LunaHUBToggleQueued", true)
                     task.delay(visibilityRetryDelay, function()
                         applyVisibilityRequest(requestId, desiredOpen, attempt + 1)
                     end)
                 else
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                    visibilityButton:SetAttribute("LunaHUBToggleQueued", false)
                 end
             end
 
@@ -2004,18 +2004,18 @@ do
 end
 
 -- Brand only the exact window title. A bright green gradient plus a soft text
--- stroke gives CloverHub a glow without changing tab or groupbox colors.
+-- stroke gives LunaHUB a glow without changing tab or groupbox colors.
 task.defer(function()
     pcall(function()
         for _, label in ipairs(Library.ScreenGui:GetDescendants()) do
-            if label:IsA("TextLabel") and label.Text == "CloverHub" then
+            if label:IsA("TextLabel") and label.Text == "LunaHUB" then
                 label.TextColor3 = Color3.fromRGB(74, 222, 128)
                 label.TextStrokeColor3 = Color3.fromRGB(22, 163, 74)
                 label.TextStrokeTransparency = 0.38
-                local oldGradient = label:FindFirstChild("CloverTitleGlow")
+                local oldGradient = label:FindFirstChild("LunaHUBTitleGlow")
                 if oldGradient then oldGradient:Destroy() end
                 local gradient = Instance.new("UIGradient")
-                gradient.Name = "CloverTitleGlow"
+                gradient.Name = "LunaHUBTitleGlow"
                 gradient.Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 247, 208)),
                     ColorSequenceKeypoint.new(0.48, Color3.fromRGB(74, 222, 128)),
@@ -2337,11 +2337,11 @@ local Settings = {
 -- slider comes up with your saved value on a fresh server (rejoin, server hop,
 -- or a plain re-execute).
 --
--- FILE LAYOUT (CloverHub keeps a separate Steal an Egg profile):
+-- FILE LAYOUT (LunaHUB keeps a separate Steal an Egg profile):
 -- can never read each other's config):
---   CloverHub/universalToggle(SAG).json  → { "UseUniversalConfig": true|false }
---   CloverHub/universalConfig(SAG).json  → shared by every account on this PC
---   CloverHub/config(SAG)_<UserId>.json  → DEFAULT: per-user, so two accounts
+--   LunaHUB/universalToggle(SAG).json  → { "UseUniversalConfig": true|false }
+--   LunaHUB/universalConfig(SAG).json  → shared by every account on this PC
+--   LunaHUB/config(SAG)_<UserId>.json  → DEFAULT: per-user, so two accounts
 --                                        don't overwrite each other's setup
 --
 -- Auto-save checks scalar/selection values against the last saved snapshot every
@@ -2353,7 +2353,7 @@ local ConfigMeta = {
     migrated = false,
     legacyPath = "VoidHub/config(SAG)_" .. tostring(LocalPlayer.UserId) .. ".json",
 }
-local CONFIG_DIR    = "CloverHub"
+local CONFIG_DIR    = "LunaHUB"
 local CONFIG_TOGGLE = CONFIG_DIR .. "/universalToggle(SAG).json"
 local CONFIG_PATH   = CONFIG_DIR .. "/config(SAG)_" .. tostring(LocalPlayer.UserId) .. ".json"
 do -- flip to the shared file only if the toggle file says so
@@ -2684,14 +2684,14 @@ end
 -- [[ AUTOMATIC CONFIG FILE ADAPTER ]] --
 ConfigMeta.persistence = ConfigMeta.CreatePersistence({
     settings = Settings, meta = ConfigMeta, alive = sessionAlive,
-    blocked = function() return getgenv().__CloverHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave end,
+    blocked = function() return getgenv().__LunaHUBSAE_NoSave or getgenv().__VoidHubSAE_NoSave end,
     snapshot = function() return configSnapshot(true) end,
     encode = function(snapshot) return HttpService:JSONEncode(snapshot) end,
     write = function(encoded)
         pcall(function()
             if makefolder and isfolder and not isfolder(CONFIG_DIR) then makefolder(CONFIG_DIR) end
         end)
-        if not sessionAlive() or getgenv().__CloverHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave then
+        if not sessionAlive() or getgenv().__LunaHUBSAE_NoSave or getgenv().__VoidHubSAE_NoSave then
             error("config save cancelled", 0)
         end
         writefile(CONFIG_PATH, encoded)
@@ -3529,10 +3529,10 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
         local copy = rawget(env, "setclipboard") or rawget(env, "toclipboard")
             or (type(clipboardApi) == "table" and clipboardApi.set)
         if type(copy) ~= "function" then
-            Library:Notify("Discord: discord.gg/CloverOnTop", 5)
+            Library:Notify("Discord: discord.gg/LunaHUBOnTop", 5)
             return
         end
-        local success = pcall(copy, "discord.gg/CloverOnTop")
+        local success = pcall(copy, "discord.gg/LunaHUBOnTop")
         Library:Notify(success and "✅ Discord copied." or "❌ Copy failed.", 3)
     end },
 })
@@ -3541,7 +3541,7 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
 -- avoid another long-lived top-level local in this already large Luau chunk.
 Window.__FreeReleaseBox = HomeTab:AddRightGroupbox("🛡️ Free Release")
 CHK.Notice(Window.__FreeReleaseBox, "FreeReleaseNotice", {
-    title = "CLOVERHUB IS FREE",
+    title = "LunaHUB IS FREE",
     text = "Never pay for access.\nSellers are unaffiliated.",
     accent = Color3.fromRGB(74, 222, 128),
     titleColor = Color3.fromRGB(134, 239, 172),
@@ -4116,7 +4116,7 @@ end)
 
 do
     local toggle = AutoStealBox:AddToggle("GuardProtectionToggle", {
-        Text = "Clover's Will",
+        Text = "LunaHUB's Will",
         Default = Settings.GuardProtection,
         Tooltip = "Resist guard and bat knockback.",
     })
@@ -4458,7 +4458,7 @@ local function watchDeaths(char)
                         - (tonumber(rawget(sample, "Timestamp")) or 0)) or -1
                 local guardName, guardDistance = nearestGuardAt(root.Position)
                 local pending = rawget(getgenv(), "__CHSAE_CarryRequest")
-                warn(("[CloverHub-SAE][death] hp=%.1f->%.1f area=%s pos=%.1f,%.1f,%.1f ws=%.1f killIgnore=%s threat=%s S%s/T%s/F%s ctx=%.2f correction=%s guard=%s@%.1f carryFlight=%s"):format(
+                warn(("[LunaHUB-SAE][death] hp=%.1f->%.1f area=%s pos=%.1f,%.1f,%.1f ws=%.1f killIgnore=%s threat=%s S%s/T%s/F%s ctx=%.2f correction=%s guard=%s@%.1f carryFlight=%s"):format(
                     tonumber(last) or -1, tonumber(h) or -1, tostring(area or "Start/Unknown"),
                     root.Position.X, root.Position.Y, root.Position.Z, tonumber(hum.WalkSpeed) or -1,
                     tostring(root:GetAttribute("KillPartIgnore")),
@@ -5708,7 +5708,7 @@ function Arb.petsSerial(fn, activity)
     local ok, err = pcall(fn)
     Arb.petsBusy, Arb.remoteOnlyActive = false, false
     Arb.remoteActivity = nil
-    if not ok then warn("[CloverHub] pets task error: " .. tostring(err)) end
+    if not ok then warn("[LunaHUB] pets task error: " .. tostring(err)) end
     return true
 end
 
@@ -5727,7 +5727,7 @@ function Arb.sellSerial(fn, activity)
     Arb.petsBusy, Arb.sellerActive = false, false
     Arb.remoteActivity = nil
     if not results[1] then
-        warn("[CloverHub] sell task error: " .. tostring(results[2]))
+        warn("[LunaHUB] sell task error: " .. tostring(results[2]))
         return true
     end
     return true, table.unpack(results, 2, results.n)
@@ -7959,7 +7959,7 @@ local function registerIntegrityTravel(root, direction, speed, distance, request
         integrityState = nil
         RuntimeStatus.defaultMoveFallback = true
         getgenv().__CHSAE_IntegrityState = nil
-        warn("[CloverHub-SAE][integrity] registration rejected; quarantined until respawn/reload")
+        warn("[LunaHUB-SAE][integrity] registration rejected; quarantined until respawn/reload")
     end
     if registered then return registered, false, nil end
     return registered, false, "rejected"
@@ -8009,9 +8009,9 @@ setIntegrityGuard = function(enabled)
     if report ~= integrityReport then
         integrityReport = report
         if integrityBridge then
-            print("[CloverHub-SAE][integrity] " .. report)
+            print("[LunaHUB-SAE][integrity] " .. report)
         else
-            warn("[CloverHub-SAE][integrity] unavailable — no live guard was invoked")
+            warn("[LunaHUB-SAE][integrity] unavailable — no live guard was invoked")
         end
     end
     return integrityBridge ~= nil
@@ -8667,7 +8667,7 @@ if okRagdoll and type(ragdollTargets) == "table" and type(hookfunction) == "func
 end
 
 if #GuardProtection.ragdollTargets == 0 then
-    warn("[CloverHub-SAE] Guard Protection controller hooks unavailable")
+    warn("[LunaHUB-SAE] Guard Protection controller hooks unavailable")
 end
 end
 
@@ -9782,7 +9782,7 @@ local function beginTreadmillExitRequest()
             TreadmillNet.Invoke,
             TreadmillEndpoints.REQUEST_UNEQUIP
         )
-        if getgenv().__CloverHubSAE_Session ~= requestSession then return end
+        if getgenv().__LunaHUBSAE_Session ~= requestSession then return end
         exitState.inFlight = false
         exitState.accepted = invoked and accepted == true
         if not invoked then
@@ -9803,7 +9803,7 @@ local function requestTreadmillExit()
     local clearSince
     local transitionSettle = math.clamp(getNetworkPingSeconds() * 1.5 + 0.08, 0.16, 0.35)
     -- Session ownership is the cancellation authority. `keepGoing` was never
-    -- defined by CloverHub and existed only accidentally in some executors.
+    -- defined by LunaHUB and existed only accidentally in some executors.
     while sessionAlive() and os.clock() < deadline do
         local inactive = detectActiveTreadmill() == nil
         local movable = ProgressionCtl.characterReadyToMove()
@@ -14429,7 +14429,7 @@ task.spawn(function()
 
         if not sessionAlive() then break end
         if not workerOk then
-            warn("[CloverHub-SAE][steal] worker recovered: " .. tostring(workerError))
+            warn("[LunaHUB-SAE][steal] worker recovered: " .. tostring(workerError))
             RuntimeStatus.movementPhase = nil
             local pending = getgenv().__CHSAE_CarryRequest
             -- Never abandon an InvokeServer that is genuinely still running.
@@ -15564,7 +15564,7 @@ function placeEggsNow()
         task.defer(RuntimeStatus.refreshEggOverlapStatus)
     end
     if not ok then
-        warn("[CloverHub] place pass error: " .. tostring(placed))
+        warn("[LunaHUB] place pass error: " .. tostring(placed))
         return 0, 0, false, "error"
     end
     return placed, total, full, reason
@@ -15657,7 +15657,7 @@ local function hatchReadyNow()
         end)
     end
     Arb.hatchBusy = false
-    if not ok then warn("[CloverHub] hatch pass error: " .. tostring(err)) end
+    if not ok then warn("[LunaHUB] hatch pass error: " .. tostring(err)) end
     if ok then return hatched, nextReadyIn, nil end
     return hatched, nextReadyIn, "error"
 end
@@ -15788,7 +15788,7 @@ task.spawn(function()
             Arb.placeBusy = false
             Arb.release("Place")
             setPlaceStatus("🟡 Retrying placement")
-            warn("[CloverHub] Auto-Place worker recovered: " .. tostring(workerError))
+            warn("[LunaHUB] Auto-Place worker recovered: " .. tostring(workerError))
             loopWait = 1
         end
         HatchScheduler.Wait(loopWait)
@@ -19285,7 +19285,7 @@ end
         end },
     })
     local list = Instance.new("ScrollingFrame")
-    list.Name = "CloverServerList"
+    list.Name = "LunaHUBServerList"
     list.BackgroundTransparency = 1
     list.BorderSizePixel = 0
     list.Size = UDim2.new(1, 0, 0, 340)
@@ -19593,7 +19593,7 @@ do
 
         setWebhookStatus("🟡 Sending")
         local details = type(description) == "table" and description or nil
-        local embedTitle = tostring(title or "CloverHub")
+        local embedTitle = tostring(title or "LunaHUB")
         local descriptionText = tostring(description or "")
         local fields = {}
         local thumbnail
@@ -19654,7 +19654,7 @@ do
         }
         if thumbnail then embed.thumbnail = thumbnail end
         local payload = {
-            username = "CloverHub",
+            username = "LunaHUB",
             embeds = { embed },
         }
         local payloadJson = HttpService:JSONEncode(payload)
@@ -19688,7 +19688,7 @@ do
         { "📨 Send Test", function()
             currentWebhookURL()
             task.spawn(RuntimeStatus.sendWebhook, "test", "Test Message",
-                "Your CloverHub webhook is connected.", 0x49E685, true)
+                "Your LunaHUB webhook is connected.", 0x49E685, true)
         end },
     })
     setWebhookStatus(validWebhookURL(Settings.WebhookURL) and "🟢 URL ready" or "🔗 Paste a webhook URL")
@@ -20498,7 +20498,7 @@ do
     local blackFrame = Instance.new("Frame")
     blackFrame.Name = "CHSAE_BlackScreen"
     -- Overscan past Roblox's top inset so the 3D view and native top bar area
-    -- are both covered while the CloverHub window remains available above it.
+    -- are both covered while the LunaHUB window remains available above it.
     blackFrame.Size = UDim2.new(1, 0, 1, 200)
     blackFrame.Position = UDim2.new(0, 0, 0, -100)
     blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -20510,8 +20510,8 @@ do
     blackFrame.Parent = Library.ScreenGui
 
     -- Black Screen keeps the client light while still showing the information an
-    -- unattended CloverHub session actually needs. This is deliberately a compact
-    -- CloverHub dashboard, not a copy of another hub's unsupported stat list.
+    -- unattended LunaHUB session actually needs. This is deliberately a compact
+    -- LunaHUB dashboard, not a copy of another hub's unsupported stat list.
     local blackMonitor = (function()
         local palette = {
             panel = Color3.fromRGB(11, 15, 18),
@@ -20609,7 +20609,7 @@ do
         outline.Parent = panel
 
         local accent = Instance.new("Frame")
-        accent.Name = "CloverAccent"
+        accent.Name = "LunaHUBAccent"
         accent.Size = UDim2.new(1, 0, 0, 3)
         accent.BackgroundColor3 = palette.green
         accent.BorderSizePixel = 0
@@ -20637,9 +20637,9 @@ do
             "C", 21, palette.green, Enum.TextXAlignment.Center, 3)
 
         local brand = addLabel(panel, "Brand", UDim2.fromOffset(62, 9), UDim2.new(1, -174, 0, 27),
-            "CLOVERHUB", 22, palette.text, Enum.TextXAlignment.Left, 3)
+            "LunaHUB", 22, palette.text, Enum.TextXAlignment.Left, 3)
         brand.RichText = true
-        brand.Text = '<b>CLOVER<font color="#4ADE80">HUB</font></b>'
+        brand.Text = '<b>LunaHUB<font color="#4ADE80">HUB</font></b>'
 
         local userLine = addLabel(panel, "User", UDim2.fromOffset(62, 35), UDim2.new(1, -180, 0, 17),
             "@" .. tostring(LocalPlayer.Name), 13, palette.muted, Enum.TextXAlignment.Left, 3)
@@ -20678,7 +20678,7 @@ do
         addLabel(activityCard, "Title", UDim2.fromOffset(11, 4), UDim2.new(1, -22, 0, 14),
             "CURRENT AUTOMATION", 12, palette.muted, Enum.TextXAlignment.Left, 3)
         local activityValue = addLabel(activityCard, "Value", UDim2.fromOffset(11, 18), UDim2.new(1, -22, 0, 23),
-            "Starting CloverHub…", 19, palette.green, Enum.TextXAlignment.Left, 3)
+            "Starting LunaHUB…", 19, palette.green, Enum.TextXAlignment.Left, 3)
 
         local metricGrid = Instance.new("Frame")
         metricGrid.Name = "Metrics"
@@ -20746,13 +20746,13 @@ do
             "Event status loading…", 13, Color3.fromRGB(216, 180, 254), Enum.TextXAlignment.Left, 3)
 
         addLabel(root, "CommunityTitle", UDim2.new(0, 0, 0, 327), UDim2.new(1, 0, 0, 14),
-            "JOIN THE CLOVERHUB COMMUNITY", 11, palette.muted, Enum.TextXAlignment.Center, 2)
+            "JOIN THE LunaHUB COMMUNITY", 11, palette.muted, Enum.TextXAlignment.Center, 2)
         local discordValue = addLabel(root, "Discord", UDim2.new(0, 0, 0, 342), UDim2.new(1, 0, 0, 25),
-            "discord.gg/CloverOnTop", 19, palette.cyan, Enum.TextXAlignment.Center, 2)
+            "discord.gg/LunaHUBOnTop", 19, palette.cyan, Enum.TextXAlignment.Center, 2)
         discordValue.RichText = true
-        discordValue.Text = '<b>discord.gg/<font color="#4ADE80">CloverOnTop</font></b>'
+        discordValue.Text = '<b>discord.gg/<font color="#4ADE80">LunaHUBOnTop</font></b>'
         addLabel(root, "Version", UDim2.new(0, 0, 0, 370), UDim2.new(1, 0, 0, 14),
-            "CloverHub " .. RELEASE_VERSION .. "  •  3D RENDERING PAUSED", 10,
+            "LunaHUB " .. RELEASE_VERSION .. "  •  3D RENDERING PAUSED", 10,
             Color3.fromRGB(91, 105, 113), Enum.TextXAlignment.Center, 2)
 
         local monitor = { Root = root }
@@ -20794,7 +20794,7 @@ do
                 Ping = pingValue.Text,
                 Session = sessionValue.Text,
                 Event = eventValue.Text,
-                Discord = "discord.gg/CloverOnTop",
+                Discord = "discord.gg/LunaHUBOnTop",
             }
         end
 
@@ -21507,7 +21507,7 @@ Window.__BuildAccountTab = function(alive)
                                         end)
                                         task.wait(0.15)
                                         pcall(function()
-                                            LocalPlayer:Kick("Logged out of CloverHub. Your key is unbound and can be entered again.")
+                                            LocalPlayer:Kick("Logged out of LunaHUB. Your key is unbound and can be entered again.")
                                         end)
                                         return
                                     end
@@ -21577,7 +21577,7 @@ DevBox:AddLabel("ProtectedReleaseNotice", {
     DoesWrap = true,
 })
 
--- Official Obsidian SaveManager with a CloverHub snapshot bridge. SaveManager
+-- Official Obsidian SaveManager with a LunaHUB snapshot bridge. SaveManager
 -- owns the named-config workflow and confirmation dialogs; the snapshot keeps
 -- custom overlay dropdowns and CHK controls lossless alongside native controls.
 task.defer(function()
@@ -21594,7 +21594,7 @@ task.defer(function()
         local configured, configBox = pcall(function()
             manager:SetLibrary(Library)
             manager:IgnoreThemeSettings()
-            manager:SetFolder("CloverHub")
+            manager:SetFolder("LunaHUB")
             manager:SetSubFolder("StealAnEgg")
             manager:SetIgnoreIndexes({
                 "EggTargetRarities", "EggTargetCategories", "EggTargetAreas", "EggTargetPriority",
@@ -21610,8 +21610,8 @@ task.defer(function()
                 "AutoRiftBossToggle", "RiftBossFirstToggle", "AutoClaimBossMasteryToggle", "AutoBuyRiftShopToggle", "RiftShopDropdown",
                 "StealMovementTypeDropdown", "BurstTweenToggle", "StealSpeedSlider", "StealSpeedInput",
                 "SidewaysGlideToggle", "GuardProtectionToggle", "EggESPAreas",
-                "CloverConfigName", "CloverConfigList", "CloverConfigJSON", "WebhookURLInput",
-                -- The complete Clover snapshot below owns automated seller state.
+                "LunaHUBConfigName", "LunaHUBConfigList", "LunaHUBConfigJSON", "WebhookURLInput",
+                -- The complete LunaHUB snapshot below owns automated seller state.
                 "AutoSellToggle", "AutoSellEggToggle",
                 "SellPetsWhenFullToggle", "SellEggsWhenFullToggle",
             })
@@ -21730,7 +21730,7 @@ task.defer(function()
                 if not success then return encoded, success, err end
                 local ok, payload = pcall(HttpService.JSONDecode, HttpService, encoded)
                 if not (ok and type(payload) == "table") then
-                    return "", false, "Failed to attach CloverHub settings"
+                    return "", false, "Failed to attach LunaHUB settings"
                 end
                 -- Defense in depth: IgnoreIndexes should already omit this
                 -- native input, but scrub the generated object list as well so
@@ -21751,11 +21751,11 @@ task.defer(function()
                 local exportSchema = {}
                 for key in pairs(exportSettings) do exportSchema[#exportSchema + 1] = key end
                 table.sort(exportSchema)
-                payload.cloverSettings = exportSettings
-                payload.cloverSettingsSchema = exportSchema
-                payload.cloverSettingsRevision = Settings.ConfigRevision
+                payload.LunaHUBSettings = exportSettings
+                payload.LunaHUBSettingsSchema = exportSchema
+                payload.LunaHUBSettingsRevision = Settings.ConfigRevision
                 local encodeOk, bridged = pcall(HttpService.JSONEncode, HttpService, payload)
-                if not encodeOk then return "", false, "Failed to encode CloverHub settings" end
+                if not encodeOk then return "", false, "Failed to encode LunaHUB settings" end
                 return bridged, true
             end
             manager.LoadJSON = function(self, content)
@@ -21765,10 +21765,10 @@ task.defer(function()
                 local safeContent = content
                 local invalidPetThreshold, invalidEggThreshold = false, false
                 if decodeOk and type(payload) == "table" then
-                    invalidPetThreshold, invalidEggThreshold = applySnapshot(payload.cloverSettings)
+                    invalidPetThreshold, invalidEggThreshold = applySnapshot(payload.LunaHUBSettings)
                     if type(payload.objects) == "table" then
                         local safeObjects = {}
-                        local cloverOwned = {
+                        local LunaHUBOwned = {
                             AntiAFKMethodDropdown = true, -- retired v149 selector
                             -- Retired UI tombstone: strip old named-config objects
                             -- so SaveManager never tries to restore a removed control.
@@ -21805,21 +21805,21 @@ task.defer(function()
                         }
                         for _, object in ipairs(payload.objects) do
                             if type(object) ~= "table" or (object.idx ~= "WebhookURLInput"
-                                and cloverOwned[object.idx] ~= true) then
+                                and LunaHUBOwned[object.idx] ~= true) then
                                 safeObjects[#safeObjects + 1] = object
                             end
                         end
                         payload.objects = safeObjects
                     end
-                    payload.cloverSettings = configSnapshot(false)
-                    payload.cloverSettingsSchema = nil
+                    payload.LunaHUBSettings = configSnapshot(false)
+                    payload.LunaHUBSettingsSchema = nil
                     local encodeOk, encoded = pcall(HttpService.JSONEncode, HttpService, payload)
                     if encodeOk then safeContent = encoded end
                 end
                 local loadOk, success, err = pcall(rawLoadJSON, self, safeContent)
                 local loadSucceeded = loadOk and success == true
                 -- A malicious/old native object entry must not re-arm a seller
-                -- after its invalid floor was rejected by the Clover snapshot.
+                -- after its invalid floor was rejected by the LunaHUB snapshot.
                 if invalidPetThreshold then
                     Settings.AutoSell = false
                     Settings.SellPetsWhenFull = false
@@ -21829,7 +21829,7 @@ task.defer(function()
                     Settings.SellEggsWhenFull = false
                 end
                 if not loadSucceeded then
-                    -- The Clover snapshot is applied before the native objects.
+                    -- The LunaHUB snapshot is applied before the native objects.
                     -- If native loading fails, never leave irreversible seller
                     -- flags armed from a config which the UI reports as failed.
                     Settings.AutoSell = false
@@ -21849,10 +21849,10 @@ task.defer(function()
             end
 
             -- Keep SaveManager as the storage/serialization engine, but build the
-            -- surface with CloverHub controls. The addon's stock BuildConfigSection
+            -- surface with LunaHUB controls. The addon's stock BuildConfigSection
             -- uses flat AddButton elements which do not match the rest of this UI.
             local box = SettingsTab:AddGroupbox({ Side = "Left", Name = "💾 Config" })
-            local configNameInput = box:AddInput("CloverConfigName", {
+            local configNameInput = box:AddInput("LunaHUBConfigName", {
                 Text = "Name", Placeholder = "My config", Finished = false,
                 Tooltip = "Name a new config.",
             })
@@ -21873,7 +21873,7 @@ task.defer(function()
                 setAutoloadLabel()
                 return values
             end
-            configList = BindDropdownOverlay(box, "CloverConfigList", "Configs",
+            configList = BindDropdownOverlay(box, "LunaHUBConfigList", "Configs",
                 manager:RefreshConfigList(), {
                     multi = false, text = "Configs", tooltip = "Choose a saved config.",
                     get = function() return selectedConfig end,
@@ -21933,13 +21933,13 @@ task.defer(function()
                 end
             end
 
-            MakeButtonPanel(box, "CloverConfigCreateButtons", {
+            MakeButtonPanel(box, "LunaHUBConfigCreateButtons", {
                 { "+ Create Config", function()
                     local name = configName()
                     if not name then return end
                     local exists = table.find(manager:RefreshConfigList(), name) ~= nil
                     if exists then
-                        confirm("CloverConfigCreateDialog", "Config exists",
+                        confirm("LunaHUBConfigCreateDialog", "Config exists",
                             ("Overwrite %q with your current settings?"):format(name),
                             "Overwrite", true, function() saveNamed(name, "Overwritten") end)
                     else
@@ -21948,10 +21948,10 @@ task.defer(function()
                 end },
             })
 
-            MakeButtonPanel(box, "CloverConfigManageButtons", {
+            MakeButtonPanel(box, "LunaHUBConfigManageButtons", {
                 { "📂 Load Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigLoadDialog", "Load config",
+                    confirm("LunaHUBConfigLoadDialog", "Load config",
                         ("Load %q and replace the current settings?"):format(name),
                         "Load", false, function()
                             local success, err = manager:Load(name)
@@ -21960,13 +21960,13 @@ task.defer(function()
                 end },
                 { "💾 Overwrite Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigOverwriteDialog", "Overwrite config",
+                    confirm("LunaHUBConfigOverwriteDialog", "Overwrite config",
                         ("Replace %q with the current settings?"):format(name),
                         "Overwrite", true, function() saveNamed(name, "Overwritten") end)
                 end },
                 { "🗑 Delete Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigDeleteDialog", "Delete config",
+                    confirm("LunaHUBConfigDeleteDialog", "Delete config",
                         ("Delete %q? This cannot be undone."):format(name),
                         "Delete", true, function()
                             local success, err = manager:Delete(name)
@@ -21977,7 +21977,7 @@ task.defer(function()
                 { "🔄 Refresh Configs", function() refreshList(true) end },
             })
 
-            MakeButtonPanel(box, "CloverConfigAutoloadButtons", {
+            MakeButtonPanel(box, "LunaHUBConfigAutoloadButtons", {
                 { "⭐ Set Autoload", function()
                     local name = chosen(); if not name then return end
                     local success, err = manager:SaveAutoloadConfig(name)
@@ -21985,7 +21985,7 @@ task.defer(function()
                     setAutoloadLabel()
                 end },
                 { "🗑 Clear Autoload", function()
-                    confirm("CloverConfigClearAutoloadDialog", "Clear autoload",
+                    confirm("LunaHUBConfigClearAutoloadDialog", "Clear autoload",
                         "Stop loading a named config on startup?", "Clear", true, function()
                             local success, err = manager:DeleteAutoLoadConfig()
                             if not success and tostring(err):find("not set", 1, true) then success = true end
@@ -21994,19 +21994,19 @@ task.defer(function()
                         end)
                 end },
             })
-            autoloadLabel = box:AddLabel("CloverConfigAutoload", {
+            autoloadLabel = box:AddLabel("LunaHUBConfigAutoload", {
                 Text = "⭐ Autoload: none", DoesWrap = true,
             })
 
-            local configJSONInput = box:AddInput("CloverConfigJSON", {
+            local configJSONInput = box:AddInput("LunaHUBConfigJSON", {
                 Text = "Config JSON", Placeholder = "Exported JSON appears here",
                 Finished = false, Tooltip = "Paste JSON to import or export.",
             })
-            MakeButtonPanel(box, "CloverConfigJSONButtons", {
+            MakeButtonPanel(box, "LunaHUBConfigJSONButtons", {
                 { "📥 Import JSON", function()
                     local content = tostring(configJSONInput.Value or "")
                     if content:match("^%s*$") then Library:Notify("Paste config JSON first.", 3); return end
-                    confirm("CloverConfigImportDialog", "Import config",
+                    confirm("LunaHUBConfigImportDialog", "Import config",
                         "Apply the JSON and replace the current settings?", "Import", false, function()
                             local success, err = manager:LoadJSON(content)
                             report("Imported", "JSON", success, err)
@@ -22054,7 +22054,7 @@ end)
 end -- scoped SETTINGS helpers
 
 -- ════════════════════════════════════════════
--- [[ UI STYLING PASS — the CloverHub look ]] --
+-- [[ UI STYLING PASS — the LunaHUB look ]] --
 -- ════════════════════════════════════════════
 pcall(function()
     local ALL_BOXES = {
@@ -22123,7 +22123,7 @@ pcall(function()
         for _, el in ipairs(container:GetChildren()) do
             if not el:IsA("GuiObject") then
                 -- skip layout objects
-            elseif el:GetAttribute("CloverHubStatusCard") == true then
+            elseif el:GetAttribute("LunaHUBStatusCard") == true then
                 -- CHK.Merge already owns this card's geometry, padding and
                 -- layering.  Generic cardification would shrink its horizontal
                 -- padding and recreate the status-layout regression.
@@ -22377,5 +22377,5 @@ task.defer(Window.__ApplyMobileScrollFix)
 CHK.DeferTabBuild(Window.__AccountTab, Window.__BuildAccountTab, Window.__CleanupAccountTab)
 
 getgenv().__CHSAE_PayloadReady = true
-print("[CloverHub " .. RELEASE_VERSION .. "][" .. BUILD_ID
+print("[LunaHUB " .. RELEASE_VERSION .. "][" .. BUILD_ID
     .. "] Steal an Egg loaded for " .. LocalPlayer.Name)
