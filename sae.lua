@@ -207,21 +207,17 @@ return (function(var974, ...)
 						["Noclip_Desc"] = "Walk through walls and obstacles.",
 						["Play_Barn_Desc"] = "Sell only touches pets matching BOTH the rarity and the species pick. Favorite your good pulls first, then let Fuse chew through the rest.",
 						["Play_Barn_Sub"] = "Barn",
-						["Play_Barn_Title"] = "Favorite before you sell",
 						["Play_Extra_Desc"] = "Windows opens draggable panels for egg logs and inventory. On a heavy server, Framerate strips pets, placed eggs and money popups for a big FPS win.",
 						["Play_Extra_Sub"] = "Extras",
 						["Play_Extra_Title"] = "Windows and framerate",
 						["Play_Grab_Desc"] = "Auto Steal does the running for you and drops every catch on your plot. Getaway just picks how you get around.",
-						["Play_Grab_Title"] = "Then start the run",
 						["Play_Hatch_Desc"] = "Place Eggs only walks home when a slot is genuinely free, and the Incubator cracks eggs from anywhere on the map, night included.",
 						["Play_Hatch_Sub"] = "Hatchery",
-						["Play_Hatch_Title"] = "The plot runs itself",
 						["Play_Heist_Sub"] = "Hatch & Steal",
 						["Play_Mark_Desc"] = "Egg Filter is read top-down: 'Match By' decides which single control below actually counts. An empty list means 'anything goes' for that field.",
-						["Play_Mark_Title"] = "Pick the mark first",
+						
 						["Play_Rift_Desc"] = "Auto Rift ranks your pets by earnings and feeds the cheapest one that fits each requirement. Anything favorited, equipped, placed or fusing is never spent. Whatever is still missing gets added to the steal hunt.",
 						["Play_Rift_Sub"] = "Rift",
-						["Play_Rift_Title"] = "The Rift spends your worst pets",
 						["Rift_Auto"] = "Auto Trade-In",
 						["Rift_Auto_Desc"] = "Once all three requirements are covered, travels to the machine and sacrifices the cheapest pet that fits each slot. Favorited, equipped, placed and fusing pets are never spent.",
 						["Rift_Banners"] = "Target Banners",
@@ -13895,50 +13891,13 @@ return (function(var974, ...)
 							})
 						end,
 					})
-					CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Heist_Sub", "Heist") })
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Mark_Title", "Pick the mark first"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Mark_Desc",
-							"Egg Filter is read top-down: 'Match By' decides which single control below actually counts. An empty list means 'anything goes' for that field."
-						),
-					})
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Grab_Title", "Then start the run"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Grab_Desc",
-							"Auto Steal does the running and drops every catch on your plot. Getaway is how you get around."
-						),
-					})
-					CALL(
+        			CALL(
 						State["slot26604"],
 						"AddSubSection",
 						{ ["Title"] = _G["__SNE_T"]("Play_Hatch_Sub", "Hatchery") }
 					)
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Hatch_Title", "The plot runs itself"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Hatch_Desc",
-							"Place Eggs only walks home when a slot is genuinely free, and the Incubator cracks eggs from anywhere on the map, night included."
-						),
-					})
-					CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Barn_Sub", "Barn") })
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Barn_Title", "Favorite before you sell"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Barn_Desc",
-							"Sell only touches pets matching BOTH the rarity and the species pick. Favorite your good pulls first, then let Fuse chew through the rest."
-						),
-					})
-					CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Rift_Sub", "Rift") })
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Rift_Title", "The Rift spends your worst pets"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Rift_Desc",
-							"Auto Rift ranks your pets by earnings and feeds the cheapest one that fits each requirement. Anything favorited, equipped, placed or fusing is never spent. Whatever is still missing gets added to the steal hunt."
-						),
-					})
-					CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Extra_Sub", "Extras") })
+					
+        			CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Extra_Sub", "Extras") })
 					CALL(State["slot26604"], "AddParagraph", {
 						["Title"] = _G["__SNE_T"]("Play_Extra_Title", "Windows and framerate"),
 						["Content"] = _G["__SNE_T"](
