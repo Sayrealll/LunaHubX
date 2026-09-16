@@ -208,8 +208,6 @@ return (function(var974, ...)
 						["Play_Barn_Desc"] = "Sell only touches pets matching BOTH the rarity and the species pick. Favorite your good pulls first, then let Fuse chew through the rest.",
 						["Play_Barn_Sub"] = "Barn",
 						["Play_Extra_Desc"] = "Windows opens draggable panels for egg logs and inventory. On a heavy server, Framerate strips pets, placed eggs and money popups for a big FPS win.",
-						["Play_Extra_Sub"] = "Extras",
-						["Play_Extra_Title"] = "Windows and framerate",
 						["Play_Grab_Desc"] = "Auto Steal does the running for you and drops every catch on your plot. Getaway just picks how you get around.",
 						["Play_Hatch_Desc"] = "Place Eggs only walks home when a slot is genuinely free, and the Incubator cracks eggs from anywhere on the map, night included.",
 						["Play_Hatch_Sub"] = "Hatchery",
@@ -289,7 +287,6 @@ return (function(var974, ...)
 						["Tab_Barn"] = "Barn",
 						["Tab_Barn_Desc"] = "Equip, sell, lock and fuse your pets",
 						["Tab_Extras"] = "Extras",
-						["Tab_Extras_Desc"] = "Roaming, floating windows and framerate",
 						["Tab_Hatchery"] = "Hatchery",
 						["Tab_Hatchery_Desc"] = "Fill the plot and crack what is ready",
 						["Tab_Heist"] = "Hatch & Steal",
@@ -13664,11 +13661,6 @@ return (function(var974, ...)
 						["Icon"] = "trending-up",
 						["Description"] = _G["__SNE_T"]("Tab_Upgrades_Desc", "Treadmill, base and almanac progress"),
 					})
-					State["slot26520"] = CALL(State["slot25468"], "CreateTab", {
-						["Title"] = _G["__SNE_T"]("Tab_Extras", "Extras"),
-						["Icon"] = "wrench",
-						["Description"] = _G["__SNE_T"]("Tab_Extras_Desc", "Roaming, floating windows and framerate"),
-					})
 					State["slot26527"] = CALL(State["slot25468"], "CreateTab", {
 						["Title"] = _G["__SNE_T"]("Tab_Presets", "Presets"),
 						["Icon"] = "save",
@@ -13891,20 +13883,9 @@ return (function(var974, ...)
 							})
 						end,
 					})
-        			CALL(
-						State["slot26604"],
-						"AddSubSection",
-						{ ["Title"] = _G["__SNE_T"]("Play_Hatch_Sub", "Hatchery") }
-					)
+        
 					
-        			CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Extra_Sub", "Extras") })
-					CALL(State["slot26604"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Play_Extra_Title", "Windows and framerate"),
-						["Content"] = _G["__SNE_T"](
-							"Play_Extra_Desc",
-							"Windows opens draggable panels for egg logs and inventory. On a heavy server, Framerate strips pets, placed eggs and money popups for a big FPS win."
-						),
-					})
+        
 					State["fn27467"](CALL(State["slot26628"], "AddDropdown", {
 						["Title"] = "Match By",
 						["Content"] = "Decides which filter below actually counts. The rest are ignored.",
