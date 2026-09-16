@@ -1,4 +1,6 @@
-
+-- LOCAL STANDALONE TEST COPY. This Maintenance build intentionally does not use
+-- the KeySystem/runtime-capability gate. Re-executing it is supported: the
+-- existing CloverHub instance is unloaded below before this copy takes ownership.
 
 -- Production payloads still require the private loader capability. Only this
 -- local Maintenance copy skips that requirement for direct executor testing.
@@ -152,221 +154,36 @@ local function setStealControlLock(_enabled)
     pcall(function() controls:Enable() end)
 end
 
-local repo = "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
-local WindUI
-local okWind, windErr = pcall(function()
-    WindUI = loadstring(game:HttpGet(repo))()
-end)
-if not okWind or not WindUI then
-    warn("[CloverHub-SAE] Failed to load WindUI: " .. tostring(windErr))
-    return
-end
 
--- WindUI compatibility layer: keeps CloverHub's existing feature callbacks,
--- state, config indexes and controller contracts while replacing the old
--- Obsidian UI surface with WindUI tabs/sections/elements.
-local CloverScreenGui = Instance.new("ScreenGui")
-CloverScreenGui.Name = "CloverHubCompat"
-CloverScreenGui.ResetOnSpawn = false
-CloverScreenGui.IgnoreGuiInset = true
-pcall(function() CloverScreenGui.Parent = game:GetService("CoreGui") end)
 
-local function compatController(element, kind, callback)
-    local c = element or {}
-    c.__type = kind
-    c._callback = callback
-    if c.Value == nil then
-        if kind == "Toggle" then c.Value = false elseif kind == "Input" then c.Value = "" end
+
+
+
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/fa7be5477c30e4a302cc60c85e93ecca926d297b/"
+local Library
+do
+    local ok, err = pcall(function()
+        Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+    end)
+    if not ok or not Library then
+        warn("[CloverHub-SAE] ❌ Failed to load Obsidian UI: " .. tostring(err))
+        return
     end
-    if not c.OnChanged then
-        function c:OnChanged(fn) self._callback = fn end
     end
-    if not c.SetValue then
-        function c:SetValue(v)
-            if self.Set then self:Set(v)
-            else self.Value = v end
-            if self._callback then pcall(self._callback, v) end
+
+    do -- reuse Obsidian's built-in icons; retry only if its own fetch failed
+        local iconsReady = false
+        pcall(function() iconsReady = Library:GetIcon("house") ~= nil end)
+        if not iconsReady then
+            local Icons
+            pcall(function()
+                Icons = loadstring(game:HttpGet(
+                    "https://raw.githubusercontent.com/mstudio45/lucide-roblox-direct/refs/heads/main/source.lua"
+                ))()
+            end)
+            if Icons then pcall(function() Library:SetIconModule(Icons) end) end
         end
     end
-    if not c.GetValue then function c:GetValue() return self.Value end end
-    if not c.Get then function c:Get() return self.Value end end
-    return c
-end
-
-local function makeParagraph(section, text)
-    local p = section:Paragraph({Title = tostring(text or ""), Desc = ""})
-    return {
-        Text = tostring(text or ""),
-        Paragraph = p,
-        SetText = function(self, value)
-            self.Text = tostring(value or "")
-            if self.Paragraph and self.Paragraph.SetTitle then
-                pcall(function() self.Paragraph:SetTitle(self.Text) end)
-            elseif self.Paragraph and self.Paragraph.SetDesc then
-                pcall(function() self.Paragraph:SetDesc(self.Text) end)
-            end
-        end,
-    }
-end
-
-local function wrapSection(section)
-    local box = { _section = section, Container = nil }
-    function box:AddToggle(idx, info)
-        info = info or {}
-        local e = section:Toggle({
-            Title = info.Text or idx or "Toggle",
-            Desc = info.Tooltip,
-            Value = info.Default == true,
-            Flag = idx,
-            Callback = info.Callback,
-        })
-        e = compatController(e, "Toggle", info.Callback)
-        if info.Default ~= nil then e.Value = info.Default == true end
-        return e
-    end
-    function box:AddInput(idx, info)
-        info = info or {}
-        local e = section:Input({
-            Title = info.Text or idx or "Input",
-            Desc = info.Tooltip,
-            Value = tostring(info.Default or ""),
-            Placeholder = info.Placeholder or "",
-            Type = info.Type == "Textarea" and "Textarea" or "Input",
-            Flag = idx,
-            Callback = info.Callback,
-        })
-        e = compatController(e, "Input", info.Callback)
-        return e
-    end
-    function box:AddDropdown(idx, info)
-        info = info or {}
-        local vals = info.Values or {}
-        local multi = info.Multi == true
-        local value = info.Default
-        if multi and type(value) ~= "table" then value = {} end
-        if not multi and value == nil then value = vals[1] end
-        local e = section:Dropdown({
-            Title = info.Text or idx or "Dropdown",
-            Desc = info.Tooltip,
-            Values = vals,
-            Value = value,
-            Multi = multi,
-            AllowNone = true,
-            SearchBarEnabled = #vals > 12,
-            Flag = idx,
-            Callback = info.Callback,
-        })
-        e = compatController(e, "Dropdown", info.Callback)
-        e.Values = vals
-        e.SetValues = function(self, newVals)
-            self.Values = newVals or {}
-            if self.Refresh then pcall(function() self:Refresh(self.Values) end) end
-        end
-        return e
-    end
-    function box:AddLabel(idx, info)
-        info = info or {}
-        return makeParagraph(section, info.Text or idx or "")
-    end
-    function box:AddButton(info)
-        info = info or {}
-        return section:Button({Title = info.Text or info.Title or "Button", Desc = info.Tooltip, Callback = info.Callback})
-    end
-    function box:AddParagraph(info)
-        info = info or {}
-        return section:Paragraph({Title = info.Title or "", Desc = info.Desc or info.Content or ""})
-    end
-    function box:AddUIPassthrough(_id, opts)
-        -- Legacy custom cards are intentionally not recreated as a second UI
-        -- system. Feature logic remains intact; native WindUI controls own the UI.
-        return opts and opts.Instance
-    end
-    return box
-end
-
-local function makeCompatWindow(w)
-    local window = { _wind = w, MainFrame = nil, Sides = {} }
-    function window:AddTab(title, icon)
-        local t = w:Tab({Title = tostring(title), Icon = icon})
-        local tab = { _tab = t, Sides = {} }
-        function tab:AddLeftGroupbox(name) local s=t:Section({Title=tostring(name), Opened=true, Box=true}); local b=wrapSection(s); table.insert(tab.Sides,b); return b end
-        function tab:AddRightGroupbox(name) local s=t:Section({Title=tostring(name), Opened=true, Box=true}); local b=wrapSection(s); table.insert(tab.Sides,b); return b end
-        function tab:AddGroupbox(opts)
-            opts = opts or {}
-            local s=t:Section({Title=tostring(opts.Name or "Section"), Opened=true, Box=true})
-            return wrapSection(s)
-        end
-        function tab:Select() if t.Select then t:Select() end end
-        return tab
-    end
-    function window:Toggle() if w.Toggle then return w:Toggle() end end
-    function window:AddDialog(id, opts)
-        if type(id) == "table" and opts == nil then opts = id end
-        opts = opts or {}
-        local dialog
-        local buttons = {}
-        if type(opts.FooterButtons) == "table" then
-            local ordered = {}
-            for _, b in pairs(opts.FooterButtons) do ordered[#ordered+1] = b end
-            table.sort(ordered, function(a,b) return (a.Order or 99) < (b.Order or 99) end)
-            for _, b in ipairs(ordered) do
-                buttons[#buttons+1] = {Title=b.Title or "OK", Variant=(b.Variant=="Destructive" and "Primary" or (b.Variant=="Ghost" and "Secondary" or b.Variant)), Callback=function()
-                    if b.Callback then pcall(b.Callback, dialog) end
-                end}
-            end
-        end
-        dialog = w:Dialog({Title=opts.Title or tostring(id or "Dialog"), Content=opts.Description or opts.Content, Buttons=buttons})
-        function dialog:Dismiss() if self.Close then self:Close() end end
-        return dialog
-    end
-    function window:Dialog(opts) return self:AddDialog(opts) end
-    return window
-end
-
-local Library = {
-    Scheme = {
-        MainColor = Color3.fromRGB(25,25,25), BackgroundColor = Color3.fromRGB(15,15,15),
-        OutlineColor = Color3.fromRGB(70,70,70), FontColor = Color3.fromRGB(235,235,235),
-        AccentColor = Color3.fromRGB(74,222,128), Font = Enum.Font.Gotham,
-    },
-    ScreenGui = CloverScreenGui,
-    IsMobile = game:GetService("UserInputService").TouchEnabled,
-}
-function Library:CreateWindow(opts)
-    local w = WindUI:CreateWindow({Title=opts.Title or "CloverHub", Author="CloverHub", Icon="leaf", Theme="Dark", ToggleKey=Enum.KeyCode.LeftControl})
-    local cw = makeCompatWindow(w)
-    self.Window = cw
-    return cw
-end
-function Library:Notify(msg, duration)
-    if type(msg) == "table" then return WindUI:Notify(msg) end
-    return WindUI:Notify({Title="CloverHub", Content=tostring(msg), Duration=duration or 3})
-end
-function Library:GiveSignal(conn) return conn end
-function Library:GetBetterColor(c, amount) return c end
-function Library:SetDPIScale(_) end
-function Library:MakeDraggable(_) end
-function Library:AddDraggableButton(...) return {Button=nil} end
-function Library:AddDraggableLabel(text)
-    local label = Instance.new("TextLabel")
-    label.Name = "CloverHubStatusLabel"
-    label.Size = UDim2.fromOffset(360, 100)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(235,235,235)
-    label.TextSize = 14
-    label.Font = Enum.Font.Gotham
-    label.Text = tostring(text or "")
-    label.TextWrapped = true
-    label.Visible = true
-    label.Parent = self.ScreenGui
-    local controller = {Label=label}
-    function controller:SetText(v) label.Text=tostring(v or "") end
-    function controller:SetVisible(v) label.Visible=v==true end
-    function controller:Destroy() if label then label:Destroy() end end
-    return controller
-end
-function Library:Unload() if self.Window and self.Window._wind and self.Window._wind.Destroy then self.Window._wind:Destroy() end end
-function Library:GetIcon(_) return true end
 
     getgenv().__CloverHubSAE_Unload = function()
     if getgenv().__CHSAE_VelocityStop then pcall(getgenv().__CHSAE_VelocityStop, "unload") end
@@ -2040,7 +1857,206 @@ local function getRarityData()
 end
 
 -- [[ 3. WINDOW + TABS ]] --
-local Window = Library:CreateWindow({Title="CloverHub"})
+local Window = Library:CreateWindow({
+    Title            = "CloverHub",
+    Footer           = RELEASE_VERSION .. "  •  Steal An Egg",
+    Size             = UDim2.fromOffset(680, 540),
+    ToggleKeybind    = Enum.KeyCode.LeftControl,
+    AutoShow         = true,
+    Center           = true,
+    ShowCustomCursor = false,
+    -- Obsidian hardcodes separate "Toggle" and "Lock" mobile buttons and does
+    -- not expose per-button labels/visibility. Hide that pair; the one branded
+    -- touch control below replaces only the show/hide action.
+    ShowMobileButtons = false,
+})
+
+-- Keep one compact visibility control above Main on every platform. Obsidian's
+-- stock draggable callback rejects presses held for more than 0.25 seconds, so
+-- it receives a no-op here. GuiButton.Activated supplies the real full-hitbox,
+-- cross-platform click path; a position delta prevents a drag from toggling.
+do
+    if type(Library.AddDraggableButton) == "function" then
+        Window.__VisibilityButton = Library:AddDraggableButton(
+            "Clover",
+            function() end,
+            true,
+            false
+        )
+
+        local visibilityControl = Window.__VisibilityButton
+        local visibilityButton = visibilityControl and visibilityControl.Button
+        if visibilityButton then
+            local inputService = game:GetService("UserInputService")
+            local pressButtonPosition
+            local pressVisualInput
+            local dragTolerance = Library.IsMobile and 14 or 8
+            local visibilityRequestId = 0
+            local visibilityRetryDelay = math.max(
+                0.08,
+                (Library.WindowAnimationInfo and Library.WindowAnimationInfo.Time or 0.2) + 0.04
+            )
+            local pressScale = Instance.new("UIScale")
+            pressScale.Name = "CloverPressScale"
+            pressScale.Scale = 1
+            pressScale.Parent = visibilityButton
+            local pressTween
+            local pressInInfo = TweenInfo.new(0.075, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local pressOutInfo = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+            visibilityButton.Name = "CloverHubVisibilityButton"
+            visibilityButton.Active = true
+            visibilityButton.Selectable = true
+            visibilityButton.Interactable = true
+            visibilityButton.AutoButtonColor = false
+            visibilityButton.RichText = true
+            visibilityButton.TextSize = 15
+            visibilityButton.Size = UDim2.fromOffset(92, 32)
+            visibilityButton.ZIndex = 100
+            visibilityButton:SetAttribute("CloverHubInputMode", "Activated")
+            visibilityButton:SetAttribute("CloverHubDragTolerance", dragTolerance)
+            visibilityButton:SetAttribute("CloverHubPressScale", 0.965)
+
+            local function tweenVisibilityButtonScale(targetScale, tweenInfo)
+                if not pressScale.Parent then return end
+                if pressTween then
+                    pcall(function() pressTween:Cancel() end)
+                end
+                pressTween = TweenService:Create(pressScale, tweenInfo, { Scale = targetScale })
+                pressTween:Play()
+            end
+
+            local function refreshVisibilityButton()
+                local windowOpen = Library.Toggled == true
+                if Window.MainFrame then
+                    windowOpen = Window.MainFrame.Visible
+                end
+                visibilityButton:SetAttribute("CloverHubWindowOpen", windowOpen)
+                visibilityButton.Text = windowOpen
+                    and '<b><font color="#58E083">Clover</font></b>'
+                    or '<b><font color="#C4C9D1">Clover</font></b>'
+            end
+
+            local function applyVisibilityRequest(requestId, desiredOpen, attempt)
+                if requestId ~= visibilityRequestId
+                    or not sessionAlive()
+                    or not visibilityButton.Parent then
+                    return
+                end
+
+                Window:Toggle(desiredOpen)
+                refreshVisibilityButton()
+                if Library.Toggled == desiredOpen then
+                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                    return
+                end
+
+                if attempt < 4 then
+                    visibilityButton:SetAttribute("CloverHubToggleQueued", true)
+                    task.delay(visibilityRetryDelay, function()
+                        applyVisibilityRequest(requestId, desiredOpen, attempt + 1)
+                    end)
+                else
+                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                end
+            end
+
+            local function requestVisibilityToggle()
+                visibilityRequestId += 1
+                applyVisibilityRequest(visibilityRequestId, Library.Toggled ~= true, 1)
+            end
+
+            Library:GiveSignal(visibilityButton.InputBegan:Connect(function(input)
+                local inputType = input.UserInputType
+                if inputType == Enum.UserInputType.MouseButton1
+                    or inputType == Enum.UserInputType.Touch then
+                    pressButtonPosition = visibilityButton.AbsolutePosition
+                    pressVisualInput = input
+                    tweenVisibilityButtonScale(0.965, pressInInfo)
+                end
+            end))
+
+            Library:GiveSignal(inputService.InputEnded:Connect(function(input)
+                if input ~= pressVisualInput then return end
+                pressVisualInput = nil
+                tweenVisibilityButtonScale(1, pressOutInfo)
+            end))
+
+            Library:GiveSignal(visibilityButton.Activated:Connect(function()
+                local startPosition = pressButtonPosition
+                pressButtonPosition = nil
+                if startPosition
+                    and (visibilityButton.AbsolutePosition - startPosition).Magnitude > dragTolerance then
+                    return
+                end
+
+                requestVisibilityToggle()
+            end))
+
+            if Window.MainFrame then
+                Library:GiveSignal(Window.MainFrame:GetPropertyChangedSignal("Visible"):Connect(
+                    refreshVisibilityButton
+                ))
+            end
+            refreshVisibilityButton()
+        end
+    end
+end
+
+-- Brand only the exact window title. A bright green gradient plus a soft text
+-- stroke gives CloverHub a glow without changing tab or groupbox colors.
+task.defer(function()
+    pcall(function()
+        for _, label in ipairs(Library.ScreenGui:GetDescendants()) do
+            if label:IsA("TextLabel") and label.Text == "CloverHub" then
+                label.TextColor3 = Color3.fromRGB(74, 222, 128)
+                label.TextStrokeColor3 = Color3.fromRGB(22, 163, 74)
+                label.TextStrokeTransparency = 0.38
+                local oldGradient = label:FindFirstChild("CloverTitleGlow")
+                if oldGradient then oldGradient:Destroy() end
+                local gradient = Instance.new("UIGradient")
+                gradient.Name = "CloverTitleGlow"
+                gradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 247, 208)),
+                    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(74, 222, 128)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 163, 74)),
+                })
+                gradient.Parent = label
+            end
+        end
+    end)
+end)
+
+-- Keep the same logical 680x540 layout on every account/window. Obsidian's
+-- native DPI scaler preserves all font, padding, header and column proportions;
+-- its Center option, however, calculates offsets before a later DPI change, so
+-- recenter using the scaled visual dimensions as well.
+local BASE_WINDOW_SIZE = Vector2.new(680, 540)
+local WINDOW_MARGIN = 24
+local function applyResponsiveUIScale()
+    local camera = workspace.CurrentCamera
+    if not camera then return 1 end
+
+    local viewport = camera.ViewportSize
+    local scale = math.min(
+        1,
+        (viewport.X - WINDOW_MARGIN) / BASE_WINDOW_SIZE.X,
+        (viewport.Y - WINDOW_MARGIN) / BASE_WINDOW_SIZE.Y
+    )
+    scale = math.clamp(scale, 0.55, 1)
+    Library:SetDPIScale(scale * 100)
+
+    local mainFrame = Library.ScreenGui and Library.ScreenGui:FindFirstChild("Main")
+    if mainFrame and mainFrame:IsA("GuiObject") then
+        mainFrame.Position = UDim2.new(
+            0.5, -(BASE_WINDOW_SIZE.X * scale) / 2,
+            0.5, -(BASE_WINDOW_SIZE.Y * scale) / 2
+        )
+    end
+    return scale
+end
+applyResponsiveUIScale()
+
 local HomeTab     = Window:AddTab("HOME", "house")
 local EggTab      = Window:AddTab("EGGS", "egg")
 local ProgressionTab = Window:AddTab("PROGRESSION", "trophy")
@@ -2052,96 +2068,169 @@ Window.__WebhookTab = Window:AddTab("WEBHOOK", "send")
 Window.__AccountTab = Window:AddTab("ACCOUNT", "user")
 local SettingsTab = Window:AddTab("SETTINGS", "settings")
 local RiftBox
-Window.__ApplyMobileScrollFix = function() end
+
+-- Obsidian currently builds each tab as two nested, invisible-scrollbar
+-- ScrollingFrames. On touch devices, the non-scrolling groupbox frames can win
+-- the gesture before their scrollable tab side sees it. Keep the library's
+-- desktop layout, but make the actual tab sides explicit touch targets and
+-- disable only nested frames that have no scroll range of their own.
+Window.__ApplyMobileScrollFix = function(onlyTab)
+    local inputService = game:GetService("UserInputService")
+    if not (Library.IsMobile or inputService.TouchEnabled) then return end
+
+    for _, tab in ipairs(onlyTab and { onlyTab } or {
+        HomeTab, EggTab, ProgressionTab, SellTab, EventTab,
+        Window.__WebhookTab, Window.__AccountTab, SettingsTab,
+    }) do
+        for _, side in ipairs(tab.Sides or {}) do
+            pcall(function()
+                side.Active = true
+                side.ScrollingEnabled = true
+                side.ScrollingDirection = Enum.ScrollingDirection.Y
+                side.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+                -- Swiping drives the scroll; no visible bar is required.
+                side.ScrollBarThickness = 0
+                side.ScrollBarImageTransparency = 1
+                side.VerticalScrollBarInset = Enum.ScrollBarInset.None
+            end)
+
+            for _, nested in ipairs(side:GetDescendants()) do
+                if nested:IsA("ScrollingFrame")
+                    and nested.AbsoluteCanvasSize.Y <= nested.AbsoluteWindowSize.Y + 2 then
+                    nested.ScrollingEnabled = false
+                    nested.Active = false
+                end
+            end
+        end
+    end
+end
 
 -- HOME layout: Session + Live Stats stacked LEFT, Server top-RIGHT.
 local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
 
--- [[ LEGACY OBSIDIAN CONTROL PATCH DISABLED FOR WINDUI ]] --
--- [[ WINDUI NATIVE OVERRIDES ]] --
--- Replace CloverHub's old custom overlay/card helpers with native WindUI controls.
-StyleGroupboxPanel = function() end
+-- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
+do
+    local EXTRA_HEIGHT  = 6
+    local CUSTOM_RADIUS = 8
 
-MakeButtonPanel = function(groupbox, _panelId, buttons)
-    for _, item in ipairs(buttons or {}) do
-        groupbox:AddButton({Text=item[1], Callback=item[2]})
-    end
-end
+    local Funcs = getmetatable(SessionBox).__index
 
-BindDropdownOverlay = function(groupbox, dropdownIdx, title, items, opts)
-    opts = opts or {}
-    local multi = opts.multi == true
-    local initial = opts.get and opts.get() or (multi and {} or items[1])
-    local e = groupbox:AddDropdown(dropdownIdx, {
-        Text = opts.text or title,
-        Values = items or {},
-        Default = initial,
-        Multi = multi,
-        AllowNone = true,
-        Tooltip = opts.tooltip,
-        Callback = function(value)
-            if opts.set and not multi then pcall(opts.set, value) end
-            if opts.onChange then pcall(opts.onChange) end
-        end,
-    })
-    local controller = {
-        Dropdown=e, Multi=multi,
-        GetValue=function() return e.Value end,
-        SetValue=function(_,v) if e.Set then e:Set(v) elseif e.Select then e:Select(v) end; if opts.set and not multi then pcall(opts.set,v) end end,
-        SetItems=function(_,newItems,preserve)
-            e.Values=newItems or {}
-            if e.Refresh then pcall(function() e:Refresh(e.Values) end) end
-            if not preserve and opts.set and not multi then pcall(opts.set,nil) end
-        end,
-    }
-    if type(opts.configKey)=="string" then
-        getgenv().__CHSAE_ConfigControllers = getgenv().__CHSAE_ConfigControllers or {}
-        getgenv().__CHSAE_ConfigControllers[opts.configKey] = controller
-    end
-    return controller
-end
+    local function MakeDropdownLazy(Dropdown, startDirty)
+        local origBuild = Dropdown.BuildDropdownList
+        local menu = Dropdown.Menu
+        if not (origBuild and menu and menu.Open) then return end
 
-CHK = CHK or {}
-CHK.Merge = function(groupbox, buildFn) return pcall(buildFn) end
-CHK.Slider = function(groupbox, id, info)
-    info = info or {}
-    local e = groupbox._section:Slider({
-        Title=info.Text or id,
-        Desc=info.Tooltip,
-        Step=info.Step or info.Rounding or 1,
-        Value={Min=info.Min or 0, Max=info.Max or 100, Default=info.Default or info.Value or 0},
-        Callback=info.Callback,
-        Flag=id,
-    })
-    local c = compatController(e, "Slider", info.Callback)
-    c.Value = info.Default or info.Value or 0
-    return c
-end
-CHK.Metrics = function(groupbox, id, definitions)
-    local values = {}
-    local labels = {}
-    for _, def in ipairs(definitions or {}) do
-        local key = def.key or def.id or def.name
-        local p = groupbox._section:Paragraph({Title=def.title or def.name or tostring(key), Desc="--"})
-        labels[key] = p
-        values[key] = "--"
+        local dirty = (startDirty == true)
+
+        Dropdown.BuildDropdownList = function(...)
+            if menu.Active then
+                dirty = false
+                return origBuild(...)
+            end
+            dirty = true
+        end
+
+        local origOpen = menu.Open
+        menu.Open = function(mself, ...)
+            if dirty then
+                dirty = false
+                origBuild()
+            end
+            return origOpen(mself, ...)
+        end
     end
-    local controller = {}
-    function controller:Set(key, value)
-        values[key] = tostring(value)
-        local p = labels[key]
-        if p and p.SetDesc then pcall(function() p:SetDesc(values[key]) end) end
+
+    local OriginalAddDropdown = Funcs.AddDropdown
+    Funcs.AddDropdown = function(self, Idx, Info)
+        local stashedValues = nil
+        if type(Info) == "table" and type(Info.Values) == "table"
+            and #Info.Values > 40 and Info.Default == nil then
+            stashedValues = Info.Values
+            Info.Values = {}
+        end
+
+        local Dropdown = OriginalAddDropdown(self, Idx, Info)
+
+        MakeDropdownLazy(Dropdown, stashedValues ~= nil)
+        if stashedValues then
+            Dropdown.Values = stashedValues
+            Dropdown.DefaultValues = stashedValues
+        end
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local DisplayContainer = Holder:FindFirstChildWhichIsA("TextButton")
+            if DisplayContainer then
+                DisplayContainer.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+
+                local existingCorner = DisplayContainer:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = DisplayContainer
+                end
+
+                local DisplayButton = DisplayContainer:FindFirstChildWhichIsA("TextButton")
+                if DisplayButton then
+                    DisplayButton.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                end
+
+                DisplayContainer.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(DisplayContainer:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+            end
+        end
+
+        return Dropdown
     end
-    function controller:Get(key) return values[key] end
-    return controller
-end
-CHK.Notice = function(groupbox, id, info)
-    info = info or {}
-    return groupbox._section:Paragraph({Title=info.title or info.Title or id, Desc=info.text or info.Desc or info.body or ""})
-end
-CHK.SalePreview = function(groupbox, id, info)
-    info = info or {}
-    return groupbox._section:Paragraph({Title=info.title or id, Desc=info.text or info.Desc or ""})
+
+    local OriginalAddInput = Funcs.AddInput
+    Funcs.AddInput = function(self, Idx, Info)
+        local Input = OriginalAddInput(self, Idx, Info)
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local Box = Holder:FindFirstChildWhichIsA("TextBox")
+            if Box then
+                Box.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                Box.ClearTextOnFocus = false
+                Box.TextScaled = false
+                Box.TextSize = 13
+                Box.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(Box:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+
+                local existingCorner = Box:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = Box
+                end
+            end
+        end
+
+        return Input
+    end
 end
 
 -- [[ 4. SETTINGS STATE ]] --
