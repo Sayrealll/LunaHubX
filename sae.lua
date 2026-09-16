@@ -195,7 +195,7 @@ return (function(var974, ...)
 						["Invite_Copied"] = "Invite copied to clipboard.",
 						["Invite_Copy"] = "Copy ",
 						["Invite_Copy_Desc"] = "Puts the invite on your clipboard.",
-						["Invite_Title"] = "PTHub is free",
+						["Invite_Title"] = "LUNA HUB X is free",
 						["Keeper_Age"] = "Account age",
 						["Keeper_CopyId"] = "Copy Job ID",
 						["Keeper_CopyId_Desc"] = "Copies this server's code so a friend can join you.",
@@ -285,7 +285,7 @@ return (function(var974, ...)
 						["Session_Desc"] = "Everything you set here is saved automatically. Keep one setup per playstyle and switch between them on the left.",
 						["Session_Rejoin"] = "Rejoin This Server",
 						["Session_Rejoin_Desc"] = "Drops you back into this same server.",
-						["Session_Title"] = "PTHub - Steal an Egg",
+						["Session_Title"] = "LUNA HUB X - Steal an Egg",
 						["Session_Unload"] = "Stop & Unload",
 						["Session_Unload_Desc"] = "Stops everything, puts your character back to normal and closes the panel.",
 						["Sub_Sell_Eggs"] = "Eggs",
@@ -308,7 +308,7 @@ return (function(var974, ...)
 						["Tab_Upgrades_Desc"] = "Treadmill, base and almanac progress",
 						["Teleport"] = "Teleport",
 						["Teleport_Desc"] = "Move to the selected waypoint.",
-						["Title"] = "PTHub",
+						["Title"] = "LUNA HUB X",
 						["Tween_Mode"] = "Movement Mode",
 						["Tween_Mode_Desc"] = "How you get around. Glide is smooth, Blink jumps in short hops, Fly goes over the top.",
 						["Tween_Speed"] = "Glide Speed",
@@ -374,7 +374,7 @@ return (function(var974, ...)
 						["Invite_Copied"] = "Undangan disalin ke clipboard.",
 						["Invite_Copy"] = "Salin ",
 						["Invite_Copy_Desc"] = "Menyalin undangan ke clipboard.",
-						["Invite_Title"] = "PTHub itu gratis",
+						["Invite_Title"] = "LUNA HUB X itu gratis",
 						["Keeper_Age"] = "Umur akun",
 						["Keeper_CopyId"] = "Salin Job ID",
 						["Keeper_CopyId_Desc"] = "Menyalin kode server ini supaya teman bisa gabung.",
@@ -464,7 +464,7 @@ return (function(var974, ...)
 						["Session_Desc"] = "Semua yang kamu atur di sini tersimpan otomatis. Simpan satu setelan per gaya main, tinggal pindah dari kiri.",
 						["Session_Rejoin"] = "Masuk Ulang Server Ini",
 						["Session_Rejoin_Desc"] = "Membawa kamu balik ke server yang sama.",
-						["Session_Title"] = "PTHub - Steal an Egg",
+						["Session_Title"] = "LUNA HUB X - Steal an Egg",
 						["Session_Unload"] = "Hentikan & Tutup",
 						["Session_Unload_Desc"] = "Menghentikan semuanya, mengembalikan karakter, dan menutup panel.",
 						["Sub_Sell_Eggs"] = "Telur",
@@ -487,7 +487,7 @@ return (function(var974, ...)
 						["Tab_Upgrades_Desc"] = "Treadmill, base, dan almanak",
 						["Teleport"] = "Teleport",
 						["Teleport_Desc"] = "Pindah langsung ke titik lokasi yang dipilih.",
-						["Title"] = "PTHub",
+						["Title"] = "LUNA HUB X",
 						["Tween_Mode"] = "Mode Gerak",
 						["Tween_Mode_Desc"] = "Cara kamu berpindah. Glide mulus, Blink lompat pendek-pendek, Fly lewat atas.",
 						["Tween_Speed"] = "Kecepatan Glide Tween",
@@ -1662,8 +1662,8 @@ return (function(var974, ...)
 									and CALL(CTX["Players"]["Players"]["LocalPlayer"], "FindFirstChild", "PlayerGui")
 								if players then
 									list = {
-										["PTHubUI"] = true,
-										["PTHubFloat"] = true,
+										["LUNA HUB XUI"] = true,
+										["LUNA HUB XFloat"] = true,
 										["__SNE_Panel_logs"] = true,
 										["__SNE_Panel_eggs"] = true,
 										["__SNE_Panel_inventory"] = true,
@@ -1922,7 +1922,7 @@ return (function(var974, ...)
 								var940[5415] = { ... }
 								if not ENV["checkcaller"]() then
 									ENV["warn"](
-										"[PTHub-Guard] Blocked Game TeleportService:Teleport! Target Place: "
+										"[LUNA HUB X-Guard] Blocked Game TeleportService:Teleport! Target Place: "
 											.. ENV["tostring"](var940[5415][1])
 									)
 									return
@@ -1940,7 +1940,7 @@ return (function(var974, ...)
 								var617[5424] = { ... }
 								if not ENV["checkcaller"]() then
 									ENV["warn"](
-										"[PTHub-Guard] Blocked Game TeleportService:TeleportToPlaceInstance! Target: "
+										"[LUNA HUB X-Guard] Blocked Game TeleportService:TeleportToPlaceInstance! Target: "
 											.. ENV["tostring"](var617[5424][1])
 											.. " job: "
 											.. ENV["tostring"](var617[5424][2])
@@ -1970,7 +1970,7 @@ return (function(var974, ...)
 											or var59[5482] == "AskRescueHop"
 											or var59[5482] == "AskIdleHopFlush"
 										then
-											ENV["warn"]("[PTHub-Guard] Blocked Violation Remote: " .. var59[5482])
+											ENV["warn"]("[LUNA HUB X-Guard] Blocked Violation Remote: " .. var59[5482])
 											return ENV["task"]["wait"](9e9)
 										end
 										if var59[5507][1] and ENV["typeof"](var59[5507][1]) == "string" then
@@ -1982,7 +1982,7 @@ return (function(var974, ...)
 												or CALL(var59[5530], "find", "violation")
 											then
 												ENV["warn"](
-													"[PTHub-Guard] Blocked Violation Payload: "
+													"[LUNA HUB X-Guard] Blocked Violation Payload: "
 														.. ENV["tostring"](var59[5507][1])
 												)
 												return ENV["task"]["wait"](9e9)
@@ -8241,7 +8241,7 @@ return (function(var974, ...)
 			end
 			local var75, var978
 			do
-				CTX["list7"] = { ["name"] = "PTHub", ["icon"] = "" }
+				CTX["list7"] = { ["name"] = "LUNA HUB X", ["icon"] = "" }
 				CTX["slot1790"] = ENV["http_request"]
 					or ENV["request"]
 					or (ENV["http"] and ENV["http"]["request"])
@@ -8338,7 +8338,7 @@ return (function(var974, ...)
 										["name"] = CTX["list7"]["name"],
 										["icon_url"] = CTX["list7"]["icon"],
 									},
-									["footer"] = { ["text"] = "PTHub", ["icon_url"] = CTX["list7"]["icon"] },
+									["footer"] = { ["text"] = "LUNA HUB X", ["icon_url"] = CTX["list7"]["icon"] },
 									["fields"] = var1268 or {},
 								},
 							},
@@ -8437,7 +8437,7 @@ return (function(var974, ...)
 										["name"] = CTX["list7"]["name"],
 										["icon_url"] = CTX["list7"]["icon"],
 									},
-									["footer"] = { ["text"] = "PTHub", ["icon_url"] = CTX["list7"]["icon"] },
+									["footer"] = { ["text"] = "LUNA HUB X", ["icon_url"] = CTX["list7"]["icon"] },
 									["fields"] = list,
 								},
 							},
@@ -11062,7 +11062,7 @@ return (function(var974, ...)
 					do
 						State["ok"] = nil
 						ENV["pcall"](function()
-							State["ok"] = ENV["getgenv"]()["PTHubLibOverride"]
+							State["ok"] = ENV["getgenv"]()["LUNA HUB XLibOverride"]
 						end)
 						if ENV["type"](State["ok"]) == "table" then
 							State["slot25316"] = State["ok"]
@@ -11116,7 +11116,7 @@ return (function(var974, ...)
 									for i, v in ENV["ipairs"](f["GetChildren"](f)) do
 										if
 											v["IsA"](v, "ScreenGui")
-											and (v["Name"] == "PTHubUI" or v["Name"] == "PTHubNotify")
+											and (v["Name"] == "LUNA HUB XUI" or v["Name"] == "LUNA HUB XNotify")
 										then
 											ENV["pcall"](function()
 												v["Destroy"](v)
@@ -11128,7 +11128,7 @@ return (function(var974, ...)
 						end)()
 					end)
 					State["slot25468"] = CALL(State["slot25316"], "CreateWindow", {
-						["Title"] = _G["__SNE_T"]("Title", "PTHub"),
+						["Title"] = _G["__SNE_T"]("Title", "LUNA HUB X"),
 						["SubTitle"] = _G["__SNE_T"]("Footer", "Steal an Egg"),
 						["Logo"] = State["__SNE_BRAND_LOGO"],
 						["Size"] = ENV["UDim2"]["fromOffset"](700, 470),
@@ -11136,19 +11136,19 @@ return (function(var974, ...)
 						["Version"] = "v3.0",
 						["ToggleKey"] = ENV["Enum"]["KeyCode"]["RightControl"],
 					})
-					_G["PTHub"] = State["slot25468"]
+					_G["LUNA HUB X"] = State["slot25468"]
 					ENV["pcall"](function()
 						return (function()
 							local coreGui, var366, lP
 							coreGui = (ENV["gethui"] and ENV["gethui"]()) or CTX["Players"]["CoreGui"]
-							var366 = CALL(coreGui, "FindFirstChild", "PTHubUI")
+							var366 = CALL(coreGui, "FindFirstChild", "LUNA HUB XUI")
 							if not var366 then
 								lP = CALL(
 									CTX["Players"]["LP"],
 									"FindFirstChild",
 									"PlayerGui"
 								)
-								var366 = lP and CALL(lP, "FindFirstChild", "PTHubUI")
+								var366 = lP and CALL(lP, "FindFirstChild", "LUNA HUB XUI")
 							end
 							if var366 then
 								_G["__SNE_Gui"] = var366
@@ -11159,7 +11159,7 @@ return (function(var974, ...)
 						return (function()
 							local var160, var249, var556, var601
 							var160 = State["slot25468"]["ScreenGui"]
-								and CALL(State["slot25468"]["ScreenGui"], "FindFirstChild", "PTHubFloat")
+								and CALL(State["slot25468"]["ScreenGui"], "FindFirstChild", "LUNA HUB XFloat")
 							var249 = var160 and CALL(var160, "FindFirstChild", "Logo")
 							if not var249 then
 								return
@@ -11204,8 +11204,8 @@ return (function(var974, ...)
 									"FindFirstChild",
 									"PlayerGui"
 								)
-								coreGui = CALL(CTX["Players"]["CoreGui"], "FindFirstChild", "PTHubUI")
-									or (lP and CALL(lP, "FindFirstChild", "PTHubUI"))
+								coreGui = CALL(CTX["Players"]["CoreGui"], "FindFirstChild", "LUNA HUB XUI")
+									or (lP and CALL(lP, "FindFirstChild", "LUNA HUB XUI"))
 								var202 = coreGui and CALL(coreGui, "FindFirstChild", "TabScroll", true)
 								if var202 then
 									break
@@ -12601,7 +12601,7 @@ return (function(var974, ...)
 							label["TextSize"] = 16
 							label["TextXAlignment"] = ENV["Enum"]["TextXAlignment"]["Left"]
 							label["TextColor3"] = State["list"]["text"]
-							label["Text"] = "PTHub"
+							label["Text"] = "LUNA HUB X"
 							label["Parent"] = var3
 							var137 = ENV["Instance"]["new"]("ImageLabel")
 							var137["AnchorPoint"] = ENV["Vector2"]["new"](0, 0.5)
@@ -13635,6 +13635,18 @@ return (function(var974, ...)
 							ENV["task"]["wait"](1)
 						end
 					end)
+					-- ============================================================
+					-- TAB ORDER / UI ORGANIZATION
+					-- ============================================================
+					-- 01. Information
+					-- 02. Hatch & Steal
+					-- 03. Hatchery
+					-- 04. Barn
+					-- 05. Rift
+					-- 06. Upgrades
+					-- 07. Extras
+					-- 08. Presets
+					-- ============================================================
 					State["slot26412"] = CALL(State["slot25468"], "CreateTab", {
 						["Title"] = _G["__SNE_T"]("Tab_Nest", "Information"),
 						["Icon"] = "info",
@@ -13678,6 +13690,10 @@ return (function(var974, ...)
 						["Icon"] = "save",
 						["Description"] = _G["__SNE_T"]("Tab_Presets_Desc", "Save a setup per playstyle"),
 					})
+					-- ============================================================
+					-- TAB 01: INFORMATION | Sections: Keeper, Community, Playbook
+					-- ============================================================
+					-- [Information] Keeper
 					State["__SNE_T"] = CALL(
 						State["slot26412"],
 						"AddSection",
@@ -13865,7 +13881,7 @@ return (function(var974, ...)
 									ENV["setclipboard"](ENV["tostring"](ENV["game"]["JobId"]))
 								end)
 								CALL(State["slot25316"], "Notify", {
-									["Title"] = "PTHub",
+									["Title"] = "LUNA HUB X",
 									["Content"] = "Server code copied.",
 									["Icon"] = "copy",
 									["Duration"] = 4,
@@ -13873,8 +13889,9 @@ return (function(var974, ...)
 							end,
 						})
 					end
+					-- [Information] Community
 					CALL(State["__SNE_T2"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Invite_Title", "PTHub is free"),
+						["Title"] = _G["__SNE_T"]("Invite_Title", "LUNA HUB X is free"),
 						["Content"] = _G["__SNE_T"](
 							"Invite_Body",
 							"If anyone sold you this script, you were scammed. Grab it from the server below."
@@ -13888,13 +13905,14 @@ return (function(var974, ...)
 								ENV["setclipboard"]("https://" .. State["discord"])
 							end)
 							CALL(State["slot25316"], "Notify", {
-								["Title"] = "PTHub",
+								["Title"] = "LUNA HUB X",
 								["Content"] = _G["__SNE_T"]("Invite_Copied", "Invite copied to clipboard."),
 								["Icon"] = "link",
 								["Duration"] = 4,
 							})
 						end,
 					})
+					-- [Information] Playbook
 					CALL(State["slot26604"], "AddSubSection", { ["Title"] = _G["__SNE_T"]("Play_Heist_Sub", "Heist") })
 					CALL(State["slot26604"], "AddParagraph", {
 						["Title"] = _G["__SNE_T"]("Play_Mark_Title", "Pick the mark first"),
@@ -13946,6 +13964,7 @@ return (function(var974, ...)
 							"Windows opens draggable panels for egg logs and inventory. On a heavy server, Framerate strips pets, placed eggs and money popups for a big FPS win."
 						),
 					})
+					-- [Hatch & Steal] Egg Filter
 					State["fn27467"](CALL(State["slot26628"], "AddDropdown", {
 						["Title"] = "Match By",
 						["Content"] = "Decides which filter below actually counts. The rest are ignored.",
@@ -14005,6 +14024,10 @@ return (function(var974, ...)
 							Settings["stealAmount"] = ENV["tostring"](w or "")
 						end,
 					}))
+					-- ============================================================
+					-- TAB 02: HATCH & STEAL | Egg Filter, Auto Steal, Getaway, Server Hop
+					-- ============================================================
+					-- [Hatch & Steal] Auto Steal
 					CALL(State["__SNE_T3"], "AddToggle", {
 						["Title"] = _G["__SNE_T"]("Auto_Steal", "Auto Steal"),
 						["Content"] = _G["__SNE_T"](
@@ -14055,6 +14078,7 @@ return (function(var974, ...)
 							end)()
 						end,
 					})
+					-- [Hatch & Steal] Getaway
 					State["fn27467"](CALL(State["__SNE_T4"], "AddDropdown", {
 						["Title"] = _G["__SNE_T"]("Tween_Mode", "Movement Mode"),
 						["Content"] = _G["__SNE_T"](
@@ -14118,6 +14142,7 @@ return (function(var974, ...)
 							CTX["fn3184"](w)
 						end,
 					}))
+					-- [Hatch & Steal] Server Hop
 					CALL(State["slot26675"], "AddToggle", {
 						["Title"] = "Hop When Nothing Matches",
 						["Content"] = "Hop to the emptiest server when no egg matches",
@@ -14144,6 +14169,10 @@ return (function(var974, ...)
 							CTX["fn4024"]()
 						end,
 					})
+					-- ============================================================
+					-- TAB 03: HATCHERY | Place Eggs, Incubator
+					-- ============================================================
+					-- [Hatchery] Place Eggs
 					CALL(State["__SNE_T5"], "AddToggle", {
 						["Title"] = "Auto Place",
 						["Content"] = "Places owned unplaced eggs on your plot. Only travels there when the plot still has a free slot (30 max) and you actually have eggs waiting.",
@@ -14210,6 +14239,7 @@ return (function(var974, ...)
 							)
 						end,
 					})
+					-- [Hatchery] Incubator
 					CALL(State["__SNE_T6"], "AddToggle", {
 						["Title"] = "Auto Hatch",
 						["Content"] = "Hatches ready eggs automatically. Runs from anywhere, including during night - no trip back to your plot needed.",
@@ -14225,6 +14255,10 @@ return (function(var974, ...)
 							CTX["fn3788"]()
 						end,
 					})
+					-- ============================================================
+					-- TAB 04: BARN | Equip & Collect, Sell, Favorite, Fuse
+					-- ============================================================
+					-- [Barn] Equip & Collect
 					CALL(State["slot26721"], "AddToggle", {
 						["Title"] = "Auto Equip Best",
 						["Content"] = "Equips your strongest pets",
@@ -14241,6 +14275,7 @@ return (function(var974, ...)
 							Settings["autoClaimOffline"] = w
 						end,
 					})
+					-- [Barn] Sell
 					CALL(State["__SNE_T7"], "AddToggle", {
 						["Title"] = "Auto Sell",
 						["Content"] = "Sell pets matching the filters below to clear inventory",
@@ -14330,6 +14365,7 @@ return (function(var974, ...)
 							end)()
 						end,
 					})
+					-- [Barn] Favorite
 					CALL(State["__SNE_T8"], "AddToggle", {
 						["Title"] = "Auto Favorite",
 						["Content"] = "Continuously favorites pets matching the filter below",
@@ -14382,6 +14418,7 @@ return (function(var974, ...)
 							end)()
 						end,
 					})
+					-- [Barn] Fuse
 					CALL(State["__SNE_T9"], "AddToggle", {
 						["Title"] = "Auto Fuse",
 						["Content"] = "Fuses 3 same-species pets (lowest rarity first). Picks groups of 3 automatically.",
@@ -14431,6 +14468,9 @@ return (function(var974, ...)
 							CTX["fn3930"](Settings["fuseSelectedOnly"], Settings["fuseNames"], Settings["fuseRarities"])
 						end,
 					})
+					-- ============================================================
+					-- TAB 05: RIFT | Auto Rift, Manual Actions, Rift Status, Abyss Overlord
+					-- ============================================================
 					do
 						State["list5"] =
 							{ ["Verdant"] = "Riftborn", ["Umbral"] = "Riftbeasts", ["Radiant"] = "Shattered Rift" }
@@ -14468,6 +14508,7 @@ return (function(var974, ...)
 								Settings["riftBumpGeneration"]()
 							end
 						end
+						-- [Rift] Auto Rift
 						CALL(State["slot26781"], "AddToggle", {
 							["Title"] = _G["__SNE_T"]("Rift_Auto", "Auto Trade-In"),
 							["Description"] = _G["__SNE_T"](
@@ -14524,6 +14565,7 @@ return (function(var974, ...)
 								end)()
 							end,
 						}))
+						-- [Rift] Manual Actions
 						CALL(State["slot26804"], "AddButton", {
 							["Title"] = _G["__SNE_T"]("Rift_TradeNow", "Trade-In Once"),
 							["Description"] = _G["__SNE_T"](
@@ -14610,6 +14652,7 @@ return (function(var974, ...)
 								end)
 							end,
 						})
+						-- [Rift] Rift Status
 						State["slot27257"] = CALL(State["slot26830"], "AddParagraph", {
 							["Title"] = _G["__SNE_T"]("Rift_Status", "Rift: idle"),
 							["Content"] = _G["__SNE_T"](
@@ -14679,6 +14722,7 @@ return (function(var974, ...)
 						end)
 					end
 					do
+						-- [Rift] Abyss Overlord
 						State["slot27303"] = CALL(State["slot26837"], "AddParagraph", {
 							["Title"] = _G["__SNE_T"]("Boss_Title", "Abyss Overlord"),
 							["Content"] = _G["__SNE_T"]("Boss_Idle", "Portal closed."),
@@ -14831,6 +14875,10 @@ return (function(var974, ...)
 							end
 						end)
 					end
+					-- ============================================================
+					-- TAB 06: UPGRADES | Treadmill, Base, Almanac
+					-- ============================================================
+					-- [Upgrades] Treadmill
 					CALL(State["__SNE_T10"], "AddToggle", {
 						["Title"] = "Auto Train",
 						["Content"] = "Walks to the treadmill on your plot and gets on. You keep earning Speed for as long as you stay mounted, so the character is free to move afterwards. Pauses while Auto Steal is on, which unmounts instead.",
@@ -14854,6 +14902,7 @@ return (function(var974, ...)
 							CTX["fn3937"]()
 						end,
 					})
+					-- [Upgrades] Base
 					CALL(State["__SNE_T11"], "AddToggle", {
 						["Title"] = "Auto Upgrade Base",
 						["Content"] = "Upgrades your base plot when affordable",
@@ -14869,6 +14918,7 @@ return (function(var974, ...)
 							CTX["fn3961"]()
 						end,
 					})
+					-- [Upgrades] Almanac
 					CALL(State["__SNE_T12"], "AddToggle", {
 						["Title"] = "Auto Claim Almanac",
 						["Content"] = "Claims all index rewards",
@@ -14884,6 +14934,10 @@ return (function(var974, ...)
 							CTX["Network4"]()
 						end,
 					})
+					-- ============================================================
+					-- TAB 07: EXTRAS | Roaming, Windows, Framerate
+					-- ============================================================
+					-- [Extras] Roaming
 					CALL(State["__SNE_T13"], "AddToggle", {
 						["Title"] = _G["__SNE_T"]("Noclip", "Noclip"),
 						["Content"] = _G["__SNE_T"]("Noclip_Desc", "Walk through walls and obstacles"),
@@ -14950,6 +15004,7 @@ return (function(var974, ...)
 							end)()
 						end,
 					})
+					-- [Extras] Windows
 					CALL(State["__SNE_T14"], "AddButton", {
 						["Title"] = _G["__SNE_T"]("Win_Logs", "Egg Logs"),
 						["Description"] = _G["__SNE_T"](
@@ -14986,6 +15041,7 @@ return (function(var974, ...)
 							State["fn27721"]()
 						end,
 					})
+					-- [Extras] Framerate
 					CALL(State["__SNE_T15"], "AddToggle", {
 						["Title"] = "FPS Governor",
 						["Content"] = "Flattens the world colour, drops shadows and effects, and caps at 120 FPS",
@@ -15114,9 +15170,14 @@ return (function(var974, ...)
 							return var628
 						end)()
 					end
+					-- ============================================================
+					-- TAB 08: PRESETS | Saved Setups, Session
+					-- ============================================================
+					-- [Presets] Saved Setups
 					CALL(State["__SNE_T16"], "AddConfigPanel", {})
+					-- [Presets] Session
 					CALL(State["slot26969"], "AddParagraph", {
-						["Title"] = _G["__SNE_T"]("Session_Title", "PTHub - Steal an Egg"),
+						["Title"] = _G["__SNE_T"]("Session_Title", "LUNA HUB X - Steal an Egg"),
 						["Content"] = _G["__SNE_T"](
 							"Session_Desc",
 							"Everything you set here is saved automatically. Keep one setup per playstyle and switch between them on the left."
@@ -15236,7 +15297,7 @@ return (function(var974, ...)
 						end
 					end)
 					CALL(State["slot25316"], "Notify", {
-						["Title"] = _G["__SNE_T"]("Title", "PTHub"),
+						["Title"] = _G["__SNE_T"]("Title", "LUNA HUB X"),
 						["Content"] = _G["__SNE_T"](
 							"Boot_Notice",
 							"Loaded. Press Right Ctrl to hide or show the panel."
