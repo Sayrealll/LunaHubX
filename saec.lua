@@ -1871,14 +1871,14 @@ local Window = Library:CreateWindow({
     ShowMobileButtons = false,
 })
 
--- Keep one compact visibility control above Main on every platform. Obsidian's
--- stock draggable callback rejects presses held for more than 0.25 seconds, so
--- it receives a no-op here. GuiButton.Activated supplies the real full-hitbox,
--- cross-platform click path; a position delta prevents a drag from toggling.
+-- Keep one compact circular visibility control above Main on every platform.
+-- The floating control is only responsible for showing/hiding the window.
+-- The window itself is draggable from its non-interactive surface, while the
+-- top-right control inside the window is reserved for Exit.
 do
     if type(Library.AddDraggableButton) == "function" then
         Window.__VisibilityButton = Library:AddDraggableButton(
-            "LunaHUB",
+            "",
             function() end,
             true,
             false
@@ -1888,41 +1888,140 @@ do
         local visibilityButton = visibilityControl and visibilityControl.Button
         if visibilityButton then
             local inputService = game:GetService("UserInputService")
-            local pressButtonPosition
             local pressVisualInput
-            local dragTolerance = Library.IsMobile and 14 or 8
             local visibilityRequestId = 0
             local visibilityRetryDelay = math.max(
                 0.08,
                 (Library.WindowAnimationInfo and Library.WindowAnimationInfo.Time or 0.2) + 0.04
             )
+
             local pressScale = Instance.new("UIScale")
             pressScale.Name = "LunaHUBPressScale"
             pressScale.Scale = 1
             pressScale.Parent = visibilityButton
+
             local pressTween
             local pressInInfo = TweenInfo.new(0.075, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             local pressOutInfo = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
             visibilityButton.Name = "LunaHUBVisibilityButton"
+
+            -- Remove only the unwanted parentheses from the runtime LunaHUB label.
+            -- Keep the LunaHUB text itself unchanged.
+            local function stripLunaHUBParentheses(guiObject)
+                if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") then
+                    if guiObject.Text == "(LunaHUB)" or guiObject.Text == "(LunaHub)" then
+                        guiObject.Text = "LunaHub"
+                    end
+                end
+            end
+            for _, guiObject in ipairs(Library.ScreenGui:GetDescendants()) do
+                stripLunaHUBParentheses(guiObject)
+            end
+            Library:GiveSignal(Library.ScreenGui.DescendantAdded:Connect(function(guiObject)
+                stripLunaHUBParentheses(guiObject)
+            end))
+
             visibilityButton.Active = true
             visibilityButton.Selectable = true
             visibilityButton.Interactable = true
             visibilityButton.AutoButtonColor = false
-            visibilityButton.RichText = true
-            visibilityButton.TextSize = 15
-            visibilityButton.Size = UDim2.fromOffset(92, 32)
+            visibilityButton.RichText = false
+            visibilityButton.Text = ""
+            visibilityButton.TextTransparency = 1
+            visibilityButton.TextStrokeTransparency = 1
+            visibilityButton.TextSize = 1
+            visibilityButton.Size = UDim2.fromOffset(48, 48)
+
+            -- Self-contained LunaHub logo asset. The PNG has no green outline;
+            -- the green UIStroke below remains the button outline.
+            local lunaHubLogoAsset
+            pcall(function()
+                if type(getcustomasset) == "function" then
+                    local logoPath = "LunaHub_clean.png"
+                    -- Always rewrite the clean asset so an older cached LunaHub.png
+                    -- with "(LunaHub)" can never be reused on re-execution.
+                    local decode = nil
+                        if type(base64decode) == "function" then
+                            decode = base64decode
+                        elseif type(crypt) == "table" and type(crypt.base64decode) == "function" then
+                            decode = crypt.base64decode
+                        elseif type(syn) == "table" and type(syn.crypt) == "table"
+                            and type(syn.crypt.base64) == "table"
+                            and type(syn.crypt.base64.decode) == "function" then
+                            decode = syn.crypt.base64.decode
+                        end
+                    if type(writefile) == "function" and decode then
+                        writefile(logoPath, decode("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"))
+                    end
+                    if type(isfile) ~= "function" or isfile(logoPath) then
+                        lunaHubLogoAsset = getcustomasset(logoPath)
+                    end
+                end
+            end)
+
+            if lunaHubLogoAsset then
+                -- Never allow the library/launcher button to render its own text.
+                -- The PNG is the only visible content of the floating button.
+                visibilityButton.Text = ""
+                visibilityButton.TextTransparency = 1
+                visibilityButton.TextStrokeTransparency = 1
+                for _, child in ipairs(visibilityButton:GetDescendants()) do
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        child.Text = ""
+                        child.TextTransparency = 1
+                        child.TextStrokeTransparency = 1
+                    end
+                end
+
+                local logo = Instance.new("ImageLabel")
+                logo.Name = "LunaHUBLogo"
+                logo.BackgroundTransparency = 1
+                logo.Size = UDim2.fromScale(1, 1)
+                logo.Position = UDim2.fromScale(0, 0)
+                logo.Image = lunaHubLogoAsset
+                logo.ScaleType = Enum.ScaleType.Fit
+                logo.ZIndex = visibilityButton.ZIndex + 1
+                logo.Active = false
+                logo.Parent = visibilityButton
+            else
+                visibilityButton.Text = ""
+                visibilityButton.TextSize = 1
+                visibilityButton.Font = Enum.Font.GothamBold
+                visibilityButton.TextColor3 = Color3.fromRGB(0, 255, 0)
+            end
+            visibilityButton.BackgroundColor3 = Color3.new(0, 0, 0)
+            visibilityButton.BackgroundTransparency = 0
+            visibilityButton.BorderSizePixel = 0
             visibilityButton.ZIndex = 100
             visibilityButton:SetAttribute("LunaHUBInputMode", "Activated")
-            visibilityButton:SetAttribute("LunaHUBDragTolerance", dragTolerance)
-            visibilityButton:SetAttribute("LunaHUBPressScale", 0.965)
+            visibilityButton:SetAttribute("LunaHUBFloatingShape", "Circle")
+
+            local circle = visibilityButton:FindFirstChildOfClass("UICorner")
+            if not circle then
+                circle = Instance.new("UICorner")
+                circle.Parent = visibilityButton
+            end
+            circle.CornerRadius = UDim.new(1, 0)
+
+            local stroke = visibilityButton:FindFirstChildOfClass("UIStroke")
+            if not stroke then
+                stroke = Instance.new("UIStroke")
+                stroke.Parent = visibilityButton
+            end
+            stroke.Color = Color3.fromRGB(34, 197, 94)
+            stroke.Thickness = 2
 
             local function tweenVisibilityButtonScale(targetScale, tweenInfo)
                 if not pressScale.Parent then return end
                 if pressTween then
                     pcall(function() pressTween:Cancel() end)
                 end
-                pressTween = TweenService:Create(pressScale, tweenInfo, { Scale = targetScale })
+                pressTween = TweenService:Create(
+                    pressScale,
+                    tweenInfo,
+                    { Scale = targetScale }
+                )
                 pressTween:Play()
             end
 
@@ -1932,9 +2031,6 @@ do
                     windowOpen = Window.MainFrame.Visible
                 end
                 visibilityButton:SetAttribute("LunaHUBWindowOpen", windowOpen)
-                visibilityButton.Text = windowOpen
-                    and '<b><font color="#58E083">LunaHUB</font></b>'
-                    or '<b><font color="#C4C9D1">LunaHUB</font></b>'
             end
 
             local function applyVisibilityRequest(requestId, desiredOpen, attempt)
@@ -1946,6 +2042,7 @@ do
 
                 Window:Toggle(desiredOpen)
                 refreshVisibilityButton()
+
                 if Library.Toggled == desiredOpen then
                     visibilityButton:SetAttribute("LunaHUBToggleQueued", false)
                     return
@@ -1970,9 +2067,8 @@ do
                 local inputType = input.UserInputType
                 if inputType == Enum.UserInputType.MouseButton1
                     or inputType == Enum.UserInputType.Touch then
-                    pressButtonPosition = visibilityButton.AbsolutePosition
                     pressVisualInput = input
-                    tweenVisibilityButtonScale(0.965, pressInInfo)
+                    tweenVisibilityButtonScale(0.92, pressInInfo)
                 end
             end))
 
@@ -1983,13 +2079,6 @@ do
             end))
 
             Library:GiveSignal(visibilityButton.Activated:Connect(function()
-                local startPosition = pressButtonPosition
-                pressButtonPosition = nil
-                if startPosition
-                    and (visibilityButton.AbsolutePosition - startPosition).Magnitude > dragTolerance then
-                    return
-                end
-
                 requestVisibilityToggle()
             end))
 
@@ -2000,6 +2089,259 @@ do
             end
             refreshVisibilityButton()
         end
+    end
+end
+
+-- Make the main window itself draggable. Interactive controls keep their normal
+-- behavior; empty/non-interactive window surfaces can be used as the drag area.
+do
+    local inputService = game:GetService("UserInputService")
+    local mainFrame = Window.MainFrame
+    if mainFrame then
+        local dragState = {
+            active = false,
+            input = nil,
+            startInput = nil,
+            startPosition = nil,
+        }
+
+        local function isInteractiveTarget(target)
+            if not target or not target:IsA("GuiObject") then return false end
+
+            local current = target
+            while current and current ~= mainFrame do
+                if current:IsA("TextButton")
+                    or current:IsA("ImageButton")
+                    or current:IsA("TextBox")
+                    or current:IsA("ScrollingFrame") then
+                    return true
+                end
+                current = current.Parent
+            end
+
+            return false
+        end
+
+        local function beginDrag(input)
+            if not mainFrame.Visible then return end
+            if isInteractiveTarget(input.Target) then return end
+
+            dragState.active = true
+            dragState.input = input
+            dragState.startInput = input.Position
+            dragState.startPosition = mainFrame.Position
+        end
+
+        local function stopDrag(input)
+            if dragState.input == input
+                or input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
+                dragState.active = false
+                dragState.input = nil
+                dragState.startInput = nil
+                dragState.startPosition = nil
+            end
+        end
+
+        Library:GiveSignal(mainFrame.InputBegan:Connect(function(input)
+            local inputType = input.UserInputType
+            if inputType == Enum.UserInputType.MouseButton1
+                or inputType == Enum.UserInputType.Touch then
+                beginDrag(input)
+            end
+        end))
+
+        Library:GiveSignal(inputService.InputChanged:Connect(function(input)
+            if not dragState.active then return end
+
+            if input.UserInputType ~= Enum.UserInputType.MouseMovement
+                and input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+
+            if not dragState.startInput or not dragState.startPosition then return end
+
+            local delta = input.Position - dragState.startInput
+            mainFrame.Position = UDim2.new(
+                dragState.startPosition.X.Scale,
+                dragState.startPosition.X.Offset + delta.X,
+                dragState.startPosition.Y.Scale,
+                dragState.startPosition.Y.Offset + delta.Y
+            )
+        end))
+
+        Library:GiveSignal(inputService.InputEnded:Connect(function(input)
+            stopDrag(input)
+        end))
+    end
+end
+
+-- Replace the top-right window control with a compact Exit button.
+do
+    local mainFrame = Window.MainFrame
+    if mainFrame then
+        local topRightY = 60
+
+        -- Hide the old top-right control so the custom Exit button is the only
+        -- close control in that area.
+        for _, child in ipairs(mainFrame:GetDescendants()) do
+            if (child:IsA("TextButton") or child:IsA("ImageButton"))
+                and child.AbsolutePosition.X > mainFrame.AbsolutePosition.X + (mainFrame.AbsoluteSize.X * 0.72)
+                and child.AbsolutePosition.Y < mainFrame.AbsolutePosition.Y + topRightY then
+                pcall(function()
+                    child.Visible = false
+                end)
+            end
+        end
+
+        local exitButton = Instance.new("TextButton")
+        exitButton.Name = "LunaHUBExitButton"
+        exitButton.AnchorPoint = Vector2.new(1, 0)
+        exitButton.Position = UDim2.new(1, -10, 0, 9)
+        exitButton.Size = UDim2.fromOffset(36, 32)
+        exitButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        exitButton.BackgroundTransparency = 0
+        exitButton.BorderSizePixel = 0
+        exitButton.Text = "×"
+        exitButton.Font = Enum.Font.GothamBold
+        exitButton.TextSize = 24
+        exitButton.TextColor3 = Color3.fromRGB(239, 68, 68)
+        exitButton.AutoButtonColor = false
+        exitButton.ZIndex = 1000
+        exitButton.Parent = mainFrame
+
+        local exitCorner = Instance.new("UICorner")
+        exitCorner.CornerRadius = UDim.new(0, 6)
+        exitCorner.Parent = exitButton
+
+        local exitStroke = Instance.new("UIStroke")
+        exitStroke.Color = Color3.fromRGB(239, 68, 68)
+        exitStroke.Thickness = 1
+        exitStroke.Parent = exitButton
+
+        Library:GiveSignal(exitButton.MouseEnter:Connect(function()
+            exitButton.BackgroundColor3 = Color3.fromRGB(55, 25, 25)
+        end))
+
+        Library:GiveSignal(exitButton.MouseLeave:Connect(function()
+            exitButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        end))
+
+        -- Confirmation prompt shown before the existing full unload path runs.
+        local confirmFrame = Instance.new("Frame")
+        confirmFrame.Name = "LunaHUBExitConfirm"
+        confirmFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        confirmFrame.Position = UDim2.fromScale(0.5, 0.5)
+        confirmFrame.Size = UDim2.fromOffset(300, 145)
+        confirmFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+        confirmFrame.BorderSizePixel = 0
+        confirmFrame.Visible = false
+        confirmFrame.ZIndex = 2000
+        confirmFrame.Parent = mainFrame
+
+        local confirmCorner = Instance.new("UICorner")
+        confirmCorner.CornerRadius = UDim.new(0, 10)
+        confirmCorner.Parent = confirmFrame
+
+        local confirmStroke = Instance.new("UIStroke")
+        confirmStroke.Color = Color3.fromRGB(60, 60, 60)
+        confirmStroke.Thickness = 1
+        confirmStroke.Parent = confirmFrame
+
+        local confirmTitle = Instance.new("TextLabel")
+        confirmTitle.BackgroundTransparency = 1
+        confirmTitle.Position = UDim2.fromOffset(16, 14)
+        confirmTitle.Size = UDim2.new(1, -32, 0, 25)
+        confirmTitle.Text = "Close LUNA HUB?"
+        confirmTitle.Font = Enum.Font.GothamBold
+        confirmTitle.TextSize = 17
+        confirmTitle.TextColor3 = Color3.fromRGB(245, 245, 245)
+        confirmTitle.TextXAlignment = Enum.TextXAlignment.Left
+        confirmTitle.ZIndex = 2001
+        confirmTitle.Parent = confirmFrame
+
+        local confirmMessage = Instance.new("TextLabel")
+        confirmMessage.BackgroundTransparency = 1
+        confirmMessage.Position = UDim2.fromOffset(16, 45)
+        confirmMessage.Size = UDim2.new(1, -32, 0, 40)
+        confirmMessage.Text = "Do you really want to close the window?"
+        confirmMessage.Font = Enum.Font.Gotham
+        confirmMessage.TextSize = 13
+        confirmMessage.TextColor3 = Color3.fromRGB(185, 185, 185)
+        confirmMessage.TextWrapped = true
+        confirmMessage.TextXAlignment = Enum.TextXAlignment.Left
+        confirmMessage.TextYAlignment = Enum.TextYAlignment.Center
+        confirmMessage.ZIndex = 2001
+        confirmMessage.Parent = confirmFrame
+
+        local closeConfirm = Instance.new("TextButton")
+        closeConfirm.Name = "CloseWindow"
+        closeConfirm.Position = UDim2.new(0, 16, 1, -44)
+        closeConfirm.Size = UDim2.new(0.5, -22, 0, 32)
+        closeConfirm.BackgroundColor3 = Color3.fromRGB(185, 35, 35)
+        closeConfirm.BorderSizePixel = 0
+        closeConfirm.Text = "Close Window"
+        closeConfirm.Font = Enum.Font.GothamBold
+        closeConfirm.TextSize = 12
+        closeConfirm.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeConfirm.AutoButtonColor = false
+        closeConfirm.ZIndex = 2001
+        closeConfirm.Parent = confirmFrame
+
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 6)
+        closeCorner.Parent = closeConfirm
+
+        local cancelConfirm = Instance.new("TextButton")
+        cancelConfirm.Name = "Cancel"
+        cancelConfirm.AnchorPoint = Vector2.new(1, 0)
+        cancelConfirm.Position = UDim2.new(1, -16, 1, -44)
+        cancelConfirm.Size = UDim2.new(0.5, -22, 0, 32)
+        cancelConfirm.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        cancelConfirm.BorderSizePixel = 0
+        cancelConfirm.Text = "Cancel"
+        cancelConfirm.Font = Enum.Font.GothamBold
+        cancelConfirm.TextSize = 12
+        cancelConfirm.TextColor3 = Color3.fromRGB(235, 235, 235)
+        cancelConfirm.AutoButtonColor = false
+        cancelConfirm.ZIndex = 2001
+        cancelConfirm.Parent = confirmFrame
+
+        local cancelCorner = Instance.new("UICorner")
+        cancelCorner.CornerRadius = UDim.new(0, 6)
+        cancelCorner.Parent = cancelConfirm
+
+        Library:GiveSignal(closeConfirm.MouseEnter:Connect(function()
+            closeConfirm.BackgroundColor3 = Color3.fromRGB(215, 45, 45)
+        end))
+        Library:GiveSignal(closeConfirm.MouseLeave:Connect(function()
+            closeConfirm.BackgroundColor3 = Color3.fromRGB(185, 35, 35)
+        end))
+        Library:GiveSignal(cancelConfirm.MouseEnter:Connect(function()
+            cancelConfirm.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end))
+        Library:GiveSignal(cancelConfirm.MouseLeave:Connect(function()
+            cancelConfirm.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        end))
+
+        Library:GiveSignal(exitButton.Activated:Connect(function()
+            confirmFrame.Visible = true
+        end))
+
+        Library:GiveSignal(cancelConfirm.Activated:Connect(function()
+            confirmFrame.Visible = false
+        end))
+
+        Library:GiveSignal(closeConfirm.Activated:Connect(function()
+            local unload = getgenv().__LunaHUBSAE_Unload
+            if type(unload) == "function" then
+                pcall(unload)
+            else
+                pcall(function()
+                    Library:Unload()
+                end)
+            end
+        end))
     end
 end
 
@@ -2105,15 +2447,15 @@ Window.__ApplyMobileScrollFix = function(onlyTab)
     end
 end
 
--- HOME layout: Session + Live Stats stacked LEFT, Server top-RIGHT.
-local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
+-- HOME layout: Live Stats removed; Server remains on the LEFT.
+local ServerBox = HomeTab:AddLeftGroupbox("🌐 Server")
 
 -- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
 do
     local EXTRA_HEIGHT  = 6
     local CUSTOM_RADIUS = 8
 
-    local Funcs = getmetatable(SessionBox).__index
+    local Funcs = getmetatable(ServerBox).__index
 
     local function MakeDropdownLazy(Dropdown, startDirty)
         local origBuild = Dropdown.BuildDropdownList
@@ -3369,25 +3711,6 @@ do
     end
 end
 
-local SessionMetrics = CHK.Metrics(SessionBox, "SessionMetrics", {
-    { key = "time", title = "SESSION", icon = "◷", color = Color3.fromRGB(167, 139, 250) },
-    { key = "safety", title = "SAFETY", icon = "◆", color = Color3.fromRGB(74, 222, 128) },
-    { key = "fps", title = "FPS", icon = "▥", color = Color3.fromRGB(45, 212, 191) },
-    { key = "ping", title = "PING", icon = "⌁", color = Color3.fromRGB(96, 165, 250) },
-    { key = "steals", title = "STEALS", icon = "◇", color = Color3.fromRGB(251, 191, 36) },
-    { key = "attempts", title = "ATTEMPTS", icon = "↻", color = Color3.fromRGB(251, 146, 60) },
-    { key = "stealTime", title = "STEAL TIME", icon = "◴", color = Color3.fromRGB(56, 189, 248) },
-    { key = "avgStealTime", title = "AVG STEAL", icon = "≈", color = Color3.fromRGB(129, 140, 248) },
-}, 2)
-SessionMetrics:Set("time", "00:00:00")
-SessionMetrics:Set("safety", "Loading")
-SessionMetrics:Set("fps", "--")
-SessionMetrics:Set("ping", "--")
-SessionMetrics:Set("steals", "0")
-SessionMetrics:Set("attempts", "0")
-SessionMetrics:Set("stealTime", "idle")
-SessionMetrics:Set("avgStealTime", "--")
-
 -- One clock per steal transaction. It updates only while a transaction is live,
 -- then sleeps on the shared status event, so idle clients pay no timer polling cost.
 do
@@ -3414,8 +3737,6 @@ do
         -- Home may be rebuilding/unloading while a delivery signal finishes.
         -- Presentation must never be able to terminate the steal worker after
         -- the server has already accepted and claimed the egg.
-        pcall(SessionMetrics.Set, SessionMetrics, "stealTime", ("%.2fs"):format(total))
-        pcall(SessionMetrics.Set, SessionMetrics, "avgStealTime", ("%.2fs"):format(timer.average))
     end
 
     function RuntimeStatus.pauseStealTimer()
@@ -3435,7 +3756,6 @@ do
             if timer.active then
                 local elapsed = math.max(0, os.clock() - (tonumber(timer.startedAt) or os.clock()))
                 RuntimeStatus.set("stealTime", ("⏱️ Time: %.2fs"):format(elapsed))
-                pcall(SessionMetrics.Set, SessionMetrics, "stealTime", ("%.2fs"):format(elapsed))
                 task.wait(RuntimeStatus.presentationInterval())
             else
                 RuntimeStatus.statusWake.Event:Wait()
@@ -3444,24 +3764,7 @@ do
     end)
 end
 
-local StatsBox = HomeTab:AddRightGroupbox("📊 Live Stats")
 
-local StatsMetrics = CHK.Metrics(StatsBox, "LiveMetrics", {
-    { key = "money", title = "MONEY", icon = "$", color = Color3.fromRGB(251, 191, 36) },
-    { key = "income", title = "INCOME / SEC", icon = "+", color = Color3.fromRGB(74, 222, 128) },
-    { key = "speed", title = "SPEED", icon = "»", color = Color3.fromRGB(251, 146, 60) },
-    { key = "eggs", title = "EGG INVENTORY", icon = "🥚", color = Color3.fromRGB(244, 114, 182) },
-    { key = "pets", title = "PET INVENTORY", icon = "◆", color = Color3.fromRGB(96, 165, 250) },
-    { key = "petValue", title = "TOTAL PET VALUE", icon = "$", color = Color3.fromRGB(167, 139, 250) },
-}, 1)
-StatsMetrics:Set("money", "Loading...")
-StatsMetrics:Set("income", "Loading...")
-StatsMetrics:Set("speed", "Loading...")
-StatsMetrics:Set("eggs", "Loading...")
-StatsMetrics:Set("pets", "Loading...")
-StatsMetrics:Set("petValue", "Loading...")
-
-local ServerBox = HomeTab:AddLeftGroupbox("🌐 Server")
 
 -- A successful same-server rejoin deliberately removes ClientReplicator and can
 -- also populate GuiService's error text during the handoff. Mark it before the
@@ -3537,20 +3840,6 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
     end },
 })
 
--- Keep the free-release warning visible in the main UI. Store it on Window to
--- avoid another long-lived top-level local in this already large Luau chunk.
-Window.__FreeReleaseBox = HomeTab:AddRightGroupbox("🛡️ Free Release")
-CHK.Notice(Window.__FreeReleaseBox, "FreeReleaseNotice", {
-    title = "LunaHUB IS FREE",
-    text = "Never pay for access.\nSellers are unaffiliated.",
-    accent = Color3.fromRGB(74, 222, 128),
-    titleColor = Color3.fromRGB(134, 239, 172),
-    textColor = Color3.fromRGB(229, 231, 235),
-    titleSize = 16,
-    textSize = 14,
-    height = 96,
-})
-
 -- live updaters — session clock every 1s; stats/ping every 5s + instant
 -- .Changed listeners on the leaderstat values (accurate AND cheap).
 local startClock = os.clock()
@@ -3583,170 +3872,8 @@ task.spawn(function()
                 lastOverlaySafety, lastOverlayFlags = safety, flags
                 RuntimeStatus.wakeOverlay("safety")
             end
-            SessionMetrics:Set("time", fmtClock(os.clock() - startClock))
-            SessionMetrics:Set("safety", safety,
-                (tonumber(flags) or 0) > 0 and Color3.fromRGB(252, 165, 165)
-                    or Color3.fromRGB(134, 239, 172))
-            SessionMetrics:Set("steals", tostring(RuntimeStatus.steals or 0))
-            SessionMetrics:Set("attempts", tostring(RuntimeStatus.attempts or 0))
-            local average = RuntimeStatus.stealTimer.average
-            SessionMetrics:Set("avgStealTime", average and ("%.2fs"):format(average) or "--")
         end)
         task.wait(1)
-    end
-end)
-
--- Money, speed and both inventories come from the game's own Save replica.
--- Pet value uses the same deserializer and price calculator as the seller NPC,
--- so this is the user's real total sell value rather than an estimate.
-task.spawn(function()
-    local SaveMod, InventorySer, PetPrice, EggTypes
-    -- Save is loaded only by the independent coroutine below: a yielding
-    -- initial require must not block leaderstats, FPS or ping setup here.
-
-    local function trackConnection(conn)
-        if typeof(conn) ~= "RBXScriptConnection" then return end
-        local runtimeConns = getgenv().__CHSAE_RuntimeConns
-        if type(runtimeConns) == "table" then runtimeConns[#runtimeConns + 1] = conn end
-    end
-
-    local function dictionaryCount(dictionary)
-        local count = 0
-        for _ in pairs(type(dictionary) == "table" and dictionary or {}) do count += 1 end
-        return count
-    end
-
-    local function refreshStats()
-        -- balance + speed from the save replica
-        local saveSpeedUpdated = false
-        pcall(function()
-            local sv = SaveMod and SaveMod.Get()
-            if type(sv) == "table" then
-                if sv.Money then StatsMetrics:Set("money", "$" .. short(sv.Money)) end
-                if sv.SpeedPower then
-                    StatsMetrics:Set("speed", short(sv.SpeedPower))
-                    saveSpeedUpdated = true
-                end
-            end
-        end)
-        -- Income and a temporary speed fallback do not depend on Save.
-        pcall(function()
-            local ls = LocalPlayer:FindFirstChild("leaderstats")
-            local mps = ls and ls:FindFirstChild("Money/s")
-            if mps then StatsMetrics:Set("income", "$" .. short(mps.Value) .. "/s") end
-            local speed = ls and ls:FindFirstChild("Speed")
-            if speed and not saveSpeedUpdated then StatsMetrics:Set("speed", short(speed.Value)) end
-        end)
-    end
-
-    -- Presentation-only inventory work is coalesced and spread across frames.
-    -- Never cache seller eligibility or carry proof through this UI snapshot.
-    local inventoryRefreshQueued, inventoryRevision = false, 0
-    local function refreshInventoryStats(revision)
-        local save
-        pcall(function() save = SaveMod and SaveMod.Get() end)
-        if type(save) ~= "table" then return end
-        local eggCount = dictionaryCount(save.EggInventory)
-        local eggCapacity = tonumber(EggTypes and EggTypes.MAX_INVENTORY)
-        local inventory = type(save.Inventory) == "table" and table.clone(save.Inventory) or {}
-        local petCount = dictionaryCount(inventory)
-        local totalValue, processed, sliceStarted = 0, 0, os.clock()
-        local priced = InventorySer and PetPrice and type(save.Inventory) == "table"
-        local vipMultiplier = LocalPlayer:GetAttribute("VIP") and 2 or 1
-        if priced then
-            for _, raw in pairs(inventory) do
-                if not sessionAlive() or revision ~= inventoryRevision then return end
-                local okItem, item = pcall(InventorySer.Deserialize, raw)
-                if okItem and type(item) == "table" then
-                    local okPrice, price = pcall(PetPrice, item)
-                    if okPrice then totalValue += (tonumber(price) or 0) * vipMultiplier end
-                end
-                processed += 1
-                if processed % 16 == 0 or os.clock() - sliceStarted >= 0.002 then
-                    RuntimeStatus.inventoryStatsYields = (RuntimeStatus.inventoryStatsYields or 0) + 1
-                    task.wait()
-                    sliceStarted = os.clock()
-                end
-            end
-        end
-        if not sessionAlive() or revision ~= inventoryRevision then return end
-        StatsMetrics:Set("eggs", eggCapacity and eggCapacity > 0
-            and ("%d / %d"):format(eggCount, eggCapacity) or tostring(eggCount))
-        StatsMetrics:Set("pets", tostring(petCount))
-        StatsMetrics:Set("petValue", priced and ("$" .. short(totalValue)) or "--")
-        RuntimeStatus.inventoryStatsPasses = (RuntimeStatus.inventoryStatsPasses or 0) + 1
-    end
-    local function queueInventoryRefresh()
-        inventoryRevision += 1
-        if SESSION.InventoryWake then SESSION.InventoryWake("inventory") end
-        if inventoryRefreshQueued then return end
-        inventoryRefreshQueued = true
-        task.defer(function()
-            while sessionAlive() do
-                task.wait(0.25)
-                local revision = inventoryRevision
-                pcall(refreshInventoryStats, revision)
-                if revision == inventoryRevision then break end
-            end
-            inventoryRefreshQueued = false
-        end)
-    end
-
-    -- Require Save independently: pcall catches errors but does not stop a
-    -- yielding require from blocking its caller. Once ready, attach the game's
-    -- event-driven signals and immediately populate every dependent card.
-    task.spawn(function()
-        local loaded
-        pcall(function() loaded = require(ReplicatedStorage.Shared.Save) end)
-        if not (sessionAlive() and type(loaded) == "table") then return end
-        SaveMod = { Get = function() return loaded.Get() end }
-
-        -- Populate before attaching listeners so a changed-signal implementation
-        -- can never keep the initial cards at Loading.
-        pcall(refreshStats)
-        queueInventoryRefresh()
-        pcall(function() trackConnection(loaded.FieldSignal("Money"):Connect(refreshStats)) end)
-        pcall(function() trackConnection(loaded.FieldSignal("SpeedPower"):Connect(refreshStats)) end)
-        pcall(function() trackConnection(loaded.FieldSignal("Inventory"):Connect(queueInventoryRefresh)) end)
-        pcall(function() trackConnection(loaded.FieldSignal("EggInventory"):Connect(queueInventoryRefresh)) end)
-    end)
-
-    pcall(refreshStats)
-    queueInventoryRefresh()
-    -- Pricing modules may yield while the main script is still constructing the
-    -- Sell tab. Load them on their own worker so a slow require can never hold
-    -- money, speed, FPS, ping, or inventory counts at "--".
-    task.spawn(function()
-        task.wait(1)
-        pcall(function()
-            local AssetItems = require(ReplicatedStorage.Shared.Util.AssetItems)
-            InventorySer = { Deserialize = AssetItems.Decode }
-        end)
-        pcall(function() PetPrice = require(ReplicatedStorage.Shared.Util.AssetItems).SalePrice end)
-        pcall(function() EggTypes = require(ReplicatedStorage.Shared.Types.Eggs) end)
-        queueInventoryRefresh()
-    end)
-    trackConnection(LocalPlayer:GetAttributeChangedSignal("VIP"):Connect(queueInventoryRefresh))
-    local nextInventoryFallback = os.clock() + 30
-    while sessionAlive() do
-        pcall(function()
-            local ping, pingValue = "--", nil
-            pcall(function()
-                pingValue = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-                ping = ("%dms"):format(math.floor(pingValue))
-            end)
-            SessionMetrics:Set("fps", tostring(fps))
-            SessionMetrics:Set("ping", ping)
-            if type(RuntimeStatus.updateCalibrationTelemetry) == "function" then
-                RuntimeStatus.updateCalibrationTelemetry(fps, pingValue)
-            end
-        end)
-        pcall(refreshStats)
-        if os.clock() >= nextInventoryFallback then
-            nextInventoryFallback = os.clock() + 30
-            queueInventoryRefresh()
-        end
-        task.wait(5)
     end
 end)
 
@@ -20723,10 +20850,6 @@ do
             return value
         end
 
-        local moneyValue = addMetric("Balance", "BALANCE", palette.gold, 1)
-        local incomeValue = addMetric("Income", "INCOME/SEC", palette.green, 2)
-        local petValue = addMetric("PetValue", "PET VALUE", palette.violet, 3)
-        local eggsValue = addMetric("EggBag", "EGG BAG", palette.pink, 4)
         local stealsValue = addMetric("Steals", "STEALS", palette.cyan, 5)
         local attemptsValue = addMetric("Attempts", "ATTEMPTS", palette.orange, 6)
         local fpsValue = addMetric("FPS", "FPS", palette.green, 7)
@@ -20762,14 +20885,10 @@ do
             pcall(function() activity = tostring(Arb.status()) end)
             activityValue.Text = activity
 
-            moneyValue.Text = tostring(StatsMetrics:Get("money"))
-            incomeValue.Text = tostring(StatsMetrics:Get("income"))
-            petValue.Text = tostring(StatsMetrics:Get("petValue"))
-            eggsValue.Text = tostring(StatsMetrics:Get("eggs"))
             stealsValue.Text = tostring(tonumber(RuntimeStatus.steals) or 0)
             attemptsValue.Text = tostring(tonumber(RuntimeStatus.attempts) or 0)
             fpsValue.Text = tostring(fps)
-            pingValue.Text = tostring(SessionMetrics:Get("ping"))
+            pingValue.Text = tostring(math.floor(getNetworkPingSeconds() * 1000 + 0.5))
             sessionValue.Text = fmtClock(os.clock() - startClock)
 
             local eventStatus = tostring(RuntimeStatus.adminEventStatus or "Waiting for event data")
@@ -20784,10 +20903,6 @@ do
             return {
                 Visible = blackFrame.Visible == true,
                 Activity = activityValue.Text,
-                Money = moneyValue.Text,
-                Income = incomeValue.Text,
-                PetValue = petValue.Text,
-                Eggs = eggsValue.Text,
                 Steals = stealsValue.Text,
                 Attempts = attemptsValue.Text,
                 FPS = fpsValue.Text,
@@ -22058,7 +22173,7 @@ end -- scoped SETTINGS helpers
 -- ════════════════════════════════════════════
 pcall(function()
     local ALL_BOXES = {
-        SessionBox, StatsBox, ServerBox, Window.__FreeReleaseBox, -- HOME
+        ServerBox, -- HOME
         TargetBox, AutoStealBox, AutoPlaceBox,    -- EGGS
         PenBox, EquipBox, TreadmillBox, TrailBox, -- PROGRESSION
         SellBox, EggSellBox,                      -- SELL
@@ -22327,10 +22442,7 @@ do
     end
 
     -- HOME
-    spawnBox(SessionBox, false)
-    spawnBox(StatsBox,   false)
     spawnBox(ServerBox,  false)
-    spawnBox(Window.__FreeReleaseBox, false)
 
     -- EGGS
     spawnBox(TargetBox,    false)
