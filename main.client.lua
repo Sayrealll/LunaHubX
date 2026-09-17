@@ -31,8 +31,8 @@ end
 local ThemeName = "Dark"
 
 local Window = WindUI:CreateWindow({
-	Title = "WindUI Library",
-	Author = "by .ftgs",
+	Title = " LUNA HUB ",
+	Author = " STEAL AN EGG ",
 	Icon = "solar:wind-bold",
 	Theme = ThemeName,
 	--NewElements = true,
@@ -51,118 +51,447 @@ local Window = WindUI:CreateWindow({
 	]]
 })
 
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------FUNCTIONS--------------------------------------------------------------------
+
+local function AutoStealEggs()
+	print("Auto Steal Eggs activated!")
+	
+	-- Ilagay dito later ang actual Auto Steal Eggs function
+end
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------WINDOW TAB-------------------------------------------------------------------
 Window:Tag({
-	Title = "v1.6.64-fix",
+	Title = " v1.0.0.2 ",
 	Color = "ElementBackground",
 })
 
-Window:Tab({
-	Title = "Main",
+local Tab1 = Window:Tab({
+	Title = "DISCORD",
 	Icon = "warehouse",
 })
 
 Window:Section({
-	Title = "Silent",
+	Title = "FARM",
 })
 
-local Tab1 = Window:Tab({
-	Title = "Exploits",
-	Icon = "terminal",
+local Tab2 = Window:Tab({
+	Title = "EGGS",
+	Icon = "egg",
 })
 
-Window:Tab({
-	Title = "Aimbot",
-	Icon = "locate-fixed",
+local Tab3 = Window:Tab({
+	Title = "PROGRESSION",
+	Icon = "trophy",
 })
 
-Window:Tab({
+local Tab4 = Window:Tab({
+	Title = "Pets",
+	Icon = "pet",
+})
+
+local Tab5 = Window:Tab({
+	Title = "FUSE",
+	Icon = "controller",
+})
+
+local Tab6 = Window:Tab({
+	Title = "EVENT",
+	Icon = "star",
+})
+
+local Tab7 = Window:Tab({
+	Title = "WEBHOOK",
+	Icon = "message",
+})
+
+local Tab7 = Window:Tab({
 	Title = "ESP",
-	Icon = "eye",
+	Icon = "people",
 })
 
-local InfoTab = Window:Tab({
-	Title = "Info",
-	Icon = "badge-info",
-})
 
-InfoTab:Paragraph({
-	Title = "WindUI",
-	Desc = "WindUI is a open source UI library for Roblox Script Hubs",
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------WINDOW TAB INFO-------------------------------------------------------------------
+--------------------------------------------------------WINDOW 1 INFO-------------------------------------------------------------------
+Tab1:Paragraph({
+	Title = "Join our Discord Community",
+	Desc = "",
 	Buttons = {
 		{
-			Title = "GitHub",
+			Title = "Discord",
 			Callback = function()
-				print("GitHub Button Clicked")
-			end,
-		},
-		{
-			Title = "Documentation",
-			Variant = "Secondary",
-			Callback = function()
-				print("Documentation Button Clicked")
+				local DiscordLink = "discord.gg/Ev8k5RAU3"
+				
+				if setclipboard then
+					setclipboard(DiscordLink)
+					print("Discord link copied")
+				end
 			end,
 		},
 	},
 })
 
-local HStack1 = InfoTab:HStack()
 
-local VStackLeft = HStack1:VStack()
-local VStackRight = HStack1:VStack()
+--------------------------------------------------------WINDOW 2 INFO-------------------------------------------------------------------
 
-VStackLeft:Button({
-	Title = "Reload UI",
-	Justify = "Center",
-	Icon = "refresh-ccw",
-	IconAlign = "Left",
-	Color = Color3.fromHex("#F44732"),
-	Callback = function()
-		print("Reloading UI...")
-	end,
-})
-
-VStackRight:Button({
-	Title = "Rejoin Place",
-	Justify = "Center",
-	Icon = "log-out",
-	IconAlign = "Left",
-	Color = Color3.fromHex("#f4b332"),
-	Callback = function()
-		print("Rejoining place...")
-	end,
-})
-
-local Section = Tab1:Section({
-	Title = "Hi1",
-	Icon = "rbxassetid://77799629590713",
+local AutoStealSection = Tab2:Section({
+	Title = "AUTO STEAL",
 	IconThemed = true,
 	Box = true,
 	BoxBorder = true,
 })
 
-local Viewport = Section:Viewport({
-	Object = Instance.new("Part"),
-	Interactive = true,
-})
-
-Section:Input({
-	Title = "Leave at Wave",
-	Desc = "Enter a wave number to automatically leave the raid at that wave (0 = never leave)",
-	Icon = "log-out",
-	Type = "Default",
-	Placeholder = "e.g. 50",
-	Value = "0",
-	Flag = "ninja_raid_leave_wave",
-	Callback = function(text)
-		--[[local num = tonumber(text)
-		if num then
-			ninjaRaid_leaveWave = math.floor(num)
+AutoStealSection:Toggle({
+	Title = "Auto Steal Eggs",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
 		else
-			ninjaRaid_leaveWave = 0
-		end]]
+			print("Auto Steal Eggs disabled!")
+		end
 	end,
 })
 
+AutoStealSection:Toggle({
+	Title = "Avoid Traps",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+
+AutoStealSection:Slider({
+	Title = "Glide Speed",
+	Step = 1,
+	Width = 200,
+	Value = {
+		Min = 100,
+		Max = 1000,
+		Default = 1000,
+	},
+	Callback = function(value)
+		print(value)
+	end,
+})
+
+AutoStealSection:Input({
+	Title = "Exact Glide Speed",
+     Value = "1000",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+AutoStealSection:Toggle({
+	Title = "Auto Calibrate Speed",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+AutoStealSection:Dropdown({
+		Title = "Target Priority",
+		Values = {
+			"Rariest",
+			"Nearest",
+			"Higest Value",
+			"Higest Value",
+			"Farthest",
+	},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+
+AutoStealSection:Toggle({
+	Title = "Anti AFK",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+AutoStealSection:Toggle({
+		Title = "Auto Execute",
+		Locked = true,
+		LockedTitle = "This featured is temporary lock!",
+	})
+
+
+
+
+local FilterSelection = Tab2:Section({
+	Title = "AUTO STEAL FILTER",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+FilterSelection:Dropdown({
+		Title = "Areas",
+		Values = {
+			"Titan Temple",
+			"Cherry Blossom",
+			"Rarities",
+			"Higest Value",
+			"Farthest",
+		},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+FilterSelection:Dropdown({
+		Title = "Category",
+		Values = {
+			"ArchAngel",
+			"World Burner",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FilterSelection:Dropdown({
+		Title = "Rarities",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FilterSelection:Dropdown({
+		Title = "KG RULE",
+		Values = {
+			"Any",
+			"Below",
+			"Above",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FilterSelection:Input({
+	Title = "KG Threshold",
+    Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+FilterSelection:Input({
+	Title = "Minimum Value",
+     Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+
+
+local StealMethodSelection = Tab2:Section({
+	Title = "MOVEMENT METHOD",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+StealMethodSelection:Dropdown({
+		Title = "Steal Type",
+		Values = {
+			"TP",
+			"TWEEN",			
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+StealMethodSelection:Toggle({
+	Title = "Burst Tween",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+StealMethodSelection:Dropdown({
+		Title = "Steal Method",
+		Values = {
+			"Straight",
+			"Fly",
+			"Turbo Hybrid",
+			"Default",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+
+
+--------------------------------------------------------WINDOW 3 INFO-------------------------------------------------------------------
+
+local UpgradeSection = Tab3:Section({
+	Title = "UPGRADES",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+UpgradeSection:Toggle({
+	Title = "Auto Upgrade Pen",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+UpgradeSection:Toggle({
+	Title = "Auto Treadmill Training",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+UpgradeSection:Toggle({
+	Title = "Auto Treadmill Upgrade",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+UpgradeSection:Dropdown({
+		Title = "Trail Shop",
+		Values = {
+			"Rariest",
+			"Nearest",
+			"Higest Value",
+			"Higest Value",
+			"Farthest",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+UpgradeSection:Toggle({
+	Title = "Auto Buy Trail",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+UpgradeSection:Toggle({
+	Title = "Auto Claim Index Rewards",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+UpgradeSection:Toggle({
+	Title = "Auto Claim Group Rewards",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+
+
+
+--------------------------------------------------------WINDOW 4 INFO-------------------------------------------------------------------
+
+local PetsSection = Tab4:Section({
+	Title = "Pets",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+--------------------------------------------------------WINDOW 3 INFO-------------------------------------------------------------------
 local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
 
