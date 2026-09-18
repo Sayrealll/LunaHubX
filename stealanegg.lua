@@ -2104,6 +2104,20 @@ function Window:AddDialog(config)
 end
 
 Library.Toggled = true
+
+-- Create every real tab exactly once. The previous build accidentally removed
+-- this block while removing a duplicate initializer, which left the variables
+-- nil and therefore left the WindUI tabs empty.
+local HomeTab = Window:AddTab("HOME", "house")
+local EggTab = Window:AddTab("EGGS", "egg")
+local ProgressionTab = Window:AddTab("PROGRESSION", "trophy")
+local SellTab = Window:AddTab("SELL", "store")
+Window.__FuseTab = Window:AddTab("FUSE", "combine")
+Window.__ServerTab = Window:AddTab("SERVER", "server")
+local EventTab = Window:AddTab("EVENT", "sparkles")
+Window.__WebhookTab = Window:AddTab("WEBHOOK", "send")
+Window.__AccountTab = Window:AddTab("ACCOUNT", "user")
+local SettingsTab = Window:AddTab("SETTINGS", "settings")
 local RiftBox
 
 Window.__ApplyMobileScrollFix = function() end
