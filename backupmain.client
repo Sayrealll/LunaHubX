@@ -233,9 +233,6 @@ FilterSelection:Dropdown({
 		Values = {
 			"Titan Temple",
 			"Cherry Blossom",
-			"Rarities",
-			"Higest Value",
-			"Farthest",
 		},
 		Value = nil,
 		AllowNone = true,
@@ -277,9 +274,9 @@ FilterSelection:Dropdown({
 FilterSelection:Dropdown({
 		Title = "Priority",
 		Values = {
-			"Any",
-			"Below",
-			"Above",
+			"Rarest",
+			"Nearest",
+			"Highest Value",
 },
 		Value = 1,
 		--AllowNone = true,
@@ -550,11 +547,9 @@ UpgradeSection:Toggle({
 UpgradeSection:Dropdown({
 		Title = "Trails",
 		Values = {
-			"Rariest",
-			"Nearest",
-			"Higest Value",
-			"Higest Value",
-			"Farthest",
+			"Grey Trail",
+			"Green Trail",
+			"Blue Trail",
 	},
 		Value = nil,
 		AllowNone = true,
@@ -671,9 +666,9 @@ SellSection1:Dropdown({
 SellSection1:Dropdown({
 		Title = "Mutation",
 		Values = {
-			"Divine",
-			"Eternal",
-			"Secret",
+			"Boss",
+			"Golden",
+			"GreatBloom",
 	},
 		Value = nil,
 		AllowNone = true,
@@ -784,9 +779,9 @@ SellSection2:Dropdown({
 SellSection2:Dropdown({
 		Title = "Mutation",
 		Values = {
-			"Divine",
-			"Eternal",
-			"Secret",
+			"Boss",
+			"Golden",
+			"GreatBloom",
 	},
 		Value = nil,
 		AllowNone = true,
