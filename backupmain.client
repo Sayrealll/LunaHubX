@@ -123,7 +123,7 @@ local Tab7 = Window:Tab({
 	Icon = "message",
 })
 
-local Tab7 = Window:Tab({
+local Tab8 = Window:Tab({
 	Title = "ESP",
 	Icon = "people",
 })
@@ -186,6 +186,18 @@ AutoStealSection:Toggle({
 })
 
 AutoStealSection:Toggle({
+	Title = "LunaHUB's Steal",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+AutoStealSection:Toggle({
 	Title = "Prevent Traps",
 	Default = false,
 	Callback = function(Value)
@@ -196,58 +208,6 @@ AutoStealSection:Toggle({
 		end
 	end,
 })
-
-
-AutoStealSection:Slider({
-	Title = "Tween Speed",
-	Step = 1,
-	Width = 200,
-	Value = {
-		Min = 100,
-		Max = 1000,
-		Default = 1000,
-	},
-	Callback = function(value)
-		print(value)
-	end,
-})
-
-AutoStealSection:Input({
-	Title = "Exact Tween Speed",
-     Value = "1000",
-	Callback = function(value)
-		print("Input:", value)
-	end,
-})
-
-AutoStealSection:Toggle({
-	Title = "Auto Calibrate Speed",
-	Default = false,
-	Callback = function(Value)
-		if Value then
-			AutoStealEggs()
-		else
-			print("Auto Steal Eggs disabled!")
-		end
-	end,
-})
-
-AutoStealSection:Dropdown({
-		Title = "Target Priority",
-		Values = {
-			"Rariest",
-			"Nearest",
-			"Higest Value",
-			"Higest Value",
-			"Farthest",
-	},
-		Value = 1,
-		--AllowNone = true,
-		Callback = function(selectedValue)
-			print("Selected: " .. selectedValue)
-		end,
-	})
-
 
 AutoStealSection:Toggle({
 	Title = "Anti AFK",
@@ -260,15 +220,6 @@ AutoStealSection:Toggle({
 		end
 	end,
 })
-
-AutoStealSection:Toggle({
-		Title = "Auto Execute",
-		Locked = true,
-		LockedTitle = "This featured is temporary lock!",
-	})
-
-
-
 
 local FilterSelection = Tab2:Section({
 	Title = "AUTO STEAL FILTER",
@@ -293,6 +244,7 @@ FilterSelection:Dropdown({
 			print("Selected: " .. selectedValue)
 		end,
 	})
+
 FilterSelection:Dropdown({
 		Title = "Categories",
 		Values = {
@@ -415,8 +367,141 @@ StealMethodSelection:Dropdown({
 		end,
 	})
 
+StealMethodSelection:Slider({
+	Title = "Tween Speed",
+	Step = 1,
+	Width = 200,
+	Value = {
+		Min = 100,
+		Max = 1000,
+		Default = 1000,
+	},
+	Callback = function(value)
+		print(value)
+	end,
+})
 
+StealMethodSelection:Input({
+	Title = "Exact Tween Speed",
+     Value = "1000",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
 
+StealMethodSelection:Toggle({
+	Title = "Auto Calibrate Speed",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+local StealMethodSelection1 = Tab2:Section({
+	Title = "Auto-Place",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+StealMethodSelection1:Dropdown({
+		Title = "Categories",
+		Values = {
+			"ArchAngel",
+			"World Burner",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+StealMethodSelection1:Dropdown({
+		Title = "Rarities",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+StealMethodSelection1:Dropdown({
+		Title = "Mutation",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+StealMethodSelection1:Dropdown({
+		Title = "Order",
+		Values = {
+			"Back-Front",
+			"Front-Back",
+			"Edge-Inward",
+            "Center-Out",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+StealMethodSelection1:Toggle({
+	Title = "Auto Place",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+StealMethodSelection1:Toggle({
+	Title = "Prevent Snap",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+StealMethodSelection1:Toggle({
+	Title = "Auto Hatch",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
 --------------------------------------------------------WINDOW 3 INFO-------------------------------------------------------------------
 
 local UpgradeSection = Tab3:Section({
@@ -427,7 +512,7 @@ local UpgradeSection = Tab3:Section({
 })
 
 UpgradeSection:Toggle({
-	Title = "Auto Upgrade Pen",
+	Title = "Upgrade Pen",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -439,7 +524,7 @@ UpgradeSection:Toggle({
 })
 
 UpgradeSection:Toggle({
-	Title = "Auto Treadmill Training",
+	Title = "Auto Treadmill",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -451,7 +536,7 @@ UpgradeSection:Toggle({
 })
 
 UpgradeSection:Toggle({
-	Title = "Auto Treadmill Upgrade",
+	Title = "Upgrade Treadmill",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -463,7 +548,7 @@ UpgradeSection:Toggle({
 })
 
 UpgradeSection:Dropdown({
-		Title = "Trail Shop",
+		Title = "Trails",
 		Values = {
 			"Rariest",
 			"Nearest",
@@ -492,7 +577,7 @@ UpgradeSection:Toggle({
 })
 
 UpgradeSection:Toggle({
-	Title = "Auto Claim Index Rewards",
+	Title = "Claim Index",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -504,7 +589,7 @@ UpgradeSection:Toggle({
 })
 
 UpgradeSection:Toggle({
-	Title = "Auto Claim Group Rewards",
+	Title = "Collect Cash",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -520,13 +605,669 @@ UpgradeSection:Toggle({
 
 --------------------------------------------------------WINDOW 4 INFO-------------------------------------------------------------------
 
-local PetsSection = Tab4:Section({
-	Title = "Pets",
+local SellSection = Tab4:Section({
+	Title = "Sell",
 	IconThemed = true,
 	Box = true,
 	BoxBorder = true,
 })
---------------------------------------------------------WINDOW 3 INFO-------------------------------------------------------------------
+
+SellSection:Toggle({
+	Title = "Auto Equip Best",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SellSection:Input({
+	Title = "Interval (Seconds)",
+     Value = "20",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+local SellSection1 = Tab4:Section({
+	Title = "Sell Pets",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+SellSection1:Dropdown({
+		Title = "Categories",
+		Values = {
+			"ArchAngel",
+			"World Burner",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection1:Dropdown({
+		Title = "Rarities",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection1:Dropdown({
+		Title = "Mutation",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection1:Dropdown({
+		Title = "KG RULE",
+		Values = {
+			"Any",
+			"Below",
+			"Above",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection1:Input({
+	Title = "KG Threshold",
+    Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+SellSection1:Input({
+	Title = "Minimum Value",
+     Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+SellSection1:Toggle({
+	Title = "Auto-Sell",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SellSection1:Toggle({
+	Title = "Sell Full",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SellSection1:Button({
+	Title = "Sell Pets",
+	Callback = function()
+		AutoStealEggs()
+	end,
+})
+
+
+local SellSection2 = Tab4:Section({
+	Title = "Sell Eggs",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+SellSection2:Dropdown({
+		Title = "Categories",
+		Values = {
+			"ArchAngel",
+			"World Burner",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection2:Dropdown({
+		Title = "Rarities",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection2:Dropdown({
+		Title = "Mutation",
+		Values = {
+			"Divine",
+			"Eternal",
+			"Secret",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection2:Dropdown({
+		Title = "KG RULE",
+		Values = {
+			"Any",
+			"Below",
+			"Above",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SellSection2:Input({
+	Title = "KG Threshold",
+    Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+SellSection2:Input({
+	Title = "Minimum Value",
+     Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+SellSection2:Toggle({
+	Title = "Auto-Sell Eggs",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SellSection2:Toggle({
+	Title = "Sell Full",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SellSection2:Button({
+	Title = "Sell Eggs",
+	Callback = function()
+		AutoStealEggs()
+	end,
+})
+
+
+
+--------------------------------------------------------WINDOW 5 INFO-------------------------------------------------------------------
+
+local FuseSection = Tab5:Section({
+	Title = "Auto Fuse",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+
+FuseSection:Dropdown({
+		Title = "Categories",
+		Values = {
+			"ArchAngel",
+			"World Burner",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FuseSection:Dropdown({
+		Title = "Prevent KG",
+		Values = {
+			"Any",
+			"Below",
+			"Above",
+},
+		Value = 1,
+		--AllowNone = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FuseSection:Input({
+	Title = "KG Threshold",
+    Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+FuseSection:Input({
+	Title = " Prevent Minimum Value",
+     Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+FuseSection:Toggle({
+	Title = "Auto Fuse",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+
+
+--------------------------------------------------------WINDOW 6 INFO-------------------------------------------------------------------
+
+local EventSection = Tab6:Section({
+	Title = "Rift",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+EventSection:Input({
+	Title = " Prevent Minimum Value",
+     Value = "0",
+	Callback = function(value)
+		print("Input:", value)
+	end,
+})
+
+EventSection:Toggle({
+	Title = "Auto Rift",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+local EventSection1 = Tab6:Section({
+	Title = "Rift Boss",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+EventSection1:Toggle({
+	Title = "Auto Attack Rift Boss",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+local EventSection2 = Tab6:Section({
+	Title = "Rift Shop",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+EventSection2:Dropdown({
+		Title = "Items",
+		Values = {
+			"2x Cash Booster",
+			"1.25 Speed",
+	},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+
+EventSection2:Toggle({
+	Title = "Auto Buy",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+local EventSection3 = Tab6:Section({
+	Title = "Boss Mastery",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+EventSection3:Toggle({
+	Title = "Auto Claim Boss Mastery",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+--------------------------------------------------------WINDOW 7 INFO-------------------------------------------------------------------
+
+local WebhookSection = Tab7:Section({
+	Title = "Webhook",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+WebhookSection:Input({
+	Title = "URL",
+	})
+
+SellSection2:Button({
+	Title = "Send Test",
+	Callback = function()
+		AutoStealEggs()
+	end,
+})
+
+local WebhookSection1 = Tab7:Section({
+	Title = "Alerts",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+WebhookSection1:Toggle({
+	Title = "Steal Alerts",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+WebhookSection1:Toggle({
+	Title = "Mutation Alerts",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+WebhookSection1:Toggle({
+	Title = " Hatch Alerts",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+WebhookSection1:Toggle({
+	Title = "Disconnect Alerts",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+WebhookSection1:Toggle({
+	Title = "Inventory FUll Alerts",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+
+
+--------------------------------------------------------WINDOW 7 INFO-------------------------------------------------------------------
+
+local SettingsSection = Tab8:Section({
+	Title = "Performance",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+SettingsSection:Toggle({
+	Title = "Hide Pets",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection:Toggle({
+	Title = "Remove Pen Eggs",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection:Toggle({
+	Title = "Delete Unnecessary Models",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection:Toggle({
+	Title = "Black Screen",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection:Toggle({
+	Title = "Boost Tick Rate",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+
+
+
+local SettingsSection1 = Tab8:Section({
+	Title = "ESP",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+SettingsSection1:Toggle({
+	Title = "Egg ESP",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection1:Dropdown({
+		Title = "Areas",
+		Values = {
+			"Titan Temple",
+			"Cherry Blossom",
+			"Rarities",
+			"Higest Value",
+			"Farthest",
+		},
+		Value = nil,
+		AllowNone = true,
+		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+SettingsSection1:Toggle({
+	Title = "Pen ESP",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+SettingsSection1:Toggle({
+	Title = "Inventory ESP",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+local SettingsSection2 = Tab8:Section({
+	Title = "Config",
+	IconThemed = true,
+	Box = true,
+	BoxBorder = true,
+})
+
+SettingsSection2:Input({
+	Title = "Name",
+	})
+
+
+
+
+
+
+
+
+
 local EmptyTab = Window:Tab({
 	Title = "Custom empty page tab",
 
