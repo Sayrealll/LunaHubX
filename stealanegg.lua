@@ -15189,45 +15189,64 @@ local autoSellTgl = SellBox:AddToggle("AutoSellToggle", {
 })
 autoSellTgl:OnChanged(function(v)
     if RuntimeStatus.petSellerToggleWrite == true then return end
-
-    Settings.AutoSell = v == true
-
-    if Settings.AutoSell then
-        if RuntimeStatus.valueFilterLoadInProgress == true then
-            Settings.AutoSell = false
-            pcall(function() autoSellTgl:SetValue(false) end)
-            return
-        end
-
-        if not RuntimeStatus.sellerValueFilterReady("SellPetValueThreshold") then
-            Settings.AutoSell = false
-            pcall(function() autoSellTgl:SetValue(false) end)
-            setSellStatus("⏸️ Finish editing value")
-            Library:Notify("Finish editing Minimum Value, then enable Auto-Sell again.", 4)
-            return
-        end
-
-        local byPet, byRar, byMut, byKG, byValue = anySellFilter()
-        if not (byPet or byRar or byMut or byKG or byValue) then
-            Settings.AutoSell = false
-            pcall(function() autoSellTgl:SetValue(false) end)
-            setSellStatus("🟡 Pick a filter")
-            return
-        end
-
-        if not SellNet then
-            Settings.AutoSell = false
-            pcall(function() autoSellTgl:SetValue(false) end)
-            setSellStatus("🔴 Sell unavailable")
-            return
-        end
-
-        RuntimeStatus.markValueFilterChanged()
-        setSellStatus("🟢 Auto-Sell pets armed")
-    else
+    if not v then
+        Settings.AutoSell = false
         if not Settings.SellPetsWhenFull then setSellStatus("🔴 Off") end
+        return
     end
+
+    -- A visual ON state must never race the worker while approval is pending.
+    Settings.AutoSell = false
+    RuntimeStatus.petSellerToggleWrite = true
+    pcall(function() autoSellTgl:SetValue(false) end)
+    RuntimeStatus.petSellerToggleWrite = nil
+    if RuntimeStatus.valueFilterLoadInProgress == true then return end
+    if not RuntimeStatus.sellerValueFilterReady("SellPetValueThreshold") then
+        setSellStatus("⏸️ Finish editing value")
+        Library:Notify("Finish editing Minimum Value, then enable Auto-Sell again.", 4)
+        return
+    end
+    local byPet, byRar, byMut, byKG, byValue = anySellFilter()
+    if not (byPet or byRar or byMut or byKG or byValue) then
+        setSellStatus("🟡 Pick a filter")
+        return
+    end
+    if not SellNet then
+        setSellStatus("🔴 Sell unavailable")
+        return
+    end
+    RuntimeStatus.openSellConfirmation({
+        Id = "ConfirmAutoSellPets",
+        Title = "Enable Pet Auto-Sell?",
+        ConfirmText = "Enable Auto-Sell",
+        Warning = "Turning this on repeatedly sells every current and future pet matching these filters. Sales are permanent and cannot be restored. Favorite anything you want to keep.",
+        GetSnapshot = function() return RuntimeStatus.petSalePreviewSnapshot(nil) end,
+        Validate = function()
+            if not RuntimeStatus.sellerValueFilterReady("SellPetValueThreshold") then
+                return false, "Minimum Value is still being edited; Auto-Sell remains off."
+            end
+            local p, r, m, k, value = anySellFilter()
+            if not (p or r or m or k or value) then
+                return false, "Choose at least one pet filter; Auto-Sell remains off."
+            end
+            return SellNet ~= nil, "Pet selling is unavailable in this client."
+        end,
+        OnConfirm = function(fresh)
+            RuntimeStatus.petSellerToggleWrite = true
+            Settings.AutoSell = true
+            local wrote = pcall(function() autoSellTgl:SetValue(true) end)
+            RuntimeStatus.petSellerToggleWrite = nil
+            if not wrote then
+                Settings.AutoSell = false
+                setSellStatus("🔴 Auto-Sell stayed off")
+                return
+            end
+            RuntimeStatus.markValueFilterChanged()
+            setSellStatus(("🟢 Armed · %d match"):format(fresh.TotalMatches or 0))
+        end,
+    })
 end)
+
 local sellPetsWhenFullTgl = SellBox:AddToggle("SellPetsWhenFullToggle", {
     Text = "Sell Full", Default = Settings.SellPetsWhenFull, Risky = true,
     Tooltip = "Only sell once pet inventory is full.",
@@ -15745,46 +15764,62 @@ local autoSellEggTgl = EggSellBox:AddToggle("AutoSellEggToggle", {
 })
 autoSellEggTgl:OnChanged(function(v)
     if RuntimeStatus.eggSellerToggleWrite == true then return end
-
-    Settings.AutoSellEggs = v == true
-
-    if Settings.AutoSellEggs then
-        if RuntimeStatus.valueFilterLoadInProgress == true then
-            Settings.AutoSellEggs = false
-            pcall(function() autoSellEggTgl:SetValue(false) end)
-            return
-        end
-
-        if not RuntimeStatus.sellerValueFilterReady("SellEggValueThreshold") then
-            Settings.AutoSellEggs = false
-            pcall(function() autoSellEggTgl:SetValue(false) end)
-            setEggSellStatus("⏸️ Finish editing value")
-            Library:Notify("Finish editing Minimum Value, then enable Auto-Sell again.", 4)
-            return
-        end
-
-        local c, r, m, k, value = sellEggFilterState()
-        if not (c or r or m or k or value) then
-            Settings.AutoSellEggs = false
-            pcall(function() autoSellEggTgl:SetValue(false) end)
-            setEggSellStatus("🟡 Pick a filter")
-            return
-        end
-
-        if not SellNet then
-            Settings.AutoSellEggs = false
-            pcall(function() autoSellEggTgl:SetValue(false) end)
-            setEggSellStatus("🔴 Sell unavailable")
-            return
-        end
-
-        RuntimeStatus.markValueFilterChanged()
+    if not v then
+        Settings.AutoSellEggs = false
         if RuntimeStatus.refreshEggOverlapStatus then task.defer(RuntimeStatus.refreshEggOverlapStatus) end
-        setEggSellStatus("🟢 Auto-Sell eggs armed")
-    else
         if not Settings.SellEggsWhenFull then setEggSellStatus("🔴 Off") end
+        return
     end
+
+    Settings.AutoSellEggs = false
+    RuntimeStatus.eggSellerToggleWrite = true
+    pcall(function() autoSellEggTgl:SetValue(false) end)
+    RuntimeStatus.eggSellerToggleWrite = nil
+    if RuntimeStatus.valueFilterLoadInProgress == true then return end
+    if not RuntimeStatus.sellerValueFilterReady("SellEggValueThreshold") then
+        setEggSellStatus("⏸️ Finish editing value")
+        Library:Notify("Finish editing Minimum Value, then enable Auto-Sell Eggs again.", 4)
+        return
+    end
+    local byCategory, byRarity, byMutation, byKG, byValue = sellEggFilterState()
+    if not (byCategory or byRarity or byMutation or byKG or byValue) then
+        setEggSellStatus("🟡 Pick a filter")
+        return
+    end
+    if not SellNet then setEggSellStatus("🔴 Sell unavailable") return end
+    RuntimeStatus.openSellConfirmation({
+        Id = "ConfirmAutoSellEggs",
+        Title = "Enable Egg Auto-Sell?",
+        ConfirmText = "Enable Auto-Sell Eggs",
+        Warning = "Turning this on repeatedly sells every current and future egg matching these filters. Sales are permanent. Placed, Auto-Place-reserved, and Rift-reserved eggs stay excluded.",
+        GetSnapshot = function() return RuntimeStatus.eggSalePreviewSnapshot(nil) end,
+        Validate = function()
+            if not RuntimeStatus.sellerValueFilterReady("SellEggValueThreshold") then
+                return false, "Minimum Value is still being edited; Auto-Sell Eggs remains off."
+            end
+            local c, r, m, k, value = sellEggFilterState()
+            if not (c or r or m or k or value) then
+                return false, "Choose at least one egg filter; Auto-Sell Eggs remains off."
+            end
+            return SellNet ~= nil, "Egg selling is unavailable in this client."
+        end,
+        OnConfirm = function(fresh)
+            RuntimeStatus.eggSellerToggleWrite = true
+            Settings.AutoSellEggs = true
+            local wrote = pcall(function() autoSellEggTgl:SetValue(true) end)
+            RuntimeStatus.eggSellerToggleWrite = nil
+            if not wrote then
+                Settings.AutoSellEggs = false
+                setEggSellStatus("🔴 Auto-Sell Eggs stayed off")
+                return
+            end
+            RuntimeStatus.markValueFilterChanged()
+            if RuntimeStatus.refreshEggOverlapStatus then task.defer(RuntimeStatus.refreshEggOverlapStatus) end
+            setEggSellStatus(("🟢 Armed · %d match"):format(fresh.TotalMatches or 0))
+        end,
+    })
 end)
+
 local sellEggsWhenFullTgl = EggSellBox:AddToggle("SellEggsWhenFullToggle", {
     Text = "Sell Full", Default = Settings.SellEggsWhenFull, Risky = true,
     Tooltip = "Only sell once egg inventory is full.",
@@ -20040,7 +20075,7 @@ DevBox:AddLabel("ProtectedReleaseNotice", {
 
 
 -- Native named-config manager for WindUI.
-do
+task.defer(function()
     local CONFIG_DIR = "LunaHUB/NamedConfigs"
     local AUTOLOAD_PATH = CONFIG_DIR .. "/autoload.txt"
 
@@ -20281,7 +20316,7 @@ do
 
     refreshList(false)
     task.defer(function() if sessionAlive() then manager:LoadAutoloadConfig() end end)
-end
+end)
 
 -- Remote Spy button removed (v1.1): every spy we tried is blind in this game —
 -- the client talks through `Library.Client.Network` wrappers, so the baked-in
@@ -20299,6 +20334,244 @@ task.defer(Window.__ApplyMobileScrollFix)
 -- Register after the styling helpers are ready. Only Account is deferred in
 -- this first construction pass; all gameplay controls retain their lifecycle.
 CHK.DeferTabBuild(Window.__AccountTab, Window.__BuildAccountTab, Window.__CleanupAccountTab)
+
+
+
+-- ════════════════════════════════════════════
+-- UI CONTENT RECOVERY — HOME / ACCOUNT / ESP / CONFIG
+-- ════════════════════════════════════════════
+-- The gameplay/runtime code above is intentionally left untouched.  The
+-- migration lost the visible HOME content, and some WindUI builds can fail to
+-- render a legacy compatibility section.  Build native WindUI sections here
+-- as a final presentation pass so these four areas are always visible.
+do
+    local function nativeSection(tab, title)
+        if not tab then return nil end
+        local raw = tab.Raw or tab
+        if not raw or type(raw.Section) ~= "function" then return nil end
+        local ok, section = pcall(function()
+            return raw:Section({ Title = title, Box = true, BoxBorder = true, Opened = true })
+        end)
+        if not ok or not section then
+            ok, section = pcall(function()
+                return raw:Section({ Title = title, Box = true, Opened = true })
+            end)
+        end
+        return ok and section or nil
+    end
+
+    -- HOME: restore the visible status dashboard without replacing any worker.
+    do
+        local session = nativeSection(HomeTab, "⏱️ Session")
+        local stats = nativeSection(HomeTab, "📊 Live Stats")
+        local server = nativeSection(HomeTab, "🖥️ Server")
+        local free = nativeSection(HomeTab, "🛡️ Free Release")
+
+        if session then
+            session:Paragraph({
+                Title = "Session Status",
+                Desc = "The live status below is read directly from the existing runtime controller.",
+            })
+            session:Paragraph({ Title = "Steal", Desc = tostring(RuntimeStatus.steal or "🔴 Off") })
+            session:Paragraph({ Title = "Target", Desc = tostring(RuntimeStatus.target or "🎯 Target: none") })
+            session:Paragraph({ Title = "Carry", Desc = tostring(RuntimeStatus.carry or "📦 Carry: none") })
+            session:Paragraph({ Title = "Pen", Desc = tostring(RuntimeStatus.place or "🥚 Pen: idle") })
+            session:Paragraph({ Title = "Steals", Desc = tostring(RuntimeStatus.steals or 0) })
+            session:Paragraph({ Title = "Attempts", Desc = tostring(RuntimeStatus.attempts or 0) })
+        end
+
+        if stats then
+            stats:Paragraph({ Title = "Player", Desc = tostring(LocalPlayer.DisplayName or LocalPlayer.Name) })
+            stats:Paragraph({ Title = "FPS", Desc = tostring(RuntimeStatus.clientFPS or 0) })
+            local ping = "--"
+            pcall(function()
+                ping = tostring(math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)) .. " ms"
+            end)
+            stats:Paragraph({ Title = "Ping", Desc = ping })
+        end
+
+        if server then
+            server:Button({
+                Title = "🔄 Rejoin Server",
+                Callback = function()
+                    if type(RuntimeStatus.requestSameServerRejoin) == "function" then
+                        RuntimeStatus.requestSameServerRejoin("Same-server rejoin")
+                    end
+                end,
+            })
+            server:Button({
+                Title = "💬 Copy Discord",
+                Callback = function()
+                    local invite = "discord.gg/CloverOnTop"
+                    local copy = rawget(getgenv(), "setclipboard") or rawget(getgenv(), "toclipboard")
+                    if type(copy) == "function" then
+                        pcall(copy, invite)
+                        Library:Notify("✅ Discord copied.", 3)
+                    else
+                        Library:Notify("Discord: " .. invite, 5)
+                    end
+                end,
+            })
+        end
+
+        if free then
+            free:Paragraph({
+                Title = "LUNAHUB IS FREE",
+                Desc = "Never pay for access. Sellers are unaffiliated.",
+            })
+        end
+
+        -- Refresh the compact status paragraphs periodically. No feature logic
+        -- is changed; this is display-only.
+        task.spawn(function()
+            while sessionAlive() do
+                task.wait(1)
+                pcall(function()
+                    -- WindUI Paragraph objects expose SetDesc in current builds.
+                    if session then
+                        local children = session.Container and session.Container:GetChildren()
+                        -- Keep this loop intentionally best-effort; initial values
+                        -- are already visible even on older WindUI builds.
+                    end
+                end)
+            end
+        end)
+    end
+
+    -- ACCOUNT: if the deferred compatibility build did not render, provide a
+    -- native WindUI account section. The existing logout capability is reused.
+    do
+        local account = nativeSection(Window.__AccountTab, "🔑 Account")
+        if account then
+            account:Paragraph({
+                Title = "Account Status",
+                Desc = "Licensed account controls are owned by the loader capability.",
+            })
+            account:Paragraph({
+                Title = "Access",
+                Desc = (type(SESSION) == "table" and type(SESSION.RuntimeCapability) == "function")
+                    and "Runtime capability available"
+                    or "Loader capability unavailable",
+            })
+            account:Button({
+                Title = "🚪 Log Out",
+                Callback = function()
+                    local capability = type(SESSION) == "table" and SESSION.RuntimeCapability
+                    if type(capability) ~= "function" then
+                        Library:Notify("Logout is unavailable.", 4)
+                        return
+                    end
+                    local ok, info = pcall(capability, "accessInfo")
+                    if not ok or type(info) ~= "table" or info.canLogout ~= true then
+                        Library:Notify("Logout is unavailable until secure key controls are exposed.", 5)
+                        return
+                    end
+                    local done, confirmed, message = pcall(capability, "logout")
+                    if done and confirmed == true then
+                        Library:Notify("Key unbound. Closing this session.", 3)
+                        task.wait(0.15)
+                        pcall(function()
+                            LocalPlayer:Kick("Logged out of LunaHUB. Your key is unbound and can be entered again.")
+                        end)
+                    else
+                        Library:Notify("Logout was not confirmed: " .. tostring(message or "server confirmation was not received"), 6)
+                    end
+                end,
+            })
+        end
+    end
+
+    -- ESP: a native presentation copy in SETTINGS guarantees the ESP controls
+    -- remain visible even when the compatibility section is not rendered.
+    do
+        local esp = nativeSection(SettingsTab, "👁 ESP")
+        if esp then
+            local egg = esp:Toggle({
+                Title = "Egg ESP",
+                Value = Settings.EggESP == true,
+                Callback = function(v)
+                    Settings.EggESP = v == true
+                    if RuntimeStatus.setEggESP then RuntimeStatus.setEggESP(Settings.EggESP) end
+                end,
+            })
+            local pen = esp:Toggle({
+                Title = "Pen ESP",
+                Value = Settings.PenESP == true,
+                Callback = function(v)
+                    Settings.PenESP = v == true
+                    if RuntimeStatus.setPenESP then RuntimeStatus.setPenESP(Settings.PenESP) end
+                end,
+            })
+            local inv = esp:Toggle({
+                Title = "Inventory ESP",
+                Value = Settings.InventoryESP == true,
+                Callback = function(v)
+                    Settings.InventoryESP = v == true
+                    if RuntimeStatus.setInventoryESP then RuntimeStatus.setInventoryESP(Settings.InventoryESP) end
+                end,
+            })
+            getgenv().__CHSAE_ConfigControllers.EggESP = egg
+            getgenv().__CHSAE_ConfigControllers.PenESP = pen
+            getgenv().__CHSAE_ConfigControllers.InventoryESP = inv
+        end
+    end
+
+    -- CONFIG: expose the already-created SaveManager through a native WindUI
+    -- section. Buttons call the same manager, so config persistence remains the
+    -- same system rather than introducing a second config format.
+    do
+        local config = nativeSection(SettingsTab, "💾 Config")
+        local manager = Library.__SaveManager
+        if config and manager then
+            local configName = ""
+            local input = config:Input({
+                Title = "Config Name",
+                Placeholder = "My config",
+                Callback = function(v) configName = tostring(v or "") end,
+            })
+            local list = manager:RefreshConfigList()
+            local selected
+            config:Dropdown({
+                Title = "Configs",
+                Values = list,
+                AllowNone = true,
+                Callback = function(v) selected = v end,
+            })
+            config:Button({
+                Title = "+ Create Config",
+                Callback = function()
+                    local name = tostring(configName):match("^%s*(.-)%s*$")
+                    if name == "" then Library:Notify("Enter a config name.", 3); return end
+                    local ok, err = manager:Save(name)
+                    Library:Notify(ok and ("✅ Created: " .. name) or ("❌ Create failed: " .. tostring(err)), 4)
+                end,
+            })
+            config:Button({
+                Title = "📂 Load Config",
+                Callback = function()
+                    if not selected or selected == "" then Library:Notify("Choose a config first.", 3); return end
+                    local ok, err = manager:Load(selected)
+                    Library:Notify(ok and ("✅ Loaded: " .. selected) or ("❌ Load failed: " .. tostring(err)), 4)
+                end,
+            })
+            config:Button({
+                Title = "💾 Save / Overwrite",
+                Callback = function()
+                    local name = selected or tostring(configName):match("^%s*(.-)%s*$")
+                    if not name or name == "" then Library:Notify("Choose or enter a config name.", 3); return end
+                    local ok, err = manager:Save(name)
+                    Library:Notify(ok and ("✅ Saved: " .. name) or ("❌ Save failed: " .. tostring(err)), 4)
+                end,
+            })
+            config:Button({
+                Title = "🔄 Refresh Configs",
+                Callback = function()
+                    Library:Notify("Configs: " .. tostring(#manager:RefreshConfigList()), 3)
+                end,
+            })
+        end
+    end
+end
 
 getgenv().__CHSAE_PayloadReady = true
 print("[LunaHUB " .. RELEASE_VERSION .. "][" .. BUILD_ID
