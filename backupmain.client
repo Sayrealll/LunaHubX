@@ -437,9 +437,9 @@ StealMethodSelection1:Dropdown({
 StealMethodSelection1:Dropdown({
 		Title = "Mutation",
 		Values = {
-			"Divine",
-			"Eternal",
-			"Secret",
+             "Boss",
+			"Golden",
+			"GreatBloom",
 	},
 		Value = nil,
 		AllowNone = true,
