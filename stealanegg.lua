@@ -2069,21 +2069,41 @@ local WindWindow = WindUI:CreateWindow({
     Theme = "Dark",
     ToggleKey = Enum.KeyCode.LeftControl,
 })
-Window = WindWindow
-Library.Toggled = true
--- Compatibility fields used by a few legacy custom-dialog helpers.
-Window.MainFrame = customMainFrame
+local WindWindowRaw = WindWindow
+Window = setmetatable({
+    Raw = WindWindowRaw,
+    MainFrame = customMainFrame,
+}, {
+    __index = function(t, k)
+        local v = WindWindowRaw[k]
+        if type(v) == "function" then
+            return function(_, ...)
+                return v(WindWindowRaw, ...)
+            end
+        end
+        return v
+    end
+})
 
-local HomeTab = makeTab("HOME", "house")
-local EggTab = makeTab("EGGS", "egg")
-local ProgressionTab = makeTab("PROGRESSION", "trophy")
-local SellTab = makeTab("SELL", "store")
-Window.__FuseTab = makeTab("FUSE", "combine")
-Window.__ServerTab = makeTab("SERVER", "server")
-local EventTab = makeTab("EVENT", "sparkles")
-Window.__WebhookTab = makeTab("WEBHOOK", "send")
-Window.__AccountTab = makeTab("ACCOUNT", "user")
-local SettingsTab = makeTab("SETTINGS", "settings")
+function Window:AddTab(title, icon)
+    return makeTab(title, icon)
+end
+
+-- WindUI's public dialog API is version-dependent. Keep legacy dialog calls
+-- from crashing the entire script; when supported, delegate to WindUI.
+function Window:AddDialog(config)
+    local ok, result = pcall(function()
+        return WindWindowRaw:Dialog(config)
+    end)
+    if ok then return result end
+    ok, result = pcall(function()
+        return WindWindowRaw:Dialog(config or {})
+    end)
+    if ok then return result end
+    return nil
+end
+
+Library.Toggled = true
 local RiftBox
 
 Window.__ApplyMobileScrollFix = function() end
@@ -2141,18 +2161,6 @@ local function applyResponsiveUIScale()
     return scale
 end
 applyResponsiveUIScale()
-
-local HomeTab     = Window:AddTab("HOME", "house")
-local EggTab      = Window:AddTab("EGGS", "egg")
-local ProgressionTab = Window:AddTab("PROGRESSION", "trophy")
-local SellTab     = Window:AddTab("SELL", "store")
-Window.__FuseTab = Window:AddTab("FUSE", "combine")
-Window.__ServerTab = Window:AddTab("SERVER", "server")
-local EventTab    = Window:AddTab("EVENT", "sparkles")
-Window.__WebhookTab = Window:AddTab("WEBHOOK", "send")
-Window.__AccountTab = Window:AddTab("ACCOUNT", "user")
-local SettingsTab = Window:AddTab("SETTINGS", "settings")
-local RiftBox
 
 -- Obsidian currently builds each tab as two nested, invisible-scrollbar
 -- ScrollingFrames. On touch devices, the non-scrolling groupbox frames can win
