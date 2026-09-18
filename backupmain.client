@@ -601,7 +601,7 @@ UpgradeSection:Toggle({
 --------------------------------------------------------WINDOW 4 INFO-------------------------------------------------------------------
 
 local SellSection = Tab4:Section({
-	Title = "Sell",
+	Title = "Equip Best",
 	IconThemed = true,
 	Box = true,
 	BoxBorder = true,
