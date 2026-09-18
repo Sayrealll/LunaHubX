@@ -178,233 +178,329 @@ do
     end
 end
 
-local function _newCompatScreenGui()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "CloverHubCompat"
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    pcall(function() gui.Parent = gethui and gethui() or game:GetService("CoreGui") end)
-    return gui
-end
+local customGui = Instance.new("ScreenGui")
+customGui.Name = "CloverHub_WindUI_Custom"
+customGui.ResetOnSpawn = false
+customGui.IgnoreGuiInset = true
+pcall(function() customGui.Parent = gethui and gethui() or game:GetService("CoreGui") end)
+if not customGui.Parent then customGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
 
-local _compatSignals = {}
-local _compatScreenGui = _newCompatScreenGui()
-local _schemeFont = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+-- Small compatibility surface: existing feature code keeps its original
+-- AddTab/AddLeftGroupbox/AddToggle/etc. calls, while every visible control is
+-- created by WindUI.
+local customMainFrame = Instance.new("Frame")
+customMainFrame.Name = "CloverHubCustomMainFrame"
+customMainFrame.BackgroundTransparency = 1
+customMainFrame.Size = UDim2.fromScale(1, 1)
+customMainFrame.Visible = true
+customMainFrame.Parent = customGui
 
 local Library = {
-    ScreenGui = _compatScreenGui,
-    IsMobile = game:GetService("UserInputService").TouchEnabled,
-    DPIScale = 1,
     Toggled = true,
+    ScreenGui = customGui,
     Scheme = {
-        MainColor = Color3.fromRGB(28, 28, 28),
-        BackgroundColor = Color3.fromRGB(20, 20, 20),
-        OutlineColor = Color3.fromRGB(65, 65, 65),
+        BackgroundColor = Color3.fromRGB(18, 18, 18),
+        MainColor = Color3.fromRGB(25, 25, 25),
+        OutlineColor = Color3.fromRGB(55, 55, 55),
         FontColor = Color3.fromRGB(235, 235, 235),
         AccentColor = Color3.fromRGB(74, 222, 128),
-        Font = _schemeFont,
+        Font = Font.new("rbxasset://fonts/families/GothamSSm.json"),
     },
+    IsMobile = game:GetService("UserInputService").TouchEnabled,
+    WindowAnimationInfo = {Time = 0.2},
 }
-
-function Library:GiveSignal(connection)
-    if connection then _compatSignals[#_compatSignals + 1] = connection end
-    return connection
+function Library:Notify(data)
+    pcall(function() WindUI:Notify(data) end)
 end
+function Library:GiveSignal(conn) return conn end
+function Library:SetDPIScale(_) end
+function Library:GetIcon(_) return true end
+function Library:SetIconModule(_) end
+function Library:GetBetterColor(c) return c end
+function Library:AddDraggableButton(_, _, _, _) return nil end
 function Library:AddDraggableLabel(text)
     local label=Instance.new("TextLabel")
     label.BackgroundTransparency=1
-    label.Size=UDim2.fromOffset(260,24)
+    label.Size=UDim2.fromOffset(260,32)
     label.Text=tostring(text or "")
-    label.Parent=_compatScreenGui
-    function label:SetText(v) self.Text=tostring(v or "") end
-    return {Label=label, SetText=function(_,v) label.Text=tostring(v or "") end, Destroy=function() label:Destroy() end}
+    label.TextSize=14
+    label.TextColor3=Color3.new(1,1,1)
+    label.Parent=customGui
+    return {Label=label,Destroy=function() label:Destroy() end}
 end
-function Library:GetIcon() return nil end
-function Library:SetIconModule() end
-function Library:SetDPIScale() end
-function Library:GetBetterColor(color, amount)
-    local n = tonumber(amount) or 0
-    return Color3.new(math.clamp(color.R + n/255,0,1), math.clamp(color.G + n/255,0,1), math.clamp(color.B + n/255,0,1))
-end
-function Library:Notify(message, duration)
-    pcall(function()
-        WindUI:Notify({Title = "CloverHub", Content = tostring(message), Duration = tonumber(duration) or 5})
-    end)
-end
+function Library:MakeDraggable(...) end
 function Library:Unload()
-    for _, c in ipairs(_compatSignals) do pcall(function() c:Disconnect() end) end
-    table.clear(_compatSignals)
-    pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
-    pcall(function() if _compatScreenGui then _compatScreenGui:Destroy() end end)
+    Library.Toggled=false
+    pcall(function() customGui:Destroy() end)
+    pcall(function() WindUI:Destroy() end)
 end
 
-local function _fakeContainer()
-    local f = Instance.new("Frame")
-    f.Name = "CompatContainer"
-    f.BackgroundTransparency = 1
-    f.Size = UDim2.fromScale(1,1)
-    return f
+local function controlValue(ctrl)
+    if type(ctrl) ~= "table" then return nil end
+    return ctrl.Value
 end
 
-local function _makeController(raw, kind, initial, callback)
-    local c = {Raw = raw, Value = initial, Holder = _fakeContainer(), Connections = {}, Destroyed = false, Active = true}
-    function c:OnChanged(fn)
-        if type(fn) == "function" then self._changed = self._changed or {}; self._changed[#self._changed+1] = fn end
-        return fn
+local function makeCompatControl(raw, default)
+    local c = {Raw=raw, Value=default}
+    local function sync(v) c.Value=v end
+    if raw then
+        pcall(function() if raw.Value ~= nil then c.Value=raw.Value end end)
     end
-    function c:SetValue(v, silent)
-        self.Value = v
-        if self.Raw and type(self.Raw.SetValue) == "function" then pcall(self.Raw.SetValue, self.Raw, v) end
-        if not silent then
-            if self._changed then for _, fn in ipairs(self._changed) do pcall(fn, v) end end
+    function c:SetValue(v)
+        c.Value=v
+        pcall(function() raw:SetValue(v) end)
+        pcall(function() raw:Set(v) end)
+    end
+    function c:SetText(v) c.Value=v end
+    function c:GetValue() return c.Value end
+    function c:OnChanged(fn) c._OnChanged=fn end
+    return setmetatable(c,{__index=function(t,k) return raw and raw[k] or nil end})
+end
+
+local function CompatSection(tab,title)
+    local section=tab:Section({Title=tostring(title or "Section"),Box=true,BoxBorder=true})
+    local group={Raw=section,Container=section,Holder=section}
+
+    function group:AddToggle(id,info)
+        info=info or {}
+        local raw=section:Toggle({
+            Title=info.Text or info.Title or tostring(id),
+            Desc=info.Description or info.Desc or info.Tooltip,
+            Default=info.Default == true,
+            Flag=info.Flag or id,
+            Callback=function(v)
+                if type(info.Callback)=="function" then info.Callback(v) end
+            end,
+        })
+        return makeCompatControl(raw,info.Default == true)
+    end
+
+    function group:AddInput(id,info)
+        info=info or {}
+        local raw=section:Input({
+            Title=info.Text or info.Title or tostring(id),
+            Desc=info.Description or info.Desc,
+            Placeholder=info.Placeholder,
+            Default=info.Default or info.Value or "",
+            Value=info.Value or info.Default or "",
+            Flag=info.Flag or id,
+            Callback=function(v)
+                if type(info.Callback)=="function" then info.Callback(v) end
+            end,
+        })
+        return makeCompatControl(raw,info.Value or info.Default or "")
+    end
+
+    function group:AddDropdown(id,info)
+        info=info or {}
+        local values=info.Values or info.Options or {}
+        local default=info.Default
+        local raw=section:Dropdown({
+            Title=info.Text or info.Title or tostring(id),
+            Desc=info.Description or info.Desc,
+            Values=values,
+            Default=default,
+            Multi=info.Multi == true,
+            AllowNone=info.AllowNone,
+            Flag=info.Flag or id,
+            Callback=function(v)
+                if type(info.Callback)=="function" then info.Callback(v) end
+            end,
+        })
+        local c=makeCompatControl(raw,default)
+        function c:SetValues(v)
+            c._Values=v
+            pcall(function() raw:Refresh(v) end)
+            pcall(function() raw:SetValues(v) end)
         end
+        return c
     end
-    function c:GetValue() return self.Value end
-    function c:SetValues(values)
-        if self.Raw and type(self.Raw.SetValues) == "function" then pcall(self.Raw.SetValues, self.Raw, values) end
-    end
-    function c:SetText(v)
-        self.Value = tostring(v or "")
-        if self.Raw and type(self.Raw.Set) == "function" then pcall(self.Raw.Set, self.Raw, self.Value) end
-    end
-    function c:Destroy()
-        self.Destroyed = true
-        for _, x in ipairs(self.Connections) do pcall(function() x:Disconnect() end) end
-        if self.Holder then self.Holder:Destroy() end
-        pcall(function() if self.Raw and self.Raw.Destroy then self.Raw:Destroy() end end)
-    end
-    return c
-end
 
-local function CompatGroup(rawSection, title)
-    local group = {Raw = rawSection, Title = tostring(title or "Section"), Holder = _fakeContainer(), Container = _fakeContainer(), Destroyed = false}
-    group.Container.Parent = _compatScreenGui
-    group.Holder.Parent = group.Container
-    function group:Resize() end
-    function group:Destroy()
-        self.Destroyed = true
-        pcall(function() self.Container:Destroy() end)
-        pcall(function() self.Holder:Destroy() end)
+    function group:AddSlider(id,info)
+        info=info or {}
+        local raw=section:Slider({
+            Title=info.Text or info.Title or tostring(id),
+            Desc=info.Description or info.Desc,
+            Min=info.Min or 0,
+            Max=info.Max or 100,
+            Step=info.Rounding or info.Step or 1,
+            Default=info.Default or info.Value or info.Min or 0,
+            Flag=info.Flag or id,
+            Callback=function(v)
+                if type(info.Callback)=="function" then info.Callback(v) end
+            end,
+        })
+        return makeCompatControl(raw,info.Default or info.Value or info.Min or 0)
     end
-    function group:AddUIPassthrough(id, info)
-        if info and info.Instance and typeof(info.Instance) == "Instance" then
-            -- Keep compatibility objects alive; native WindUI owns the visible layout.
-            info.Instance.Parent = self.Container
+
+    function group:AddLabel(id,info)
+        info=info or {}
+        local raw=section:Paragraph({Title=info.Text or tostring(id),Desc=info.Desc or ""})
+        local c={Raw=raw,Value=info.Text or tostring(id)}
+        function c:SetText(v)
+            c.Value=v
+            pcall(function() raw:SetDesc(tostring(v)) end)
+            pcall(function() raw:SetTitle(tostring(v)) end)
         end
-        return info and info.Instance or nil
-    end
-    function group:AddLabel(id, info)
-        info = type(info)=="table" and info or {Text=tostring(info or id)}
-        local text = tostring(info.Text or info.Content or info.Desc or id)
-        local raw = self.Raw:Paragraph({Title=tostring(info.Title or id), Desc=text})
-        local c = _makeController(raw, "label", text)
-        c.Text = text
-        function c:SetText(v) self.Text=tostring(v or ""); self.Value=self.Text; pcall(function() raw:Set({Desc=self.Text}) end) end
-        c:SetText(text)
         return c
     end
-    function group:AddButton(info)
-        info = type(info)=="table" and info or {Text=tostring(info or "Button")}
-        local raw = self.Raw:Button({Title=tostring(info.Text or info.Title or "Button"), Desc=info.Tooltip or info.Content, Callback=info.Callback})
-        return _makeController(raw, "button", false)
+
+    function group:AddButton(id,info)
+        info=info or {}
+        local raw=section:Button({
+            Title=info.Text or info.Title or tostring(id),
+            Desc=info.Description or info.Desc,
+            Callback=info.Callback,
+        })
+        return raw
     end
-    function group:AddToggle(id, info)
-        info = info or {}
-        local default = info.Default == true
-        local c
-        local raw = self.Raw:Toggle({Title=tostring(info.Text or info.Title or id), Desc=info.Tooltip or info.Content, Value=default, Callback=function(v)
-            if c then c.Value=v end
-            if info.Callback then pcall(info.Callback, v) end
-            if c and c._changed then for _, fn in ipairs(c._changed) do pcall(fn,v) end end
-        end})
-        c = _makeController(raw, "toggle", default)
-        return c
+
+    function group:AddKeyPicker(id,info)
+        info=info or {}
+        return group:AddToggle(id,info)
     end
-    function group:AddInput(id, info)
-        info = info or {}
-        local default = info.Default
-        if default == nil then default = info.Value end
-        default = tostring(default or "")
-        local c
-        local raw = self.Raw:Input({Title=tostring(info.Text or info.Title or id), Desc=info.Tooltip or info.Content, Placeholder=info.Placeholder, Value=default, Callback=function(v)
-            if c then c.Value=tostring(v or "") end
-            if info.Callback then pcall(info.Callback, v) end
-            if c and c._changed then for _, fn in ipairs(c._changed) do pcall(fn,v) end end
-        end})
-        c = _makeController(raw, "input", default)
-        c.Text = default
-        return c
+
+    function group:AddUIPassthrough(id,info)
+        info=info or {}
+        local inst=info.Instance
+        if typeof(inst)=="Instance" then
+            -- Preserve custom feature UI rather than deleting it. It is hosted
+            -- in the custom WindUI companion layer when the native section API
+            -- cannot directly parent arbitrary Roblox instances.
+            inst.Parent=customGui
+        end
+        return {Instance=inst,Destroy=function() if inst then inst:Destroy() end end}
     end
-    function group:AddDropdown(id, info)
-        info = info or {}
-        local values = info.Values or info.Options or {}
-        local multi = info.Multi == true
-        local default = info.Default
-        if default == nil then default = multi and {} or values[1] end
-        local c
-        local raw = self.Raw:Dropdown({Title=tostring(info.Text or info.Title or id), Desc=info.Tooltip or info.Content, Values=values, Multi=multi, Value=default, AllowNone=info.AllowNone == true, Callback=function(v)
-            if c then c.Value=v end
-            if info.Callback then pcall(info.Callback, v) end
-            if c and c._changed then for _, fn in ipairs(c._changed) do pcall(fn,v) end end
-        end})
-        c = _makeController(raw, "dropdown", default)
-        c.Values = values
-        return c
-    end
+    function group:Resize(...) end
+    function group:Destroy() pcall(function() section:Destroy() end) end
     return group
 end
 
-local CompatWindow = {}
-function CompatWindow:AddTab(title, icon)
-    local raw = self.Raw:Tab({Title=tostring(title), Icon=icon})
-    local tab = {Raw=raw, Name=tostring(title), Title=tostring(title), Connections={}, Destroyed=false, Canvas=nil, Sides={}}
-    function tab:AddLeftGroupbox(t) return CompatGroup(self.Raw:Section({Title=tostring(t)}), t) end
-    function tab:AddRightGroupbox(t) return CompatGroup(self.Raw:Section({Title=tostring(t)}), t) end
+local function CompatTab(raw)
+    local tab={Raw=raw}
+    function tab:AddLeftGroupbox(title) return CompatSection(raw,title) end
+    function tab:AddRightGroupbox(title) return CompatSection(raw,title) end
     function tab:AddGroupbox(info)
-        local title = type(info)=="table" and (info.Name or info.Title) or info
-        return CompatGroup(self.Raw:Section({Title=tostring(title or "Section")}), title)
+        return CompatSection(raw,type(info)=="table" and (info.Name or info.Title) or info)
     end
     return tab
 end
-function CompatWindow:AddDialog(id, spec)
-    -- Native WindUI does not require Obsidian dialogs; use a small native confirmation section.
-    local dialog = {Destroyed=false, Container=Instance.new("Frame")}
-    function dialog:Dismiss() self.Destroyed=true; pcall(function() self.Container:Destroy() end) end
-    function dialog:Resize() end
-    local section = self.Raw:Section({Title=tostring(spec.Title or id), Box=true, BoxBorder=true})
-    if spec.Description and spec.Description ~= "" then section:Paragraph({Title="", Desc=tostring(spec.Description)}) end
-    if spec.FooterButtons then
-        for _, b in pairs(spec.FooterButtons) do
-            section:Button({Title=tostring(b.Title or "Button"), Callback=function() if b.Callback then b.Callback(dialog) end end})
+
+Window = nil
+local function makeTab(title,icon)
+    return CompatTab(Window:Tab({Title=title,Icon=icon}))
+end
+    getgenv().__CloverHubSAE_Unload = function()
+    if getgenv().__CHSAE_VelocityStop then pcall(getgenv().__CHSAE_VelocityStop, "unload") end
+    getgenv().__CHSAE_VelocityStop = nil
+    -- Between two waypoint segments the cruise presentation is active with no
+    -- motion for VelocityStop to find, so the rig is restored explicitly. Leaving
+    -- Animate disabled would strip the player's animations until they respawned.
+    if getgenv().__CHSAE_EndCruisePresentation then
+        pcall(getgenv().__CHSAE_EndCruisePresentation)
+    end
+    getgenv().__CHSAE_EndCruisePresentation = nil
+    local tpRestore = getgenv().__CHSAE_TPRestore
+    if type(tpRestore) == "function" then
+        local ok, restored = pcall(tpRestore, "unload")
+        if ok and restored ~= false and getgenv().__CHSAE_TPRestore == tpRestore then
+            getgenv().__CHSAE_TPRestore = nil
+        elseif not ok then
+            warn("[CloverHub-SAE][TP] controller restore failed; respawn may be required: "
+                .. tostring(restored))
         end
     end
-    return dialog
-end
-function CompatWindow:Toggle(value)
-    Library.Toggled = value == true
-    if self.MainFrame then self.MainFrame.Visible = Library.Toggled end
-    if self.Raw and self.Raw.Toggle then pcall(self.Raw.Toggle, self.Raw, value) end
-end
-function CompatWindow:Destroy() pcall(function() self.Raw:Destroy() end) end
-
-function Library:CreateWindow(info)
-    local raw = WindUI:CreateWindow({Title=info.Title or "CloverHub", Author="CloverHub", Icon="solar:wind-bold", Theme="Dark", ToggleKey=Enum.KeyCode.LeftControl})
-    local main = Instance.new("Frame")
-    main.Name = "Main"
-    main.Visible = true
-    main.Size = UDim2.fromOffset(1,1)
-    main.BackgroundTransparency = 1
-    main.Parent = _compatScreenGui
-    local w = setmetatable({Raw=raw, MainFrame=main, Destroyed=false}, {__index=CompatWindow})
-    return w
-end
-
-getgenv().__CloverHubSAE_Unload = function()
-    getgenv().__CloverHubSAE_PayloadReady = nil
-    getgenv().__CloverHubSAE_Session = nil
+    if getgenv().__CHSAE_RestoreRouteObstacles then
+        pcall(getgenv().__CHSAE_RestoreRouteObstacles)
+    end
+    getgenv().__CHSAE_RestoreRouteObstacles = nil
+    getgenv().__CHSAE_PayloadReady = nil
+    getgenv().__CloverHubSAE_Session = nil -- stop background loops
+    local idleWorkerWake = SESSION.IdleWorkerWake
+    local scanWake = getgenv().__CHSAE_ScanWake
+    if scanWake then pcall(function() scanWake:Fire("unload") end) end
+    local statusWake = getgenv().__CHSAE_StatusWake
+    local bloomWake = getgenv().__CHSAE_BloomWake
+    local hatchWake = getgenv().__CHSAE_HatchWake
+    local adminEventWake = getgenv().__CHSAE_RiftWake
+        or getgenv().__CHSAE_AdminEventWake
+    if idleWorkerWake then pcall(function() idleWorkerWake:Fire("unload") end) end
+    if statusWake then pcall(function() statusWake:Fire("unload") end) end
+    if bloomWake then pcall(function() bloomWake:Fire("unload") end) end
+    if getgenv().__CHSAE_HatchCancel then pcall(getgenv().__CHSAE_HatchCancel) end
+    getgenv().__CHSAE_HatchCancel = nil
+    if hatchWake then pcall(function() hatchWake:Fire("unload") end) end
+    if adminEventWake then pcall(function() adminEventWake:Fire("unload") end) end
+    if getgenv().__CHSAE_SellCancel then pcall(getgenv().__CHSAE_SellCancel) end
+    getgenv().__CHSAE_SellCancel = nil
+    SESSION.InventoryWake = nil
+    if getgenv().__CHSAE_SellWake then
+        pcall(function() getgenv().__CHSAE_SellWake:Fire() end)
+        pcall(function() getgenv().__CHSAE_SellWake:Destroy() end)
+    end
+    getgenv().__CHSAE_SellWake = nil
+    for _, conn in ipairs(getgenv().__CHSAE_ScanConns or {}) do
+        pcall(function() conn:Disconnect() end)
+    end
+    getgenv().__CHSAE_ScanConns = nil
+    if scanWake then pcall(function() scanWake:Destroy() end) end
+    getgenv().__CHSAE_ScanWake = nil
+    if idleWorkerWake then pcall(function() idleWorkerWake:Destroy() end) end
+    SESSION.IdleWorkerWake = nil
+    if statusWake then pcall(function() statusWake:Destroy() end) end
+    getgenv().__CHSAE_StatusWake = nil
+    if bloomWake then pcall(function() bloomWake:Destroy() end) end
+    getgenv().__CHSAE_BloomWake = nil
+    if hatchWake then pcall(function() hatchWake:Destroy() end) end
+    getgenv().__CHSAE_HatchWake = nil
+    if adminEventWake then pcall(function() adminEventWake:Destroy() end) end
+    getgenv().__CHSAE_AdminEventWake = nil
+    getgenv().__CHSAE_RiftWake = nil
+    local treadmillConn = getgenv().__CHSAE_TreadmillConn
+    if treadmillConn then pcall(function() treadmillConn:Disconnect() end) end
+    getgenv().__CHSAE_TreadmillConn = nil
+    local integrityConn = getgenv().__CHSAE_IntegrityConn
+    if integrityConn then pcall(function() integrityConn:Disconnect() end) end
+    getgenv().__CHSAE_IntegrityConn = nil
+    for _, conn in ipairs(getgenv().__CHSAE_RuntimeConns or {}) do
+        pcall(function() conn:Disconnect() end)
+    end
+    getgenv().__CHSAE_RuntimeConns = nil
+    if getgenv().__CHSAE_AFKGuardRestore then pcall(getgenv().__CHSAE_AFKGuardRestore) end
+    getgenv().__CHSAE_AFKGuardRestore = nil
+    if getgenv().__CHSAE_InstantPPRestore then pcall(getgenv().__CHSAE_InstantPPRestore) end
+    getgenv().__CHSAE_InstantPPRestore = nil
+    getgenv().__CHSAE_InstantPPState = nil
+    getgenv().__CHSAE_ConfigControllers = nil
+    getgenv().__CHSAE_Debug = nil
+    if getgenv().__CHSAE_EggESPRestore then pcall(getgenv().__CHSAE_EggESPRestore) end
+    getgenv().__CHSAE_EggESPRestore = nil
+    if getgenv().__CHSAE_InventoryESPRestore then pcall(getgenv().__CHSAE_InventoryESPRestore) end
+    getgenv().__CHSAE_InventoryESPRestore = nil
+    local statusGui = getgenv().__CHSAE_StatusGui
+    if statusGui then pcall(function() statusGui:Destroy() end) end
+    getgenv().__CHSAE_StatusGui = nil
+    setStealControlLock(false)
+    getgenv().__CHSAE_Controls = nil
+    if getgenv().__CHCapRestore then pcall(getgenv().__CHCapRestore) end -- unwrap capture
+    if getgenv().__CHSAE_PenEggsRestore then pcall(getgenv().__CHSAE_PenEggsRestore) end
+    getgenv().__CHSAE_PenEggsRestore = nil
+    if getgenv().__CHSAE_ExtremeRestore then pcall(getgenv().__CHSAE_ExtremeRestore) end
+    getgenv().__CHSAE_ExtremeRestore = nil
+    if getgenv().__CHSAE_PerfRestore then pcall(getgenv().__CHSAE_PerfRestore) end
+    getgenv().__CHSAE_PerfRestore = nil
+    if getgenv().__CHSAE_RenderRestore then pcall(getgenv().__CHSAE_RenderRestore) end
+    getgenv().__CHSAE_RenderRestore = nil
+    if getgenv().__CHSAE_PetsRestore then pcall(getgenv().__CHSAE_PetsRestore) end
+    getgenv().__CHSAE_PetsRestore = nil
+    if getgenv().__CHSAE_TrapRestore then pcall(getgenv().__CHSAE_TrapRestore) end
+    getgenv().__CHSAE_TrapRestore = nil
+    if getgenv().__CHSAE_GuardRestore then pcall(getgenv().__CHSAE_GuardRestore) end
+    getgenv().__CHSAE_GuardRestore = nil
     pcall(function() Library:Unload() end)
-    getgenv().__CloverHubSAE_CanonicalLoaded = nil
+    getgenv().__CHSAE_CanonicalLoaded = nil
     getgenv().__CloverHubSAE_Unload = nil
+    getgenv().__VoidHubSAE_Unload = nil
 end
 
 -- [[ INSTANT MANUAL EGG PICKUP ]] --
@@ -947,59 +1043,260 @@ end -- shared picker lexical scope (does not consume later top-level registers)
 -- ── Universal dropdown→overlay binder ──
 local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
     opts = opts or {}
-    local multi = opts.multi == true
-    local values = items or {}
-    local current = opts.get and opts.get() or (multi and {} or values[1])
-    local controller
-    local raw = groupbox.Raw:Dropdown({
-        Title = tostring(opts.text or title),
-        Desc = opts.tooltip,
-        Values = values,
-        Multi = multi,
-        Value = current,
-        AllowNone = opts.allowNone == true,
-        Callback = function(v)
-            if multi then
-                local out = {}
-                if type(v) == "table" then
-                    for k,val in pairs(v) do if val then out[k]=true end end
-                end
-                current = out
-            else current = v end
-            if opts.set then pcall(opts.set, current) end
-            if opts.onChange then pcall(opts.onChange, current) end
-            if controller then controller.Value=current end
+    local multi = opts.multi
+
+    local store = opts.store
+    if not multi then
+        store = {}
+        local cur = opts.get and opts.get()
+        if cur and table.find(items, cur) then store[cur] = true end
+    end
+
+    local function summary()
+        if multi then
+            local picked = {}
+            for _, n in ipairs(items) do if store[n] then picked[#picked + 1] = n end end
+            if #picked == 0 then return "---" end
+            if #picked == #items then return "All" end
+            -- Long multi-value summaries used to run underneath Obsidian's
+            -- dropdown arrow. Keep one exact value useful; summarize the rest.
+            if #picked == 1 then return picked[1] end
+            return #picked .. " selected"
+        else
+            for _, n in ipairs(items) do if store[n] then return n end end
+            return "---"
+        end
+    end
+
+    local dd = groupbox:AddDropdown(dropdownIdx, {
+        Text    = opts.text,
+        Values  = { "---", "All" },
+        Default = "---",
+        Tooltip = opts.tooltip or ("Open " .. title .. "."),
+    })
+
+    local arrowRef
+    local function styleValueText()
+        local holder = dd.Holder
+        if not holder then return end
+        local val = summary()
+        for _, e in ipairs(holder:GetDescendants()) do
+            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "CloverHubOverlayCatcher" then
+                pcall(function()
+                    e.TextXAlignment = Enum.TextXAlignment.Left
+                    e.TextYAlignment = Enum.TextYAlignment.Center
+                    if not e.TextScaled and e.TextSize < 15 then e.TextSize = 15 end
+                    if e.Text == val then
+                        if e.Parent and e.Parent:IsA("GuiObject") then
+                            -- Reserve a fixed right gutter for the chevron and
+                            -- clip the value before it can overlap the icon.
+                            e.Size = UDim2.new(1, -34, 1, 0)
+                            e.ClipsDescendants = true
+                        end
+                        local p = e:FindFirstChildOfClass("UIPadding")
+                        if not p then p = Instance.new("UIPadding"); p.Parent = e end
+                        p.PaddingLeft = UDim.new(0, 2)
+                        p.PaddingRight = UDim.new(0, 4)
+                        p.PaddingBottom = UDim.new(0, 3)
+                    end
+                end)
+            end
+        end
+    end
+    local function refreshLabel()
+        local s = summary()
+        pcall(function() dd:SetValues({ s }); dd:SetValue(s) end)
+        styleValueText()
+    end
+    local function setArrowOpen(open)
+        if not arrowRef then return end
+        pcall(function()
+            TweenService:Create(arrowRef, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
+                { Rotation = open and 180 or 0 }):Play()
+        end)
+    end
+
+    local overlay = MakeTargetOverlay({
+        Title  = title,
+        Items  = items,
+        Store  = store,
+        Single = not multi,
+        DisplayMap = opts.displayMap,
+        OnDone = function() setArrowOpen(false) end,
+        OnToggle = function(name)
+            if not multi and name then
+                if opts.set then opts.set(name) end
+            end
+            refreshLabel()
+            if opts.onChange then pcall(opts.onChange) end
         end,
     })
-    controller = _makeController(raw, "dropdown", current)
-    controller.Values = values
-    controller.GetValue = function() return current end
-    controller.SetValue = function(self,v,silent)
-        current=v
-        self.Value=v
-        if opts.set then pcall(opts.set,v) end
-        pcall(function() if raw.SetValue then raw:SetValue(v) end end)
-        if not silent and opts.onChange then pcall(opts.onChange,v) end
+
+    refreshLabel()
+
+    local controller = {
+        Dropdown = dd,
+        Overlay  = overlay,
+        Multi    = multi,
+        GetValue = function()
+            if multi then
+                local out = {}
+                for n in pairs(store) do if store[n] then out[n] = true end end
+                return out
+            else
+                for _, n in ipairs(items) do if store[n] then return n end end
+                return "Any"
+            end
+        end,
+        SetValue = function(_, v)
+            for k in pairs(store) do store[k] = nil end
+            local selectedValue
+            if multi then
+                if type(v) == "table" then
+                    for key, on in pairs(v) do
+                        if on == true then
+                            store[key] = true
+                        elseif type(key) == "number" and type(on) == "string" then
+                            store[on] = true
+                        end
+                    end
+                end
+            else
+                if type(opts.configValueToItem) == "function" then
+                    local ok, mapped = pcall(opts.configValueToItem, v)
+                    if ok then v = mapped end
+                end
+                if type(v) == "string" and v ~= "" and table.find(items, v) then
+                    store[v] = true
+                    selectedValue = v
+                end
+                if opts.set then pcall(opts.set, selectedValue) end
+            end
+            refreshLabel()
+            pcall(function() overlay.Repaint() end)
+        end,
+        SetItems = function(_, newItems, preserveValue)
+            if type(newItems) ~= "table" then return end
+            local previous
+            if not multi then
+                for _, name in ipairs(items) do
+                    if store[name] then previous = name; break end
+                end
+            end
+            items = newItems
+            for name in pairs(store) do
+                if not table.find(items, name) then store[name] = nil end
+            end
+            if not multi and preserveValue and previous and table.find(items, previous) then
+                store[previous] = true
+                if opts.set then pcall(opts.set, previous) end
+            elseif not multi and opts.set then
+                pcall(opts.set, nil)
+            end
+            pcall(function() overlay.SetItems(items, opts.displayMap) end)
+            refreshLabel()
+        end,
+    }
+    if type(opts.configKey) == "string" then
+        local registry = getgenv().__CHSAE_ConfigControllers
+        if type(registry) == "table" then registry[opts.configKey] = controller end
     end
-    controller.SetItems = function(self,newItems,preserve)
-        values=newItems or {}; self.Values=values
-        pcall(function() if raw.SetValues then raw:SetValues(values) end end)
-        if not preserve and not multi then current=values[1] end
-    end
-    if type(opts.configKey)=="string" then
-        local reg=getgenv().__CHSAE_ConfigControllers
-        if type(reg)=="table" then reg[opts.configKey]=controller end
-    end
+
+    task.defer(function()
+        local holder = dd.Holder
+        if not holder then return end
+        local displayBtn = holder:FindFirstChildWhichIsA("TextButton", true)
+        local anchorTo = displayBtn or holder
+
+        local cover = Instance.new("TextButton")
+        cover.Name = "CloverHubOverlayCatcher"
+        cover.BackgroundTransparency = 1
+        cover.Text = ""
+        cover.Size = UDim2.fromScale(1, 1)
+        cover.Position = UDim2.fromScale(0, 0)
+        cover.ZIndex = (anchorTo.ZIndex or 1) + 50
+        cover.Active = true
+        cover.AutoButtonColor = false
+        cover.Parent = anchorTo
+
+        refreshLabel()
+
+        arrowRef = holder:FindFirstChildWhichIsA("ImageLabel", true)
+                or holder:FindFirstChildWhichIsA("ImageButton", true)
+
+        local conn = cover.MouseButton1Click:Connect(function()
+            pcall(function() if dd.Menu and dd.Menu.Close then dd.Menu:Close() end end)
+            if opts.onOpen then pcall(opts.onOpen) end
+            setArrowOpen(true)
+            overlay.Open()
+        end)
+        Library:GiveSignal(conn)
+    end)
+
     return controller
 end
 
 -- ── Carded button column ──
 local function MakeButtonPanel(groupbox, panelId, buttons)
-    local created = {}
-    for _, def in ipairs(buttons or {}) do
-        created[#created+1] = groupbox:AddButton({Text=def[1], Callback=def[2]})
+    local BTN_BG    = Color3.fromRGB(32, 32, 32)
+    local BTN_HOVER = Color3.fromRGB(42, 42, 42)
+    local BTN_TEXT  = Library.Scheme.FontColor
+    local STROKE    = Library.Scheme.OutlineColor
+
+    local BTN_H  = 30
+    local GAP    = 4
+    local totalH = (#buttons * BTN_H) + ((#buttons - 1) * GAP)
+
+    local panel = Instance.new("Frame")
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel  = 0
+    panel.Size             = UDim2.new(1, 0, 0, totalH)
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection       = Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder           = Enum.SortOrder.LayoutOrder
+    layout.Padding             = UDim.new(0, GAP)
+    layout.Parent              = panel
+
+    for i, def in ipairs(buttons) do
+        local btn = Instance.new("TextButton")
+        btn.Text             = def[1]
+        btn.Font             = Enum.Font.GothamSemibold
+        btn.TextSize         = 13
+        btn.TextColor3       = BTN_TEXT
+        btn.BackgroundColor3 = BTN_BG
+        btn.BorderSizePixel  = 0
+        btn.Size             = UDim2.new(1, 0, 0, BTN_H)
+        btn.LayoutOrder      = i
+        btn.AutoButtonColor  = false
+
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 6)
+        c.Parent = btn
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color           = STROKE
+        stroke.Thickness       = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent          = btn
+
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = BTN_HOVER
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = BTN_BG
+        end)
+        btn.MouseButton1Click:Connect(def[2])
+        btn.Parent = panel
     end
-    return created
+
+    groupbox:AddUIPassthrough(panelId, {
+        Instance = panel,
+        Height   = totalH,
+    })
+
+    return panel
 end
 
 -- [[ CH LIST KIT ]] --
@@ -1010,13 +1307,75 @@ local CHK = {}
 -- when AddTab runs; replacing Tab.Show later misses mouse/touch navigation.
 function CHK.DeferTabBuild(tab, build, cleanup)
     if tab.__DeferredBuild then return tab.__DeferredBuild end
-    local state={phase="building",attempts=1}
-    tab.__DeferredBuild=state
-    task.defer(function()
-        if not sessionAlive() then state.phase="cancelled"; return end
-        local ok,err=pcall(build, sessionAlive)
-        if ok then state.phase="ready" else state.phase="failed"; if cleanup then pcall(cleanup) end; warn("[CloverHub] UI build failed: "..tostring(err)) end
-    end)
+    local state = { phase = "waiting", attempts = 0 }
+    tab.__DeferredBuild = state
+    local canvas = tab.Canvas
+    local connections = {}
+    local function disconnect()
+        for _, connection in ipairs(connections) do connection:Disconnect() end
+        table.clear(connections)
+    end
+    local function alive()
+        return sessionAlive() and not tab.Destroyed
+            and (not canvas or canvas.Parent ~= nil)
+    end
+    local function visible()
+        return not canvas or canvas.Visible
+    end
+    local function requestBuild()
+        if state.phase ~= "waiting" and state.phase ~= "failed" then return end
+        if not alive() then state.phase = "cancelled"; disconnect(); return end
+        if not visible() then return end
+        state.phase = "queued"
+        task.defer(function()
+            if not alive() then state.phase = "cancelled"; disconnect(); return end
+            if not visible() then state.phase = "waiting"; return end
+            state.phase = "building"
+            state.attempts += 1
+            -- A fresh worker owns this identity scope, including any text-size
+            -- yields during construction. Never elevate the UI event's caller.
+            local originalIdentity
+            if type(getthreadidentity) == "function" and type(setthreadidentity) == "function" then
+                local ok, identity = pcall(getthreadidentity)
+                if ok and type(identity) == "number" then
+                    originalIdentity = identity
+                    pcall(setthreadidentity, 8)
+                end
+            end
+            local ok, message = pcall(build, alive)
+            if not alive() then ok, message = false, "session ended during construction" end
+            if ok then
+                state.phase = "ready"
+                disconnect()
+            else
+                if cleanup then pcall(cleanup) end
+                state.phase = alive() and "failed" or "cancelled"
+                if state.phase == "cancelled" then
+                    disconnect()
+                else
+                    warn("[CloverHub] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
+                    pcall(function()
+                        Library:Notify("Could not build " .. tostring(tab.Name) .. ". Reopen the tab to retry.", 5)
+                    end)
+                end
+            end
+            if originalIdentity ~= nil then pcall(setthreadidentity, originalIdentity) end
+        end)
+    end
+    if canvas then
+        connections[#connections + 1] = canvas:GetPropertyChangedSignal("Visible"):Connect(requestBuild)
+        connections[#connections + 1] = canvas.Destroying:Connect(function()
+            state.phase = "cancelled"
+            disconnect()
+        end)
+        for _, connection in ipairs(connections) do
+            tab.Connections[#tab.Connections + 1] = connection
+            local runtimeConns = getgenv().__CHSAE_RuntimeConns
+            if type(runtimeConns) == "table" then runtimeConns[#runtimeConns + 1] = connection end
+        end
+    end
+    -- Already-visible tabs and older libraries without a canvas still work.
+    requestBuild()
     return state
 end
 
@@ -1103,24 +1462,144 @@ end
 -- Compact CloverHub slider: a card, clear value, full-width accent track, and a
 -- larger invisible drag target. This replaces Obsidian's default slider visual.
 function CHK.Slider(groupbox, id, info)
-    info = info or {}
-    local min = tonumber(info.Min) or 0
-    local max = tonumber(info.Max) or 100
-    local default = tonumber(info.Default) or min
-    local raw = groupbox.Raw:Slider({
-        Title = tostring(info.Text or id),
-        Desc = info.Tooltip or info.Content,
-        Step = tonumber(info.Step) or 1,
-        Value = {Min=min, Max=max, Default=default},
-        Callback = info.Callback,
-    })
-    local c = _makeController(raw, "slider", default)
-    c.SetValue = function(self,v,silent)
-        self.Value=tonumber(v) or self.Value
-        pcall(function() if raw.SetValue then raw:SetValue(self.Value) end end)
-        if not silent and info.Callback then pcall(info.Callback,self.Value) end
+    local minimum = tonumber(info.Min) or 0
+    local maximum = math.max(minimum + 1, tonumber(info.Max) or 100)
+    local rounding = math.max(0, math.floor(tonumber(info.Rounding) or 0))
+    local suffix = tostring(info.Suffix or "")
+    local value = math.clamp(tonumber(info.Default) or minimum, minimum, maximum)
+    local callback
+    local inputService = game:GetService("UserInputService")
+
+    local card = Instance.new("Frame")
+    card.Name = "CloverSlider_" .. tostring(id)
+    card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    card.BorderSizePixel = 0
+    card.Size = UDim2.new(1, 0, 0, 54)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6); corner.Parent = card
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Library.Scheme.OutlineColor; stroke.Thickness = 1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; stroke.Parent = card
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(10, 5)
+    title.Size = UDim2.new(0.55, -10, 0, 22)
+    title.FontFace = Library.Scheme.Font
+    title.Text = tostring(info.Text or id)
+    title.TextSize = 13
+    title.TextColor3 = Library.Scheme.FontColor
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = card
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.AnchorPoint = Vector2.new(1, 0)
+    valueLabel.Position = UDim2.new(1, -10, 0, 5)
+    valueLabel.Size = UDim2.new(0.45, 0, 0, 22)
+    valueLabel.FontFace = Library.Scheme.Font
+    valueLabel.TextSize = 13
+    valueLabel.TextColor3 = Library.Scheme.AccentColor
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = card
+
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Position = UDim2.new(0, 10, 0, 35)
+    track.Size = UDim2.new(1, -20, 0, 6)
+    track.BackgroundColor3 = Library:GetBetterColor(Library.Scheme.MainColor, 18)
+    track.BorderSizePixel = 0
+    track.Parent = card
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0); trackCorner.Parent = track
+
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.BackgroundColor3 = Library.Scheme.AccentColor
+    fill.BorderSizePixel = 0
+    fill.Size = UDim2.fromScale(0, 1)
+    fill.Parent = track
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0); fillCorner.Parent = fill
+
+    local knob = Instance.new("Frame")
+    knob.Name = "Knob"
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.fromScale(0, 0.5)
+    knob.Size = UDim2.fromOffset(14, 14)
+    knob.BackgroundColor3 = Library.Scheme.FontColor
+    knob.BorderSizePixel = 0
+    knob.ZIndex = track.ZIndex + 2
+    knob.Parent = track
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0); knobCorner.Parent = knob
+    local knobStroke = Instance.new("UIStroke")
+    knobStroke.Color = Library.Scheme.AccentColor; knobStroke.Thickness = 2; knobStroke.Parent = knob
+
+    local hit = Instance.new("TextButton")
+    hit.Name = "DragTarget"
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.Position = UDim2.new(0, 4, 0, 27)
+    hit.Size = UDim2.new(1, -8, 0, 24)
+    hit.ZIndex = knob.ZIndex + 1
+    hit.Parent = card
+
+    local function render(fire)
+        local factor = 10 ^ rounding
+        value = math.floor(math.clamp(value, minimum, maximum) * factor + 0.5) / factor
+        local ratio = (value - minimum) / (maximum - minimum)
+        fill.Size = UDim2.fromScale(ratio, 1)
+        knob.Position = UDim2.fromScale(ratio, 0.5)
+        valueLabel.Text = (rounding == 0 and tostring(math.floor(value))
+            or string.format("%." .. rounding .. "f", value)) .. suffix
+        if fire and callback then pcall(callback, value) end
     end
-    return c
+    local function setFromX(x)
+        if track.AbsoluteSize.X <= 0 then return end
+        local ratio = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        value = minimum + (maximum - minimum) * ratio
+        render(true)
+    end
+
+    local dragging, touchInput = false, nil
+    Library:GiveSignal(hit.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging, touchInput = true, input.UserInputType == Enum.UserInputType.Touch and input or nil
+            setFromX(input.Position.X)
+        end
+    end))
+    Library:GiveSignal(inputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            setFromX(inputService:GetMouseLocation().X)
+        elseif touchInput and input == touchInput then
+            setFromX(input.Position.X)
+        end
+    end))
+    Library:GiveSignal(inputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input == touchInput then
+            dragging, touchInput = false, nil
+        end
+    end))
+
+    groupbox:AddUIPassthrough(id, { Instance = card, Height = 54 })
+    render(false)
+    task.defer(function() render(false) end)
+    return {
+        OnChanged = function(_, fn) callback = fn; return fn end,
+        -- `silent` updates the visible value without treating a programmatic
+        -- display sync as new user input. Auto Calibrate uses this so its live
+        -- effective speed can move the slider while the user's chosen speed
+        -- remains the recovery floor.
+        SetValue = function(_, newValue, silent)
+            value = tonumber(newValue) or value
+            render(silent ~= true)
+        end,
+        GetValue = function() return value end,
+        Holder = card,
+    }
 end
 
 -- Compact metric cards used by Home. Values update in place, so changing live
@@ -1583,19 +2062,261 @@ local function getRarityData()
 end
 
 -- [[ 3. WINDOW + TABS ]] --
-local Window = Library:CreateWindow({Title="CloverHub"})
-local HomeTab = Window:AddTab("HOME", "house")
-local EggTab = Window:AddTab("EGGS", "egg")
+local WindWindow = WindUI:CreateWindow({
+    Title = "CloverHub",
+    Author = "v2.1 • Steal An Egg",
+    Icon = "solar:wind-bold",
+    Theme = "Dark",
+    ToggleKey = Enum.KeyCode.LeftControl,
+})
+Window = WindWindow
+Library.Toggled = true
+-- Compatibility fields used by a few legacy custom-dialog helpers.
+Window.MainFrame = customMainFrame
+
+local HomeTab = makeTab("HOME", "house")
+local EggTab = makeTab("EGGS", "egg")
+local ProgressionTab = makeTab("PROGRESSION", "trophy")
+local SellTab = makeTab("SELL", "store")
+Window.__FuseTab = makeTab("FUSE", "combine")
+Window.__ServerTab = makeTab("SERVER", "server")
+local EventTab = makeTab("EVENT", "sparkles")
+Window.__WebhookTab = makeTab("WEBHOOK", "send")
+Window.__AccountTab = makeTab("ACCOUNT", "user")
+local SettingsTab = makeTab("SETTINGS", "settings")
+local RiftBox
+
+Window.__ApplyMobileScrollFix = function() end
+
+-- Brand only the exact window title. A bright green gradient plus a soft text
+-- stroke gives CloverHub a glow without changing tab or groupbox colors.
+task.defer(function()
+    pcall(function()
+        for _, label in ipairs(Library.ScreenGui:GetDescendants()) do
+            if label:IsA("TextLabel") and label.Text == "CloverHub" then
+                label.TextColor3 = Color3.fromRGB(74, 222, 128)
+                label.TextStrokeColor3 = Color3.fromRGB(22, 163, 74)
+                label.TextStrokeTransparency = 0.38
+                local oldGradient = label:FindFirstChild("CloverTitleGlow")
+                if oldGradient then oldGradient:Destroy() end
+                local gradient = Instance.new("UIGradient")
+                gradient.Name = "CloverTitleGlow"
+                gradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 247, 208)),
+                    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(74, 222, 128)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 163, 74)),
+                })
+                gradient.Parent = label
+            end
+        end
+    end)
+end)
+
+-- Keep the same logical 680x540 layout on every account/window. Obsidian's
+-- native DPI scaler preserves all font, padding, header and column proportions;
+-- its Center option, however, calculates offsets before a later DPI change, so
+-- recenter using the scaled visual dimensions as well.
+local BASE_WINDOW_SIZE = Vector2.new(680, 540)
+local WINDOW_MARGIN = 24
+local function applyResponsiveUIScale()
+    local camera = workspace.CurrentCamera
+    if not camera then return 1 end
+
+    local viewport = camera.ViewportSize
+    local scale = math.min(
+        1,
+        (viewport.X - WINDOW_MARGIN) / BASE_WINDOW_SIZE.X,
+        (viewport.Y - WINDOW_MARGIN) / BASE_WINDOW_SIZE.Y
+    )
+    scale = math.clamp(scale, 0.55, 1)
+    Library:SetDPIScale(scale * 100)
+
+    local mainFrame = Library.ScreenGui and Library.ScreenGui:FindFirstChild("Main")
+    if mainFrame and mainFrame:IsA("GuiObject") then
+        mainFrame.Position = UDim2.new(
+            0.5, -(BASE_WINDOW_SIZE.X * scale) / 2,
+            0.5, -(BASE_WINDOW_SIZE.Y * scale) / 2
+        )
+    end
+    return scale
+end
+applyResponsiveUIScale()
+
+local HomeTab     = Window:AddTab("HOME", "house")
+local EggTab      = Window:AddTab("EGGS", "egg")
 local ProgressionTab = Window:AddTab("PROGRESSION", "trophy")
-local SellTab = Window:AddTab("SELL", "store")
+local SellTab     = Window:AddTab("SELL", "store")
 Window.__FuseTab = Window:AddTab("FUSE", "combine")
 Window.__ServerTab = Window:AddTab("SERVER", "server")
-local EventTab = Window:AddTab("EVENT", "sparkles")
+local EventTab    = Window:AddTab("EVENT", "sparkles")
 Window.__WebhookTab = Window:AddTab("WEBHOOK", "send")
 Window.__AccountTab = Window:AddTab("ACCOUNT", "user")
 local SettingsTab = Window:AddTab("SETTINGS", "settings")
-Window.__ESPBox = nil
-Window.__ApplyMobileScrollFix = function() end
+local RiftBox
+
+-- Obsidian currently builds each tab as two nested, invisible-scrollbar
+-- ScrollingFrames. On touch devices, the non-scrolling groupbox frames can win
+-- the gesture before their scrollable tab side sees it. Keep the library's
+-- desktop layout, but make the actual tab sides explicit touch targets and
+-- disable only nested frames that have no scroll range of their own.
+Window.__ApplyMobileScrollFix = function(onlyTab)
+    local inputService = game:GetService("UserInputService")
+    if not (Library.IsMobile or inputService.TouchEnabled) then return end
+
+    for _, tab in ipairs(onlyTab and { onlyTab } or {
+        HomeTab, EggTab, ProgressionTab, SellTab, EventTab,
+        Window.__WebhookTab, Window.__AccountTab, SettingsTab,
+    }) do
+        for _, side in ipairs(tab.Sides or {}) do
+            pcall(function()
+                side.Active = true
+                side.ScrollingEnabled = true
+                side.ScrollingDirection = Enum.ScrollingDirection.Y
+                side.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+                -- Swiping drives the scroll; no visible bar is required.
+                side.ScrollBarThickness = 0
+                side.ScrollBarImageTransparency = 1
+                side.VerticalScrollBarInset = Enum.ScrollBarInset.None
+            end)
+
+            for _, nested in ipairs(side:GetDescendants()) do
+                if nested:IsA("ScrollingFrame")
+                    and nested.AbsoluteCanvasSize.Y <= nested.AbsoluteWindowSize.Y + 2 then
+                    nested.ScrollingEnabled = false
+                    nested.Active = false
+                end
+            end
+        end
+    end
+end
+
+-- HOME layout: Session + Live Stats stacked LEFT, Server top-RIGHT.
+local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
+
+-- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
+do
+    local EXTRA_HEIGHT  = 6
+    local CUSTOM_RADIUS = 8
+
+    local Funcs = getmetatable(SessionBox).__index
+
+    local function MakeDropdownLazy(Dropdown, startDirty)
+        local origBuild = Dropdown.BuildDropdownList
+        local menu = Dropdown.Menu
+        if not (origBuild and menu and menu.Open) then return end
+
+        local dirty = (startDirty == true)
+
+        Dropdown.BuildDropdownList = function(...)
+            if menu.Active then
+                dirty = false
+                return origBuild(...)
+            end
+            dirty = true
+        end
+
+        local origOpen = menu.Open
+        menu.Open = function(mself, ...)
+            if dirty then
+                dirty = false
+                origBuild()
+            end
+            return origOpen(mself, ...)
+        end
+    end
+
+    local OriginalAddDropdown = Funcs.AddDropdown
+    Funcs.AddDropdown = function(self, Idx, Info)
+        local stashedValues = nil
+        if type(Info) == "table" and type(Info.Values) == "table"
+            and #Info.Values > 40 and Info.Default == nil then
+            stashedValues = Info.Values
+            Info.Values = {}
+        end
+
+        local Dropdown = OriginalAddDropdown(self, Idx, Info)
+
+        MakeDropdownLazy(Dropdown, stashedValues ~= nil)
+        if stashedValues then
+            Dropdown.Values = stashedValues
+            Dropdown.DefaultValues = stashedValues
+        end
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local DisplayContainer = Holder:FindFirstChildWhichIsA("TextButton")
+            if DisplayContainer then
+                DisplayContainer.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+
+                local existingCorner = DisplayContainer:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = DisplayContainer
+                end
+
+                local DisplayButton = DisplayContainer:FindFirstChildWhichIsA("TextButton")
+                if DisplayButton then
+                    DisplayButton.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                end
+
+                DisplayContainer.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(DisplayContainer:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+            end
+        end
+
+        return Dropdown
+    end
+
+    local OriginalAddInput = Funcs.AddInput
+    Funcs.AddInput = function(self, Idx, Info)
+        local Input = OriginalAddInput(self, Idx, Info)
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local Box = Holder:FindFirstChildWhichIsA("TextBox")
+            if Box then
+                Box.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                Box.ClearTextOnFocus = false
+                Box.TextScaled = false
+                Box.TextSize = 13
+                Box.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(Box:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+
+                local existingCorner = Box:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = Box
+                end
+            end
+        end
+
+        return Input
+    end
+end
 
 -- [[ 4. SETTINGS STATE ]] --
 local Settings = {
@@ -2925,8 +3646,8 @@ do
     -- fires for the live UI. Count those events so Black Screen can report an
     -- actual current client FPS instead of freezing the last visible-world value.
     local fpsConnection = RunService.RenderStepped:Connect(function(dt)
-        frames = frames + 1
-        elapsed = elapsed + dt
+        frames += 1
+        elapsed += dt
         RuntimeStatus.clientFrameSeconds = math.clamp(dt, 1 / 240, 0.25)
         if elapsed >= 1 then
             fps, frames, elapsed = math.floor(frames / elapsed + 0.5), 0, 0
@@ -2976,7 +3697,7 @@ task.spawn(function()
 
     local function dictionaryCount(dictionary)
         local count = 0
-        for _ in pairs(type(dictionary) == "table" and dictionary or {}) do count = count + 1 end
+        for _ in pairs(type(dictionary) == "table" and dictionary or {}) do count += 1 end
         return count
     end
 
@@ -3023,9 +3744,9 @@ task.spawn(function()
                 local okItem, item = pcall(InventorySer.Deserialize, raw)
                 if okItem and type(item) == "table" then
                     local okPrice, price = pcall(PetPrice, item)
-                    if okPrice then totalValue = totalValue + (tonumber(price) or 0) * vipMultiplier end
+                    if okPrice then totalValue += (tonumber(price) or 0) * vipMultiplier end
                 end
-                processed = processed + 1
+                processed += 1
                 if processed % 16 == 0 or os.clock() - sliceStarted >= 0.002 then
                     RuntimeStatus.inventoryStatsYields = (RuntimeStatus.inventoryStatsYields or 0) + 1
                     task.wait()
@@ -3041,7 +3762,7 @@ task.spawn(function()
         RuntimeStatus.inventoryStatsPasses = (RuntimeStatus.inventoryStatsPasses or 0) + 1
     end
     local function queueInventoryRefresh()
-        inventoryRevision = inventoryRevision + 1
+        inventoryRevision += 1
         if SESSION.InventoryWake then SESSION.InventoryWake("inventory") end
         if inventoryRefreshQueued then return end
         inventoryRefreshQueued = true
@@ -3540,10 +4261,10 @@ pcall(function()
             local remaining = EggRecords.GrowthSecondsRemaining(
                 record, now, multiplier, nightCredit, LocalPlayer)
             local rate = multiplier
-            pcall(function() rate = rate + math.max(0, EggRecords.ServerGrowthBoostMultiplier()) end)
+            pcall(function() rate += math.max(0, EggRecords.ServerGrowthBoostMultiplier()) end)
             pcall(function()
                 if AreaEggCycle.IsNightPhase(now) then
-                    rate = rate + math.max(0, AreaEggCycle.NightGrowthRate())
+                    rate += math.max(0, AreaEggCycle.NightGrowthRate())
                 end
             end)
             local deadline = remaining / math.max(0.01, rate)
@@ -4426,7 +5147,7 @@ if EggCmds then
             stealRuntime.carriedUid = nil
             RuntimeStatus.activeGuardAreaId = nil
             stealRuntime.attemptUid = nil
-            stealRuntime.claimSequence = stealRuntime.claimSequence + 1
+            stealRuntime.claimSequence += 1
             RuntimeStatus.steals = (RuntimeStatus.steals or 0) + 1
             local feedbackCategory = type(feedback) == "table" and feedback.AssetCategory or nil
             local feedbackUid = type(feedback) == "table"
@@ -4826,7 +5547,7 @@ getgenv().__CHSAE_SellWake = Arb.sellWake
 -- [[ INVENTORY WORKER SCHEDULER ]] --
 Arb.sellerGeneration, Arb.sellerPending = 0, false
 function Arb.cancelSellerTimer()
-    Arb.sellerGeneration = Arb.sellerGeneration + 1
+    Arb.sellerGeneration += 1
     local timer = Arb.sellerTimer
     Arb.sellerTimer = nil
     if timer then pcall(task.cancel, timer) end
@@ -5314,7 +6035,7 @@ do
             Farthest = entries,
             Nearest = entries,
         }
-        self.version = self.version + 1
+        self.version += 1
         self.lastRebuildAt = os.clock()
         RuntimeStatus.candidateCount = #entries
         if type(RuntimeStatus.refreshEggESP) == "function" then
@@ -5346,7 +6067,7 @@ do
         end
         self.byUid[uid] = nil
         self.rejected[uid] = { reason = tostring(reason or "unavailable"), at = os.clock() }
-        self.version = self.version + 1
+        self.version += 1
         self.lastInvalidation = { uid = uid, reason = tostring(reason or "unavailable"), at = os.clock() }
         RuntimeStatus.candidateCount = #self.entries
         if type(RuntimeStatus.refreshEggESP) == "function" then
@@ -5732,7 +6453,7 @@ do
                     + Vector3.new(0, descriptor.offset, 0)
                 local text = labelText(entry)
                 if marker.label.Text ~= text then marker.label.Text = text end
-                if descriptor.source == "pen" then penCount = penCount + 1 else areaCount = areaCount + 1 end
+                if descriptor.source == "pen" then penCount += 1 else areaCount += 1 end
             end
             for uid, marker in pairs(self.markers) do
                 if not wanted[uid] then
@@ -5741,7 +6462,7 @@ do
                 end
             end
             local count = 0
-            for _ in pairs(self.markers) do count = count + 1 end
+            for _ in pairs(self.markers) do count += 1 end
             self.count = count
             RuntimeStatus.eggESPCount = areaCount
             RuntimeStatus.penESPCount = penCount
@@ -6853,13 +7574,13 @@ RuntimeStatus.getSafetySummary = function()
     local speed = type(evidence) == "table" and tonumber(rawget(evidence, "Speed")) or 0
     local teleport = type(evidence) == "table" and tonumber(rawget(evidence, "Teleport")) or 0
     local flight = type(evidence) == "table" and tonumber(rawget(evidence, "Flight")) or 0
-    flags = flags + math.max(0, speed or 0) + math.max(0, teleport or 0) + math.max(0, flight or 0)
-    flags = flags + math.max(0, tonumber(rawget(state, "TamperScore")) or 0)
-    flags = flags + math.max(0, tonumber(rawget(state, "InvalidHeartbeatCount")) or 0)
+    flags += math.max(0, speed or 0) + math.max(0, teleport or 0) + math.max(0, flight or 0)
+    flags += math.max(0, tonumber(rawget(state, "TamperScore")) or 0)
+    flags += math.max(0, tonumber(rawget(state, "InvalidHeartbeatCount")) or 0)
     -- A registered travel impulse intentionally creates CorrectionContext and
     -- ThreatLevel="Observing".  That is coverage, not evidence.  Counting it as
     -- a flag made a healthy high-speed trip look unsafe in the overlay.
-    if rawget(state, "KickQueued") == true then flags = flags + 4 end
+    if rawget(state, "KickQueued") == true then flags += 4 end
     local threat = tostring(rawget(state, "ThreatLevel") or "Unknown")
     if flags == 0 then return "🛡️ " .. (threat == "Unknown" and "Trusted" or threat), 0 end
     return "⚠️ " .. threat, flags
@@ -7098,7 +7819,7 @@ do
             if not read or type(objects) ~= "table" then return nil, "movement discovery failed: getgc" end
             local matches, count, sliceAt = {}, 0, api.now()
             for _, value in pairs(objects) do
-                count = count + 1
+                count += 1
                 if count > 250000 then return nil, "movement discovery limit reached" end
                 if count % 128 == 0 and api.now() - sliceAt >= 0.004 then
                     api.pause()
@@ -7591,7 +8312,7 @@ local function clearGuardArm()
 end
 
 local function stopVelocityCancellation()
-    GuardProtection.velocityCancelGeneration = GuardProtection.velocityCancelGeneration + 1
+    GuardProtection.velocityCancelGeneration += 1
     GuardProtection.recoveryUntil = 0
     GuardProtection.velocityCancelUntil = 0
     GuardProtection.velocityCancelCharacter = nil
@@ -7625,7 +8346,7 @@ local function startVelocityCancellation(character, duration, chickenLanding)
 
     duration = math.clamp(tonumber(duration) or 0.85, 0.25, 3.5)
     stopVelocityCancellation()
-    GuardProtection.velocityCancelGeneration = GuardProtection.velocityCancelGeneration + 1
+    GuardProtection.velocityCancelGeneration += 1
     local generation = GuardProtection.velocityCancelGeneration
     GuardProtection.jointReleaseQueued = false
     GuardProtection.recoveryUntil = os.clock() + duration
@@ -7666,7 +8387,7 @@ local function startVelocityCancellation(character, duration, chickenLanding)
                     local released = pcall(GuardProtection.ragdollJoints.Release, character)
                     if released then
                         GuardProtection.jointReleaseGeneration = generation
-                        GuardDiagnostics.JointReleases = GuardDiagnostics.JointReleases + 1
+                        GuardDiagnostics.JointReleases += 1
                     end
                 end
             end
@@ -7675,7 +8396,7 @@ local function startVelocityCancellation(character, duration, chickenLanding)
                 or state == Enum.HumanoidStateType.Ragdoll
                 or state == Enum.HumanoidStateType.FallingDown
                 or state == Enum.HumanoidStateType.PlatformStanding then
-                GuardDiagnostics.StateRecoveries = GuardDiagnostics.StateRecoveries + 1
+                GuardDiagnostics.StateRecoveries += 1
                 GuardDiagnostics.LastRecoveredState = state.Name
                 pcall(humanoid.ChangeState, humanoid, Enum.HumanoidStateType.Running)
             end
@@ -7686,7 +8407,7 @@ local function startVelocityCancellation(character, duration, chickenLanding)
                 local linearDelta = (linear - GuardProtection.baselineLinear).Magnitude
                 local angularDelta = (angular - GuardProtection.baselineAngular).Magnitude
                 if linearDelta > 0.05 or angularDelta > 0.05 then
-                    GuardDiagnostics.VelocityCancels = GuardDiagnostics.VelocityCancels + 1
+                    GuardDiagnostics.VelocityCancels += 1
                     GuardDiagnostics.MaxCancelledVelocity = math.max(
                         GuardDiagnostics.MaxCancelledVelocity,
                         linear.Magnitude
@@ -7705,7 +8426,7 @@ local function startVelocityCancellation(character, duration, chickenLanding)
                 or state == Enum.HumanoidStateType.Ragdoll
                 or state == Enum.HumanoidStateType.FallingDown
                 or state == Enum.HumanoidStateType.PlatformStanding then
-                GuardDiagnostics.PhysicsSeen = GuardDiagnostics.PhysicsSeen + 1
+                GuardDiagnostics.PhysicsSeen += 1
                 stabilize()
             end
         end)
@@ -7757,7 +8478,7 @@ local function armRagdollSignal()
     GuardProtection.ragdollSignalCharacter = LocalPlayer.Character
     GuardProtection.ragdollSignalUntil = now + recoveryDuration
     startVelocityCancellation(LocalPlayer.Character, recoveryDuration)
-    GuardDiagnostics.RagdollSignalArms = GuardDiagnostics.RagdollSignalArms + 1
+    GuardDiagnostics.RagdollSignalArms += 1
     GuardDiagnostics.LastReason = "ragdoll-signal-armed"
     GuardDiagnostics.LastSignalRemaining = remaining
 end
@@ -7860,7 +8581,7 @@ GuardProtection.reconcileAttackBindings = function()
                             GuardProtection.character = LocalPlayer.Character
                             GuardProtection.armedUntil = os.clock() + 2
                             startVelocityCancellation(LocalPlayer.Character, 2.35)
-                            GuardDiagnostics.ForestArms = GuardDiagnostics.ForestArms + 1
+                            GuardDiagnostics.ForestArms += 1
                             GuardDiagnostics.LastReason = "forest-armed"
                         end)
                     end
@@ -7976,7 +8697,7 @@ if okRagdoll and type(ragdollTargets) == "table" and type(hookfunction) == "func
                 and (forestContext or signalContext))
 
             if isLocalCharacter then
-                GuardDiagnostics.RagdollsSeen = GuardDiagnostics.RagdollsSeen + 1
+                GuardDiagnostics.RagdollsSeen += 1
                 GuardDiagnostics.LastImpulseMagnitude = typeof(impulse) == "Vector3"
                     and impulse.Magnitude or 0
             end
@@ -7995,7 +8716,7 @@ if okRagdoll and type(ragdollTargets) == "table" and type(hookfunction) == "func
                     GuardProtection.armedUntil = 0
                     GuardProtection.character = nil
                 end
-                GuardDiagnostics.Suppressed = GuardDiagnostics.Suppressed + 1
+                GuardDiagnostics.Suppressed += 1
                 GuardDiagnostics.LastReason = landingContext and "chicken-landing-suppressed"
                     or forestContext and "forest-suppressed"
                     or "ragdoll-signal-suppressed"
@@ -8014,7 +8735,7 @@ if okRagdoll and type(ragdollTargets) == "table" and type(hookfunction) == "func
                 return originalRagdoll(token, duration, impulse)
             end
             if isLocalCharacter then
-                GuardDiagnostics.Passed = GuardDiagnostics.Passed + 1
+                GuardDiagnostics.Passed += 1
                 GuardDiagnostics.LastReason = "ragdoll-passed"
             end
                     return originalRagdoll(token, duration, impulse)
@@ -8152,7 +8873,7 @@ do
             calibration.pingMs = firstSample and measuredPing
                 or calibration.pingMs * 0.75 + measuredPing * 0.25
         end
-        calibration.telemetrySamples = calibration.telemetrySamples + 1
+        calibration.telemetrySamples += 1
 
         local previousSpeed = tonumber(calibration.current)
         refreshCalibrationEnvironment()
@@ -8211,7 +8932,7 @@ do
                 calibration.current = stableSpeed
                 calibration.lastReason = "environment hold"
             else
-                calibration.successes = calibration.successes + 1
+                calibration.successes += 1
                 calibration.lastReason = resultReason
                 if calibration.successes >= calibration.requiredSuccesses then
                     calibration.successes = 0
@@ -8225,7 +8946,7 @@ do
             end
         else
             calibration.successes = 0
-            calibration.failures = calibration.failures + 1
+            calibration.failures += 1
             calibration.lastReason = resultReason
             if previousSpeed > stableSpeed then
                 -- A candidate failed: return immediately to the last speed that
@@ -9561,7 +10282,7 @@ function RuntimeStatus.CreateTrailController(deps)
     end
     function controller:SetEnabled(value)
         if not owned() then return end
-        if settings.AutoBuyTrail ~= (value == true) then epoch = epoch + 1 end
+        if settings.AutoBuyTrail ~= (value == true) then epoch += 1 end
         settings.AutoBuyTrail = value == true
         setTrailStatus(settings.AutoBuyTrail and "🟡 Watching trails" or "💤 Purchase standby")
         deps.wake("trail-toggle")
@@ -9570,7 +10291,7 @@ function RuntimeStatus.CreateTrailController(deps)
     function controller:SelectionChanged()
         if not owned() then return end
         local count = 0
-        for _, selected in pairs(settings.TrailNames) do if selected then count = count + 1 end end
+        for _, selected in pairs(settings.TrailNames) do if selected then count += 1 end end
         setTrailStatus(count > 0 and ("🟡 %d selected"):format(count) or "🟡 Pick trails")
         deps.wake("trail-selection")
     end
@@ -9610,9 +10331,9 @@ function RuntimeStatus.CreateTrailController(deps)
             local selectedCount, ownedCount, pendingLabel = 0, 0, nil
             for _, label in ipairs(deps.items) do
                 if settings.TrailNames[label] then
-                    selectedCount = selectedCount + 1
+                    selectedCount += 1
                     local id = deps.byLabel[label]
-                    if inventory[id] then ownedCount = ownedCount + 1
+                    if inventory[id] then ownedCount += 1
                     elseif not pendingLabel then pendingLabel = label end
                 end
             end
@@ -9709,7 +10430,7 @@ function RuntimeStatus.CreateTrailController(deps)
     end
     function controller:GetLifecycle()
         local observerCount = 0
-        for _ in pairs(observers) do observerCount = observerCount + 1 end
+        for _ in pairs(observers) do observerCount += 1 end
         return { destroyed = destroyed, worker = worker and worker.phase or "none",
             busy = stepBusy, observers = observerCount, connections = #ownedConnections }
     end
@@ -9845,7 +10566,7 @@ RuntimeStatus.eggInventoryCapacityState = function()
         return false, 0, capacity
     end
     local count = 0
-    for _ in pairs(inventory) do count = count + 1 end
+    for _ in pairs(inventory) do count += 1 end
     return count >= capacity, count, capacity
 end
 
@@ -9866,7 +10587,7 @@ RuntimeStatus.petInventoryCapacityState = function()
     end
     if type(inventory) ~= "table" or capacity <= 0 then return false, 0, capacity end
     local count = 0
-    for _ in pairs(inventory) do count = count + 1 end
+    for _ in pairs(inventory) do count += 1 end
     return count >= capacity, count, capacity
 end
 
@@ -10880,7 +11601,7 @@ do
         local ok, reason = d.relocate(t)
         if not ok then t.failure = reason or "chicken relocation failed" return false end
         t.landedAt, t.phase = d.now(), "landing"
-        m.jumps = m.jumps + 1
+        m.jumps += 1
         return true
     end
     function m.noteHit(hit)
@@ -10905,7 +11626,7 @@ do
             return false, ok and (reason or "bait hit report failed") or tostring(sent)
         end
         t.hitReportedAt = d.now()
-        m.hitReports = m.hitReports + 1
+        m.hitReports += 1
         if not alive(t) then return false, "bait hit report cancelled" end
         if t.hitAttempted then return not t.failure, t.failure end
         local started = startHitMovement(t)
@@ -10993,7 +11714,7 @@ do
         d.status("↩️ TP · tweening to TrackStart")
         local staged, stageReason = d.stage(t, valid)
         if not staged or not valid() then return fail(stageReason or "TrackStart staging interrupted") end
-        m.stages = m.stages + 1
+        m.stages += 1
         local function preparePickup(attempt)
             if not d.toolFree() or not valid() then return false, "chicken pickup unavailable" end
             if d.baitSnapshot then
@@ -11005,7 +11726,7 @@ do
             d.status("TP · approaching bait")
             local reached, reason = d.approachBait(t, valid)
             if not reached or not valid() then return false, reason end
-            m.baitApproaches = m.baitApproaches + 1
+            m.baitApproaches += 1
             local stableSince, previous
             local stableWindow = d.pickupSettleWindow and d.pickupSettleWindow(attempt, m.completed == 0) or 0.35
             local deadline = d.now() + 8 -- one bounded native readiness/settle phase
@@ -11076,7 +11797,7 @@ do
                     return fail(r.error or "chicken pickup rejected")
                 end
                 d.release(r)
-                t.pickupAttempts = t.pickupAttempts + 1
+                t.pickupAttempts += 1
                 m.baitRetries = (m.baitRetries or 0) + 1
                 d.status("TP · syncing bait pickup " .. tostring(t.pickupAttempts) .. "/3")
                 local prepared, issue = preparePickup(t.pickupAttempts)
@@ -11134,7 +11855,7 @@ do
                 m.landing = { uid = uid, character = character, generation = t.generation, readyAt = d.now() }
                 retire(t, "chicken jump settled; Glide return")
                 d.release(r)
-                m.completed = m.completed + 1
+                m.completed += 1
                 return true
             end
             d.wait()
@@ -11618,7 +12339,7 @@ RuntimeStatus.onAutoStealDeath = function(deadCharacter)
     end
 
 
-    stealRuntime.respawnGeneration = stealRuntime.respawnGeneration + 1
+    stealRuntime.respawnGeneration += 1
     stealRuntime.requestFailureCount = 0
     if recoveryUid ~= nil then
         if tostring(stealRuntime.persistentUid) ~= tostring(recoveryUid) then
@@ -12230,11 +12951,11 @@ task.spawn(function()
 
         -- ── Phase 2: pick a target egg (rarity filter + priority ranking) ──
         local selectedCount = 0
-        for _, on in pairs(Settings.TargetRarities) do if on then selectedCount = selectedCount + 1 end end
+        for _, on in pairs(Settings.TargetRarities) do if on then selectedCount += 1 end end
         local selectedCategoryCount = 0
-        for _, on in pairs(Settings.TargetCategories) do if on then selectedCategoryCount = selectedCategoryCount + 1 end end
+        for _, on in pairs(Settings.TargetCategories) do if on then selectedCategoryCount += 1 end end
         local selectedAreaCount = 0
-        for _, on in pairs(Settings.TargetAreas) do if on then selectedAreaCount = selectedAreaCount + 1 end end
+        for _, on in pairs(Settings.TargetAreas) do if on then selectedAreaCount += 1 end end
         local kgFilterActive = RuntimeStatus.kgFilterActive(Settings.TargetKGMode,
             Settings.TargetKGThreshold)
         local valueFilterActive = RuntimeStatus.valueFilterActive(Settings.TargetValueThreshold)
@@ -12524,7 +13245,7 @@ task.spawn(function()
         else
         for _, indexed in ipairs(indexedCandidates) do
             local rec = indexed.rec
-            total = total + 1
+            total += 1
             if tostring(rec.State) == "Slot" and rec.BottomCFrame
                 and not RuntimeStatus.isCaptureEventUid(rec.Uid)
                 and (not blacklist[rec.Uid] or os.clock() > blacklist[rec.Uid]) then
@@ -12533,7 +13254,7 @@ task.spawn(function()
                 -- v2.2: the speed gate no longer FILTERS anything (user's call — we're
                 -- working on bypassing it). We only count it so the status can warn.
                 local isCrane = tostring(rec.AssetCategory) == "Crane"
-                if not areaAllowed(rec.AreaId) then blockedArea = blockedArea + 1 end
+                if not areaAllowed(rec.AreaId) then blockedArea += 1 end
                 -- rarity filter (skipped when no rarities are selected)
                 local riftEligible = RuntimeStatus.riftFieldEligible(rec)
                 local eligible = riftCollect and riftEligible
@@ -12550,7 +13271,7 @@ task.spawn(function()
                         -- mutation priority doubles as a hard filter
                         and (prio ~= "Mutation" or #muts > 0)))
                 if eligible then
-                    matching = matching + 1
+                    matching += 1
                     local cand = {
                         rec    = rec,
                         rar    = rar,
@@ -12626,11 +13347,11 @@ task.spawn(function()
                                 Settings.TargetValueThreshold, "atLeast", indexed.valueKnown))
                             and (prio ~= "Mutation" or #muts > 0))))
                     if eligible and tostring(rec.State) == "Dropped" then
-                        selectedDropped = selectedDropped + 1
+                        selectedDropped += 1
                     elseif eligible and tostring(rec.State) == "Slot"
                         and blacklist[rec.Uid] and os.clock() <= blacklist[rec.Uid]
                     then
-                        selectedCooling = selectedCooling + 1
+                        selectedCooling += 1
                     end
                 end
             end
@@ -14236,7 +14957,7 @@ function HatchScheduler.Wait(seconds)
         task.wait(0.05)
         return
     end
-    HatchScheduler.Generation = HatchScheduler.Generation + 1
+    HatchScheduler.Generation += 1
     local generation = HatchScheduler.Generation
     HatchScheduler.CancelTimer()
     if type(seconds) == "number" then
@@ -14249,7 +14970,7 @@ function HatchScheduler.Wait(seconds)
     end
     HatchScheduler.WakeEvent.Event:Wait()
     HatchScheduler.Pending = false
-    HatchScheduler.Generation = HatchScheduler.Generation + 1
+    HatchScheduler.Generation += 1
     HatchScheduler.CancelTimer()
 end
 if EggCmds and EggCmds.RuntimeSnapshotUpdated then
@@ -14306,7 +15027,7 @@ end
 
 local function incubatedPlaceCount()
     local count = 0
-    for _ in pairs(RuntimeStatus.incubatedPlaceQueue or {}) do count = count + 1 end
+    for _ in pairs(RuntimeStatus.incubatedPlaceQueue or {}) do count += 1 end
     return count
 end
 local INCUBATED_INVENTORY_GRACE = 8
@@ -14567,7 +15288,7 @@ function RuntimeStatus.reconcileNewPetUids(saveSnapshot)
                 state.ProtectedUntil = math.max(
                     tonumber(state.ProtectedUntil) or 0, protectedUntil)
                 RuntimeStatus.hatchProtectedPetUids[uid] = state.ProtectedUntil
-                if firstObservation then newCount = newCount + 1 end
+                if firstObservation then newCount += 1 end
             end
             if inInventory then
                 state.SeenInventory = true
@@ -14889,7 +15610,7 @@ local function placeEggsPass()
             if res == true then
                 placed = placed + 1
                 RuntimeStatus.incubatedPlaceQueue[uid] = nil
-                penUsed = penUsed + 1
+                penUsed += 1
                 occ[#occ + 1] = { x = slot.x, z = slot.z }
                 ei = ei + 1; ci = ci + 1 -- success → next egg, next slot
                 consecFails = 0
@@ -15383,7 +16104,7 @@ local function sellableInventory()
         local vip = LocalPlayer:GetAttribute("VIP") and 2 or 1
         local scanned = 0
         for uid, raw in pairs(sv.Inventory or {}) do
-            scanned = scanned + 1
+            scanned += 1
             if scanned % 32 == 0 then task.wait(); if not sessionAlive() then return end end
             if not equipped[tostring(uid)]
                 and not RuntimeStatus.petSellUidProtected(uid, sv, true) then
@@ -15477,7 +16198,7 @@ RuntimeStatus.buildSalePreviewSnapshot = function(entries, itemKind, cap, filter
         local displayedWeight = type(weight) == "number"
             and tostring(math.round(math.max(weight, 0))) or "none"
         local price = type(entry) == "table" and tonumber(entry.price) or 0
-        saleValue = saleValue + price or 0
+        saleValue += price or 0
         fingerprint[#fingerprint + 1] = table.concat({
             uid, category, rarityId, table.concat(mutations, ","),
             displayedWeight, tostring(entry and entry.incomeKnown == true),
@@ -15974,7 +16695,7 @@ end
         local batch = {}
         while cursor <= #entries and #batch < math.min(1, remaining) do
             local entry = entries[cursor]
-            cursor = cursor + 1
+            cursor += 1
             local uid = tostring(entry.uid or "")
             if uid ~= "" and not seen[uid] then
                 seen[uid] = true
@@ -15984,8 +16705,8 @@ end
         if #batch > 0 then
             local n, money, failed, extra, reason = sellPass(batch, remaining, autoSettingKey)
             sold, earned, refused = sold + n, earned + money, refused + failed
-            attempted = attempted + n + failed
-            unexpected = unexpected + extra
+            attempted += n + failed
+            unexpected += extra
             if reason and reason ~= "preflight-empty" then return sold, earned, refused, unexpected, reason end
             -- A partially confirmed request is never repeated by this pass.
             if failed > 0 then break end
@@ -16366,7 +17087,7 @@ local function sellableEggInventory(reviewed)
         if not (sv and EggSellUtil) then return end
         local inventory, scanned = sv.EggInventory or {}, 0
         for uid in pairs(reviewed or inventory) do
-            scanned = scanned + 1
+            scanned += 1
             if not reviewed and scanned % 32 == 0 then task.wait(); if not sessionAlive() then return end end
             local raw = inventory[uid]
             if type(raw) == "table" and raw.Placement == nil then
@@ -16444,15 +17165,15 @@ local function matchingSellEggs(reviewed)
         if categoryOk and rarityOk and mutationOk and kgOk and valueOk then
             local conflictsWithPlace = placeSelected[tostring(entry.uid)] == true
             local riftReserved = RuntimeStatus.riftEggReserved(entry.uid)
-            if conflictsWithPlace or riftReserved then overlap = overlap + 1 end
+            if conflictsWithPlace or riftReserved then overlap += 1 end
             if riftReserved then
-                blocked = blocked + 1
-                unlockBlocked = unlockBlocked + 1
+                blocked += 1
+                unlockBlocked += 1
             elseif conflictsWithPlace and protectOverlap then
-                blocked = blocked + 1
+                blocked += 1
             else
                 out[#out + 1] = entry
-                total = total + entry.price or 0
+                total += entry.price or 0
             end
         end
     end
@@ -16552,7 +17273,7 @@ local function sellEggEntries(entries, cap, autoSettingKey)
     end
     local sold, earned = 0, 0
     for _, entry in ipairs(final) do
-        if inventory[tostring(entry.uid)] == nil then sold = sold + 1; earned = earned + (entry.price or 0) end
+        if inventory[tostring(entry.uid)] == nil then sold+=1; earned+=entry.price or 0 end
     end
     for uid in pairs(before) do
         if not requested[uid] and inventory[uid] == nil then
@@ -16572,7 +17293,7 @@ end
         local batch = {}
         while cursor <= #entries and #batch < math.min(1, remaining) do
             local entry = entries[cursor]
-            cursor = cursor + 1
+            cursor += 1
             local uid = tostring(entry.uid or "")
             if uid ~= "" and not seen[uid] then
                 seen[uid] = true
@@ -16582,7 +17303,7 @@ end
         if #batch > 0 then
             local n, money, failed, reason = sellPass(batch, remaining, autoSettingKey)
             sold, earned, refused = sold + n, earned + money, refused + failed
-            attempted = attempted + n + failed
+            attempted += n + failed
             if reason then return sold, earned, refused, reason end
             -- A partially confirmed request is never repeated by this pass.
             if failed > 0 then break end
@@ -17122,7 +17843,7 @@ function RuntimeStatus.CreateRiftBossShopController(deps)
         -- Tool:Activate keeps the game's own equip, ragdoll, range and cooldown checks.
         local ok = deps.swing(info.bat, info.character)
         self.nextSwing = now + (ok and 0.15 or 0.35)
-        if ok then self.swings = self.swings + 1 end
+        if ok then self.swings += 1 end
         self.bossStatus = ok and ("Attacking " .. info.target.name) or "Waiting for the bat"
     end
     function self:ChooseProduct(settings, products, tokens)
@@ -17162,7 +17883,7 @@ function RuntimeStatus.CreateRiftBossShopController(deps)
                 if type(tokens) ~= "number" or tokens > q.beforeTokens - q.price then
                     self.shopStatus = "Purchased " .. q.name .. " · updating tokens"; return
                 end
-                self.purchases = self.purchases + 1
+                self.purchases += 1
                 self.shopStatus = "Purchased " .. q.name
             else
                 self.shopStatus = "Shop: " .. tostring(q.message or q.accepted or "response unavailable")
@@ -17352,7 +18073,7 @@ do
                 local accepted, message, reward = d.request("BeginFuse")
                 if accepted == false then f.pending = nil; f.status = tostring(message or "Fuse rejected")
                 elseif accepted == true then
-                    f.completed = f.completed + 1
+                    f.completed += 1
                 end
             end
         end
@@ -17645,7 +18366,7 @@ end)()
                 local status = slot.petUid and (slot.waiting and "waiting for pet" or "ready")
                     or slot.eggUid and (slot.placed and "hatching" or "place egg") or "missing"
                 lines[#lines + 1] = slot.category .. " · " .. status
-                if slot.eggUid then RuntimeStatus.riftInventoryCount = RuntimeStatus.riftInventoryCount + 1 end
+                if slot.eggUid then RuntimeStatus.riftInventoryCount += 1 end
             end
             RuntimeStatus.setLabel(eventLabel, table.concat(lines, "\n"))
         end
@@ -17660,7 +18381,7 @@ end)()
                 and not RuntimeStatus.isCaptureEventUid(raw.Uid)
                 and not RuntimeStatus.riftTargetBlocked(raw.Uid)
                 and Planner.ValueAllowed(entry.value, entry.valueKnown, Settings.RiftMinimumValue) then
-                count = count + 1
+                count += 1
                 local d = root and (root.Position - raw.BottomCFrame.Position).Magnitude or 0
                 if d < distance then best, distance = raw, d end
             end
@@ -17914,7 +18635,7 @@ end)() -- independent Rift state machine
         if type(result) ~= "table" or type(result.Open) ~= "boolean" then return false end
         snapshot = RuntimeStatus.mergeBossSnapshot(snapshot, result)
         snapshotAt = os.clock()
-        bossStateRevision = bossStateRevision + 1
+        bossStateRevision += 1
         return true
     end
     local function refreshSnapshot()
@@ -18141,7 +18862,7 @@ end
         if q then
             if q.inFlight then self.status="Claiming Boss Mastery reward"; return end
             if save and d.claimed(q,save) then
-                d.store(nil); self.claims = self.claims + 1; self.nextAt=d.now()+0.5
+                d.store(nil); self.claims+=1; self.nextAt=d.now()+0.5
                 self.status="Boss Mastery reward claimed"; return
             end
             if q.ok and q.accepted==false then
@@ -18453,7 +19174,7 @@ end
                         snapshot = table.clone(snapshot)
                         snapshot.BossHealth, snapshot.BossMaxHealth = health, maximum
                     snapshotAt = os.clock()
-                    bossStateRevision = bossStateRevision + 1
+                    bossStateRevision += 1
                         if controller:ObserveBoss(snapshot, workspace:GetServerTimeNow()) then
                             stopMovement()
                         end
@@ -18463,7 +19184,7 @@ end
                     getgenv().__CHSAE_RuntimeConns[#getgenv().__CHSAE_RuntimeConns + 1] =
                         Remotes.BossEvent.StateShifted.OnClientEvent:Connect(function(result)
                             if not sessionAlive() then return end
-                            if not acceptBossSnapshot(result) then bossStateRevision = bossStateRevision + 1 end
+                            if not acceptBossSnapshot(result) then bossStateRevision += 1 end
                             nextSnapshot = 0
                         end)
                 end
@@ -18536,7 +19257,7 @@ function RuntimeStatus.createServerBrowser(d)
         status = "Enable Find Server or press Refresh", lastSuccess = nil, nextRefresh = 0 }
     local function finite(n) return type(n) == "number" and n == n and n >= 0 and n < math.huge end
     function c:Cancel()
-        self.revision = self.revision + 1
+        self.revision += 1
         self.busy = false
         self.status = "Find Server off"
         d.render(self)
@@ -18549,7 +19270,7 @@ function RuntimeStatus.createServerBrowser(d)
     end
     function c:Refresh()
         if not d.alive() or self.busy or d.now() < self.nextRefresh then return false end
-        self.revision = self.revision + 1
+        self.revision += 1
         local revision = self.revision
         self.busy = true
         self.nextRefresh = d.now() + 10
@@ -18558,7 +19279,7 @@ function RuntimeStatus.createServerBrowser(d)
         local function current() return d.alive() and self.revision == revision end
         d.delay(25, function()
             if current() and self.busy then
-                self.revision = self.revision + 1; self.busy = false; self.lastSuccess = nil
+                self.revision += 1; self.busy = false; self.lastSuccess = nil
                 self.nextRefresh = d.now() + 60
                 self.status = "Request timed out. Try Refresh later."
                 d.render(self)
@@ -18800,7 +19521,7 @@ end
             elseif not Settings.FindServer then nextAuto = 0 end
             task.wait(1)
         end
-        browser.revision = browser.revision + 1
+        browser.revision += 1
     end)
 end)() -- Server browser
 -- [[ END SERVER TAB ]] --
@@ -19356,7 +20077,7 @@ do
     local function queueReducedObject(instance, targetGeneration)
         if not instance or queuedReduce[instance] then return end
         queuedReduce[instance] = true
-        reduceQueueTail = reduceQueueTail + 1
+        reduceQueueTail += 1
         reduceQueue[reduceQueueTail] = { instance = instance, generation = targetGeneration }
         if reduceWorkerRunning then return end
         reduceWorkerRunning = true
@@ -19366,7 +20087,7 @@ do
                 while reduceQueueHead <= stopAt do
                     local item = reduceQueue[reduceQueueHead]
                     reduceQueue[reduceQueueHead] = nil
-                    reduceQueueHead = reduceQueueHead + 1
+                    reduceQueueHead += 1
                     local object = item and item.instance
                     if object then queuedReduce[object] = nil end
                     if object and item.generation == generation and Settings.ExtremeFPS then
@@ -19382,7 +20103,7 @@ do
     end
 
     local function restorePerformance()
-        generation = generation + 1
+        generation += 1
         table.clear(reduceQueue)
         table.clear(queuedReduce)
         reduceQueueHead, reduceQueueTail = 1, 0
@@ -19411,7 +20132,7 @@ do
 
     local function enablePerformance()
         restorePerformance()
-        generation = generation + 1
+        generation += 1
         local myGeneration = generation
         local Lighting = game:GetService("Lighting")
         perfConns[#perfConns + 1] = CollectionService:GetInstanceAddedSignal(BLOOM_TREE_TAG):Connect(function(tree)
@@ -19773,7 +20494,7 @@ do
     end
 
     local function restoreExtremeFPS()
-        extremeGeneration = extremeGeneration + 1
+        extremeGeneration += 1
         for _, conn in ipairs(extremeConns) do pcall(function() conn:Disconnect() end) end
         table.clear(extremeConns)
         restoreAllRemoteAssets()
@@ -19796,7 +20517,7 @@ do
 
     local function enableExtremeFPS()
         restoreExtremeFPS()
-        extremeGeneration = extremeGeneration + 1
+        extremeGeneration += 1
         local myGeneration = extremeGeneration
 
         -- Apply the texture/effect reducer as part of this single combined mode.
@@ -20466,7 +21187,7 @@ do
         end
         local function pending()
             local count = 0
-            for _ in pairs(registry.Records) do count = count + 1 end
+            for _ in pairs(registry.Records) do count += 1 end
             return count
         end
         local function restore(record)
@@ -20500,7 +21221,7 @@ do
         end
         local function stop()
             afk.Enabled = false
-            afk.Generation = afk.Generation + 1
+            afk.Generation += 1
             afk.Count, afk.Verified, afk.Unknown = 0, 0, 0
             local restored = restoreOwned()
             afk.Error = nil
@@ -20546,7 +21267,7 @@ do
             local noEffect = (kind == "Disable" and after == true)
                 or (kind == "Disconnect" and connected == true)
             if kind == "Disconnect" and not noEffect then
-                if not record.Counted then registry.Disconnected = registry.Disconnected + 1; record.Counted = true end
+                if not record.Counted then registry.Disconnected += 1; record.Counted = true end
                 registry.Rejoin = true
             elseif kind == "Disable" and not noEffect and (enabled == nil or not record.Enable) then
                 registry.Rejoin = true
@@ -20579,14 +21300,14 @@ do
                 local visited, seen = 0, {}
                 for _, target in pairs(callbacks) do
                     if not current(generation) then break end
-                    visited = visited + 1
+                    visited += 1
                     if visited > 512 then issue = "Idle callback snapshot exceeds limit"; break end
                     if not seen[target] then
                         seen[target] = true
                         local ok, err, state = suppress(target, generation)
-                        if state ~= "gone" then count = count + 1 end
-                        if ok and state == "verified" then verified = verified + 1
-                        elseif ok and state == "unknown" then unknown = unknown + 1 end
+                        if state ~= "gone" then count += 1 end
+                        if ok and state == "verified" then verified += 1
+                        elseif ok and state == "unknown" then unknown += 1 end
                         if not ok then issue = issue or err end
                     end
                 end
@@ -20606,7 +21327,7 @@ do
                 return false, afk.Error
             end
             afk.Enabled = true
-            afk.Generation = afk.Generation + 1
+            afk.Generation += 1
             local generation = afk.Generation
             local ok, err = scan(generation)
             task.spawn(function()
@@ -20941,94 +21662,18 @@ DevBox:AddLabel("ProtectedReleaseNotice", {
     DoesWrap = true,
 })
 
--- [[ WINDUI CONFIG MANAGER ]] --
-local function _configPath(name)
-    local safe=tostring(name or ""):gsub("[^%w%-%_ ]", "_")
-    return "CloverHub/StealAnEgg/"..safe..".json"
-end
-local WindConfigManager={}
-function WindConfigManager:SetLibrary() end
-function WindConfigManager:IgnoreThemeSettings() end
-function WindConfigManager:SetFolder(folder) self.Folder=tostring(folder or "CloverHub") end
-function WindConfigManager:SetSubFolder(folder) self.SubFolder=tostring(folder or "StealAnEgg") end
-function WindConfigManager:SetIgnoreIndexes() end
-function WindConfigManager:reconcile() end
-function WindConfigManager:RefreshConfigList()
-    local out={}
-    if type(listfiles)=="function" then
-        local ok,files=pcall(listfiles,"CloverHub/StealAnEgg")
-        if ok and type(files)=="table" then
-            for _,f in ipairs(files) do
-                local n=tostring(f):match("([^/\\]+)%.json$")
-                if n then out[#out+1]=n end
-            end
-        end
-    end
-    return out
-end
-function WindConfigManager:GetAutoloadConfig()
-    if type(isfile)=="function" and isfile("CloverHub/StealAnEgg/autoload.txt") and type(readfile)=="function" then
-        local ok,v=pcall(readfile,"CloverHub/StealAnEgg/autoload.txt"); if ok and v~="" then return v end
-    end
-end
-function WindConfigManager:SaveJSON(name)
-    local snapshot=type(configSnapshot)=="function" and configSnapshot(false) or {}
-    local payload={cloverSettings=snapshot,cloverSettingsRevision=Settings.ConfigRevision or 0,objects={}}
-    local ok,encoded=pcall(HttpService.JSONEncode,HttpService,payload)
-    if not ok then return "",false,encoded end
-    return encoded,true
-end
-function WindConfigManager:LoadJSON(content)
-    local ok,payload=pcall(HttpService.JSONDecode,HttpService,content)
-    if not ok or type(payload)~="table" then return false,"Invalid JSON" end
-    if type(payload.cloverSettings)=="table" and type(configSnapshot)=="function" then
-        pcall(function()
-            for key,value in pairs(payload.cloverSettings) do
-                if key~="WebhookURL" and Settings[key]~=nil and type(Settings[key])==type(value) then Settings[key]=value end
-            end
-        end)
-    end
-    return true
-end
-function WindConfigManager:Save(name)
-    name=tostring(name or ""); if name=="" then return false,"Empty config name" end
-    local encoded,ok,err=self:SaveJSON(name); if not ok then return false,err end
-    if type(makefolder)=="function" then pcall(makefolder,"CloverHub"); pcall(makefolder,"CloverHub/StealAnEgg") end
-    if type(writefile)~="function" then return false,"writefile unavailable" end
-    local wok,werr=pcall(writefile,_configPath(name),encoded); return wok,wok and nil or werr
-end
-function WindConfigManager:Load(name)
-    if type(readfile)~="function" or type(isfile)~="function" or not isfile(_configPath(name)) then return false,"Config not found" end
-    local ok,data=pcall(readfile,_configPath(name)); if not ok then return false,data end
-    return self:LoadJSON(data)
-end
-function WindConfigManager:Delete(name)
-    if type(delfile)~="function" then return false,"delfile unavailable" end
-    local ok,err=pcall(delfile,_configPath(name)); return ok,ok and nil or err
-end
-function WindConfigManager:SaveAutoloadConfig(name)
-    if type(makefolder)=="function" then pcall(makefolder,"CloverHub"); pcall(makefolder,"CloverHub/StealAnEgg") end
-    if type(writefile)~="function" then return false,"writefile unavailable" end
-    local ok,err=pcall(writefile,"CloverHub/StealAnEgg/autoload.txt",tostring(name)); return ok,ok and nil or err
-end
-function WindConfigManager:DeleteAutoLoadConfig()
-    if type(delfile)~="function" then return false,"delfile unavailable" end
-    if type(isfile)=="function" and not isfile("CloverHub/StealAnEgg/autoload.txt") then return false,"not set" end
-    local ok,err=pcall(delfile,"CloverHub/StealAnEgg/autoload.txt"); return ok,ok and nil or err
-end
-function WindConfigManager:LoadAutoloadConfig()
-    local n=self:GetAutoloadConfig(); if n then return self:Load(n) end
-    return false,"not set"
-end
-
 -- Official Obsidian SaveManager with a CloverHub snapshot bridge. SaveManager
 -- owns the named-config workflow and confirmation dialogs; the snapshot keeps
 -- custom overlay dropdowns and CHK controls lossless alongside native controls.
 task.defer(function()
     -- Named configs are non-critical for first paint. Load the optional addon
     -- after the main hub has been created so it cannot delay startup.
-    Library.__SaveManager = WindConfigManager
-    local managerOk, loadedManager = true, WindConfigManager
+    local managerOk, loadedManager = pcall(function()
+        return loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+    end)
+    if managerOk and type(loadedManager) == "table" then
+        Library.__SaveManager = loadedManager
+    end
     local manager = Library.__SaveManager
     if type(manager) == "table" then
         local configured, configBox = pcall(function()
