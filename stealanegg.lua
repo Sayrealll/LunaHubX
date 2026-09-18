@@ -2347,7 +2347,8 @@ Window.__ApplyMobileScrollFix = function()
     return true
 end
 
-local function applyResponsiveUIScale()
+local function applyResponsiveUIScale() return 1 end
+
     local camera = workspace.CurrentCamera
     if not camera then return 1 end
 
@@ -2420,132 +2421,10 @@ Window.__ApplyMobileScrollFix = function(onlyTab)
 end
 
 -- HOME layout: Session + Live Stats stacked LEFT, Server top-RIGHT.
-local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
+local SessionBox = makeSection(HomeTab, "⏱️ Session")
 
--- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
-do
-    local EXTRA_HEIGHT  = 6
-    local CUSTOM_RADIUS = 8
-
-    local Funcs = getmetatable(SessionBox).__index
-
-    local function MakeDropdownLazy(Dropdown, startDirty)
-        local origBuild = Dropdown.BuildDropdownList
-        local menu = Dropdown.Menu
-        if not (origBuild and menu and menu.Open) then return end
-
-        local dirty = (startDirty == true)
-
-        Dropdown.BuildDropdownList = function(...)
-            if menu.Active then
-                dirty = false
-                return origBuild(...)
-            end
-            dirty = true
-        end
-
-        local origOpen = menu.Open
-        menu.Open = function(mself, ...)
-            if dirty then
-                dirty = false
-                origBuild()
-            end
-            return origOpen(mself, ...)
-        end
-    end
-
-    local OriginalAddDropdown = Funcs.AddDropdown
-    Funcs.AddDropdown = function(self, Idx, Info)
-        local stashedValues = nil
-        if type(Info) == "table" and type(Info.Values) == "table"
-            and #Info.Values > 40 and Info.Default == nil then
-            stashedValues = Info.Values
-            Info.Values = {}
-        end
-
-        local Dropdown = OriginalAddDropdown(self, Idx, Info)
-
-        MakeDropdownLazy(Dropdown, stashedValues ~= nil)
-        if stashedValues then
-            Dropdown.Values = stashedValues
-            Dropdown.DefaultValues = stashedValues
-        end
-
-        local Children = self.Container:GetChildren()
-        local Holder = Children[#Children]
-
-        if Holder and Holder:IsA("Frame") then
-            local hasLabel = Holder.Size.Y.Offset > 21
-            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
-
-            local DisplayContainer = Holder:FindFirstChildWhichIsA("TextButton")
-            if DisplayContainer then
-                DisplayContainer.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-
-                local existingCorner = DisplayContainer:FindFirstChildOfClass("UICorner")
-                if existingCorner then
-                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                else
-                    local corner = Instance.new("UICorner")
-                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                    corner.Parent = DisplayContainer
-                end
-
-                local DisplayButton = DisplayContainer:FindFirstChildWhichIsA("TextButton")
-                if DisplayButton then
-                    DisplayButton.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-                end
-
-                DisplayContainer.TextYAlignment = Enum.TextYAlignment.Center
-                for _, d in ipairs(DisplayContainer:GetDescendants()) do
-                    if d:IsA("TextLabel") or d:IsA("TextButton") then
-                        d.TextYAlignment = Enum.TextYAlignment.Center
-                    end
-                end
-            end
-        end
-
-        return Dropdown
-    end
-
-    local OriginalAddInput = Funcs.AddInput
-    Funcs.AddInput = function(self, Idx, Info)
-        local Input = OriginalAddInput(self, Idx, Info)
-
-        local Children = self.Container:GetChildren()
-        local Holder = Children[#Children]
-
-        if Holder and Holder:IsA("Frame") then
-            local hasLabel = Holder.Size.Y.Offset > 21
-            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
-
-            local Box = Holder:FindFirstChildWhichIsA("TextBox")
-            if Box then
-                Box.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-                Box.ClearTextOnFocus = false
-                Box.TextScaled = false
-                Box.TextSize = 13
-                Box.TextYAlignment = Enum.TextYAlignment.Center
-                for _, d in ipairs(Box:GetDescendants()) do
-                    if d:IsA("TextLabel") or d:IsA("TextButton") then
-                        d.TextYAlignment = Enum.TextYAlignment.Center
-                    end
-                end
-
-                local existingCorner = Box:FindFirstChildOfClass("UICorner")
-                if existingCorner then
-                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                else
-                    local corner = Instance.new("UICorner")
-                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                    corner.Parent = Box
-                end
-            end
-        end
-
-        return Input
-    end
-end
+-- [[ WINDUI INPUT/DROPDOWN PATCHES ]] --
+-- Native WindUI controls handle sizing and dropdown rendering.
 
 -- [[ 4. SETTINGS STATE ]] --
 local Settings = {
@@ -3758,7 +3637,7 @@ do
     end)
 end
 
-local StatsBox = HomeTab:AddRightGroupbox("📊 Live Stats")
+local StatsBox = makeSection(HomeTab, "📊 Live Stats")
 
 local StatsMetrics = CHK.Metrics(StatsBox, "LiveMetrics", {
     { key = "money", title = "MONEY", icon = "$", color = Color3.fromRGB(251, 191, 36) },
@@ -3775,7 +3654,7 @@ StatsMetrics:Set("eggs", "Loading...")
 StatsMetrics:Set("pets", "Loading...")
 StatsMetrics:Set("petValue", "Loading...")
 
-local ServerBox = HomeTab:AddLeftGroupbox("🌐 Server")
+local ServerBox = makeSection(HomeTab, "🌐 Server")
 
 -- A successful same-server rejoin deliberately removes ClientReplicator and can
 -- also populate GuiService's error text during the handoff. Mark it before the
@@ -3853,7 +3732,7 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
 
 -- Keep the free-release warning visible in the main UI. Store it on Window to
 -- avoid another long-lived top-level local in this already large Luau chunk.
-Window.__FreeReleaseBox = HomeTab:AddRightGroupbox("🛡️ Free Release")
+Window.__FreeReleaseBox = makeSection(HomeTab, "🛡️ Free Release")
 CHK.Notice(Window.__FreeReleaseBox, "FreeReleaseNotice", {
     title = "CLOVERHUB IS FREE",
     text = "Never pay for access.\nSellers are unaffiliated.",
@@ -4067,7 +3946,7 @@ end)
 -- ════════════════════════════════════════════
 -- EGGS TAB
 -- ════════════════════════════════════════════
-local TargetBox = EggTab:AddLeftGroupbox("🎯 Steal Filter")
+local TargetBox = makeSection(EggTab, "🎯 Steal Filter")
 
 local RarityEntries = getRarityData()
 local RarityItems   = {}
@@ -4373,7 +4252,7 @@ RuntimeStatus.addValueFilterInput(TargetBox, "EggTargetValueThreshold",
         if wakeEggScanner then wakeEggScanner("value-filter") end
     end, "Steal only eggs at or above this native $/s value. K, M, B, T work; 0 disables.")
 
-local AutoStealBox = EggTab:AddRightGroupbox("🥷 Auto-Steal")
+local AutoStealBox = makeSection(EggTab, "🥷 Auto-Steal")
 
 -- STATUS at the very top. The label grows vertically when a status is longer
 -- than one line; StyleGroupboxPanel already follows Container.AbsoluteContentSize
@@ -4382,16 +4261,6 @@ CHK.Merge(AutoStealBox, function()
     stealStatusLbl = AutoStealBox:AddLabel("StealStatusLabel", { Text = "🔴 Off", DoesWrap = true })
     task.defer(function()
         pcall(function()
-            for _, label in ipairs(AutoStealBox.Container:QueryDescendants("TextLabel")) do
-                -- The status row is the direct Frame-owned label; toggle captions
-                -- are nested below TextButtons. Let Roblox measure wrapped height.
-                if label.Parent and label.Parent:IsA("Frame") then
-                    label.TextWrapped = true
-                    label.TextTruncate = Enum.TextTruncate.None
-                    label.AutomaticSize = Enum.AutomaticSize.Y
-                    label.Size = UDim2.new(1, 0, 0, 18)
-                    break
-                end
             end
             RuntimeStatus.resizeStealStatus = function()
                 task.defer(function()
@@ -9748,7 +9617,7 @@ function ProgressionCtl.blockTreadmill(seconds)
     ProgressionCtl.treadmillIdleSince = 0
 end
 do
-PenBox = ProgressionTab:AddLeftGroupbox("🏡 Pen")
+PenBox = makeSection(ProgressionTab, "🏡 Pen")
 do
     local penStatusLbl
     CHK.Merge(PenBox, function()
@@ -9902,7 +9771,7 @@ end
 -- The game's TreadmillStaticController enters only after the root is standing
 -- over the local treadmill render, then invokes REQUEST_EQUIP_STATIC itself.
 -- Leaving uses the exact same REQUEST_UNEQUIP call as the game's JumpRequest.
-TreadmillBox = ProgressionTab:AddRightGroupbox("🏃 Treadmill")
+TreadmillBox = makeSection(ProgressionTab, "🏃 Treadmill")
 local treadmillStatusLbl, treadmillUpgradeStatusLbl
 CHK.Merge(TreadmillBox, function()
     treadmillStatusLbl = TreadmillBox:AddLabel("TreadmillStatusLabel", {
@@ -10731,7 +10600,7 @@ do
 
     -- Trail UI adapter: commands go in, status snapshots come out. Keep it
     -- eager for now; separating UI files/deferred gameplay tabs is a later step.
-    TrailBox = ProgressionTab:AddRightGroupbox("✨ Trail Shop")
+    TrailBox = makeSection(ProgressionTab, "✨ Trail Shop")
     local trailStatusLbl
     CHK.Merge(TrailBox, function()
         trailStatusLbl = TrailBox:AddLabel("TrailShopStatusLabel", {
@@ -10765,7 +10634,7 @@ do
         if not ok then RuntimeStatus.statusLabelCache[trailStatusLbl] = nil end
         return ok
     end)
-    trailController:Own(TrailBox.Container.Destroying:Connect(function() statusConnection:Disconnect() end))
+    trailController:Own(statusConnection)
 end
 end -- scoped PROGRESSION helpers (exports only the controls needed by Auto-Steal)
 
@@ -15051,7 +14920,7 @@ refreshStealStatus()
 -- sized to the live PetArea and ordered by the chosen fill direction.
 local AutoPlaceBox, placeSaveMod
 do
-AutoPlaceBox = EggTab:AddLeftGroupbox("🥚 Auto-Place")
+AutoPlaceBox = makeSection(EggTab, "🥚 Auto-Place")
 
 -- STATUS at the very top (short + emoji)
 local placeStatusLbl
@@ -16132,7 +16001,7 @@ if getgenv().__CHCapRestore then pcall(getgenv().__CHCapRestore) end
 getgenv().__CHCapRestore = nil
 
 -- ── PROGRESSION ▸ Auto-Equip Best (the game's native Equip Best action) ──
-EquipBox = ProgressionTab:AddLeftGroupbox("🐾 Equip Best")
+EquipBox = makeSection(ProgressionTab, "🐾 Equip Best")
 
 local function equipBestNow()
     if Settings.AutoRift == true and next(RuntimeStatus.riftReservedPets) ~= nil then
@@ -16204,7 +16073,7 @@ end)
 -- ⚠️ That is a DIFFERENT set from `GetOwnerRuntimeRecords` (= your 15 equipped
 -- pets) which the old filters wrongly listed — equipped pets can't be sold at all.
 -- Favorite a pet in-game to hard-protect it from every sell path here.
-SellBox = SellTab:AddLeftGroupbox("💰 Sell Pets")
+SellBox = makeSection(SellTab, "💰 Sell Pets")
 
 -- Auto-Place has a similarly named helper inside its own register-saving scope.
 -- Keep the seller copy local to this HOME/SELL scope so Luau does not resolve an
@@ -16466,21 +16335,7 @@ end
 -- build the cards while hidden, then reveal after automatic layout has settled.
 -- The overlay may still fade; neither the card nor its labels slide or bounce.
 RuntimeStatus.holdSellerDialogEntrance = function()
-    local overlay
-    -- Native AddDialog can yield while measuring text. Hide its fresh overlay
-    -- before that first render, not only after AddDialog has returned.
-    local connection = Window.MainFrame.ChildAdded:Connect(function(child)
-        if not overlay and child:IsA("TextButton") and child.ZIndex == 9000 then
-            overlay = child
-            child.Visible = false
-        end
-    end)
-    return function(revealOverlay)
-        connection:Disconnect()
-        if overlay and overlay.Parent then
-            if revealOverlay then overlay.Visible = true else overlay:Destroy() end
-        end
-    end
+    return function() end
 end
 
 RuntimeStatus.prepareStationarySellerDialog = function(dialog)
@@ -17134,7 +16989,7 @@ MakeButtonPanel(SellBox, "BtnSellPetsOnce", {
 -- ── SELL ▸ Sell Eggs (category + rarity + mutation filters) ──
 -- SellPrompt sends explicit EggInventory UIDs through SellSelection.Eggs.
 -- Placed eggs and items reserved by Auto-Place/Rift remain protected.
-EggSellBox = SellTab:AddRightGroupbox("🥚 Sell Eggs")
+EggSellBox = makeSection(SellTab, "🥚 Sell Eggs")
 local eggSellOverlapLbl, eggSellStatusLbl
 CHK.Merge(EggSellBox, function()
     eggSellOverlapLbl = EggSellBox:AddLabel("EggSellOverlapLabel", {
@@ -18221,7 +18076,7 @@ end
 
 -- [[ FUSE TAB ]] --
 ;(function()
-    local box = Window.__FuseTab:AddLeftGroupbox("Auto Fuse")
+    local box = makeSection(Window.__FuseTab, "Auto Fuse")
     Window.__FuseBox = box
     local controller, label, toggle
     CHK.Merge(box, function()
@@ -18349,7 +18204,7 @@ end)()
         if not ok then stateError = tostring(err) end
         return ok and RiftRemotes ~= nil
     end
-    RiftBox = EventTab:AddLeftGroupbox("🌀 Rift")
+    RiftBox = makeSection(EventTab, "🌀 Rift")
     local eventLabel, flowLabel
     CHK.Merge(RiftBox, function()
         eventLabel = RiftBox:AddLabel("RiftEventLabel", { Text = "Checking Rift", DoesWrap = true })
@@ -19219,9 +19074,9 @@ end
     -- [[ END BOSS FRAME FLIGHT ]] --
     getgenv().__CHSAE_RuntimeConns[#getgenv().__CHSAE_RuntimeConns + 1] = controller
     getgenv().__CHSAE_RuntimeConns[#getgenv().__CHSAE_RuntimeConns + 1] = RunService.PreSimulation:Connect(stepBossFlight)
-    local bossBox = EventTab:AddRightGroupbox("⚔️ Rift Boss")
-    local shopBox = EventTab:AddLeftGroupbox("🛍️ Rift Shop")
-    local masteryBox = EventTab:AddRightGroupbox("🎁 Boss Mastery")
+    local bossBox = makeSection(EventTab, "⚔️ Rift Boss")
+    local shopBox = makeSection(EventTab, "🛍️ Rift Shop")
+    local masteryBox = makeSection(EventTab, "🎁 Boss Mastery")
     Window.__RiftBossBox, Window.__RiftShopBox, Window.__BossMasteryBox = bossBox, shopBox, masteryBox
     local bossLabel, shopLabel, balanceLabel, masteryLabel
     CHK.Merge(bossBox, function() bossLabel = bossBox:AddLabel("RiftBossStatusLabel", {Text="Off",DoesWrap=true}) end)
@@ -19485,8 +19340,8 @@ end
 
 -- [[ SERVER TAB ]] --
 ;(function()
-    local controls = Window.__ServerTab:AddLeftGroupbox("Server Controls")
-    local results = Window.__ServerTab:AddRightGroupbox("Available Servers")
+    local controls = makeSection(Window.__ServerTab, "Server Controls")
+    local results = makeSection(Window.__ServerTab, "Available Servers")
     Window.__ServerControlsBox, Window.__ServerResultsBox = controls, results
     local status
     CHK.Merge(controls, function()
@@ -19671,9 +19526,9 @@ end)() -- Server browser
 -- WEBHOOK TAB
 -- ════════════════════════════════════════════
 do
-    local WebhookBox = Window.__WebhookTab:AddLeftGroupbox("🔗 Webhook")
+    local WebhookBox = makeSection(Window.__WebhookTab, "🔗 Webhook")
     Window.__WebhookBox = WebhookBox
-    local AlertsBox = Window.__WebhookTab:AddRightGroupbox("🔔 Alerts")
+    local AlertsBox = makeSection(Window.__WebhookTab, "🔔 Alerts")
     Window.__WebhookAlertsBox = AlertsBox
     local webhookStatusLbl
     CHK.Merge(WebhookBox, function()
@@ -19962,7 +19817,7 @@ end
 local PlayerModBox, PerformanceBox, OverlayBox, DevBox
 do
 -- One control edits the selected movement type's saved delivery speed.
-PlayerModBox = SettingsTab:AddLeftGroupbox("⚙️ Movement")
+PlayerModBox = makeSection(SettingsTab, "⚙️ Movement")
 do
     local function selectMovementType(value)
         local selected = value == "Tween" and "Tween" or "TP"
@@ -20114,7 +19969,7 @@ end
 -- GAG2-style Zero Texture: floor render quality, hide textures/PBR surfaces,
 -- force SmoothPlastic, and disable particles/post-FX/clouds/sky. The pass is
 -- spread across frames and every changed property/reference is restored on OFF.
-PerformanceBox = SettingsTab:AddRightGroupbox("⚡ Performance")
+PerformanceBox = makeSection(SettingsTab, "⚡ Performance")
 do
     local originals = setmetatable({}, { __mode = "k" })
     -- Detached visual-only objects must not be kept alive just so the toggle can
@@ -21146,7 +21001,7 @@ do
     if Settings.HidePets then task.defer(setPetsHidden, true) end
 end
 
-Window.__ESPBox = SettingsTab:AddRightGroupbox("👁 ESP")
+Window.__ESPBox = makeSection(SettingsTab, "👁 ESP")
 do
     local eggEspToggle = Window.__ESPBox:AddToggle("EggESPToggle", {
         Text = "Egg ESP",
@@ -21209,7 +21064,7 @@ do
 end
 
 -- Native Obsidian draggable status overlay, separate from the main window.
-OverlayBox = SettingsTab:AddRightGroupbox("📡 Status")
+OverlayBox = makeSection(SettingsTab, "📡 Status")
 local overlayLabel
 local robloxMenuOpen = false
 local function statusOverlayDefaultPosition()
@@ -21628,8 +21483,8 @@ end)
 -- The standalone Maintenance copy has no capability, so it fails closed without
 -- reading remembered credentials or presenting a runtime/session timer as key time.
 Window.__BuildAccountTab = function(alive)
-    Window.__KeyStatusBox = Window.__AccountTab:AddRightGroupbox("🔑 Key Status")
-    Window.__LogoutBox = Window.__AccountTab:AddLeftGroupbox("🚪 Account")
+    Window.__KeyStatusBox = makeSection(Window.__AccountTab, "🔑 Key Status")
+    Window.__LogoutBox = makeSection(Window.__AccountTab, "🚪 Account")
     local statusLabel = Window.__KeyStatusBox:AddLabel("KeyRemainingStatus", {
         Text = "Checking...",
         DoesWrap = true,
@@ -21793,7 +21648,7 @@ Window.__CleanupAccountTab = function()
     end
 end
 
-DevBox = SettingsTab:AddLeftGroupbox("🛡️ Protected Release")
+DevBox = makeSection(SettingsTab, "🛡️ Protected Release")
 DevBox:AddLabel("ProtectedReleaseNotice", {
     Text = "External Lua tool loaders are disabled in release builds.",
     DoesWrap = true,
