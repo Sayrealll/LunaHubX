@@ -124,8 +124,8 @@ local Tab7 = Window:Tab({
 })
 
 local Tab8 = Window:Tab({
-	Title = "ESP",
-	Icon = "people",
+	Title = "Settings",
+	Icon = "settings",
 })
 
 
@@ -1208,9 +1208,6 @@ SettingsSection1:Dropdown({
 		Values = {
 			"Titan Temple",
 			"Cherry Blossom",
-			"Rarities",
-			"Higest Value",
-			"Farthest",
 		},
 		Value = nil,
 		AllowNone = true,
