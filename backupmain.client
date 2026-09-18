@@ -1036,7 +1036,7 @@ WebhookSection:Input({
 	Title = "URL",
 	})
 
-SellSection2:Button({
+WebhookSection:Button({
 	Title = "Send Test",
 	Callback = function()
 		AutoStealEggs()
@@ -1112,7 +1112,7 @@ WebhookSection1:Toggle({
 
 
 
---------------------------------------------------------WINDOW 7 INFO-------------------------------------------------------------------
+--------------------------------------------------------WINDOW 8 INFO-------------------------------------------------------------------
 
 local SettingsSection = Tab8:Section({
 	Title = "Performance",
