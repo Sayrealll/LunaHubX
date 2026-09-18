@@ -186,7 +186,7 @@ AutoStealSection:Toggle({
 })
 
 AutoStealSection:Toggle({
-	Title = "LunaHUB's Steal",
+	Title = "Clover's Will",
 	Default = false,
 	Callback = function(Value)
 		if Value then
