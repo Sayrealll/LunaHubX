@@ -28,17 +28,17 @@ do
 end
 
 -- ============================================================
--- CLOVER LOGIC BACKEND
+-- LunaHub LOGIC BACKEND
 -- ============================================================
-local __CloverSource = [==[
+local __LunaHubSource = [==[
 -- LOCAL STANDALONE TEST COPY. This Maintenance build intentionally does not use
 -- the KeySystem/runtime-capability gate. Re-executing it is supported: the
--- existing CloverHub instance is unloaded below before this copy takes ownership.
+-- existing LunaHubHub instance is unloaded below before this copy takes ownership.
 
 -- [[ PLACE GUARD ]] --
 local EXPECTED_PLACE_ID = "107778070777162"
 if tostring(game.PlaceId) ~= EXPECTED_PLACE_ID then
-    print("[CloverHub-SAE] Not Steal An Egg (PlaceId " .. tostring(game.PlaceId) .. "). Aborting.")
+    print("[LunaHubHub-SAE] Not Steal An Egg (PlaceId " .. tostring(game.PlaceId) .. "). Aborting.")
     return
 end
 
@@ -56,11 +56,11 @@ end
 getgenv().__CHSAE_PayloadReady = nil
 
 -- This is the maintained autoexec copy. Potassium currently contains several
--- archived CloverHub(StealAnEgg) files under other autoexec folders; mark this
+-- archived LunaHubHub(StealAnEgg) files under other autoexec folders; mark this
 -- session so those older files can return before replacing the fixed engine.
 getgenv().__CHSAE_CanonicalLoaded = true
 
--- CloverHub is now the only Auto-Steal owner. Retire any standalone AutoStealEgg
+-- LunaHubHub is now the only Auto-Steal owner. Retire any standalone AutoStealEgg
 -- script that autoexec loaded earlier so two CFrame loops can never fight.
 if type(_G.AutoStealCtl) == "table" and type(_G.AutoStealCtl.panic) == "function" then
     pcall(_G.AutoStealCtl.panic)
@@ -83,9 +83,9 @@ end
 do
 local previousBuild = getgenv().__CHSAE_BuildId
 local previousCharacter = game:GetService("Players").LocalPlayer.Character
-if getgenv().__CloverHubSAE_Unload or getgenv().__VoidHubSAE_Unload then
-    pcall(getgenv().__CloverHubSAE_Unload or getgenv().__VoidHubSAE_Unload)
-    getgenv().__CloverHubSAE_Unload = nil
+if getgenv().__LunaHubHubSAE_Unload or getgenv().__VoidHubSAE_Unload then
+    pcall(getgenv().__LunaHubHubSAE_Unload or getgenv().__VoidHubSAE_Unload)
+    getgenv().__LunaHubHubSAE_Unload = nil
     getgenv().__VoidHubSAE_Unload = nil -- one-release compatibility cleanup
     task.wait(0.15)
 end
@@ -107,7 +107,7 @@ if previousBuild == "2026-09-08-v1.7-arena-sell-v175"
     end
 end
 end
--- Belt-and-suspenders: destroy any leftover CloverHub UI (a failed prior unload
+-- Belt-and-suspenders: destroy any leftover LunaHubHub UI (a failed prior unload
 -- can strand a duplicate). The former title is accepted once for migration.
 -- title, so other Obsidian-based scripts are left alone.
 do
@@ -122,7 +122,7 @@ do
                 if g:IsA("ScreenGui") and g.Name == "Obsidian" then
                     for _, d in ipairs(g:GetDescendants()) do
                         if (d:IsA("TextLabel") or d:IsA("TextButton"))
-                            and (tostring(d.Text):find("CloverHub", 1, true)
+                            and (tostring(d.Text):find("LunaHubHub", 1, true)
                                 or tostring(d.Text):find("VoidHub", 1, true)) then
                             pcall(function() g:Destroy() end)
                             break
@@ -137,14 +137,14 @@ end
 -- Session token: background loops check this and exit when a newer script
 -- instance takes over (Library:Unload doesn't kill task.spawn loops).
 local SESSION = { Marker = {} }
-getgenv().__CloverHubSAE_Session = SESSION.Marker
+getgenv().__LunaHubHubSAE_Session = SESSION.Marker
 getgenv().__CHSAE_ConfigControllers = {}
 local RELEASE_VERSION = "v2.1"
 local BUILD_ID = "2026-09-10-v2.1-rift-handoff-v214"
 getgenv().__CHSAE_ReleaseVersion = RELEASE_VERSION
 getgenv().__CHSAE_BuildId = BUILD_ID
 local function sessionAlive()
-    return getgenv().__CloverHubSAE_Session == SESSION.Marker
+    return getgenv().__LunaHubHubSAE_Session == SESSION.Marker
 end
 
 -- Disabled feature workers share one rare wake signal instead of polling forever.
@@ -201,7 +201,7 @@ do
         Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
     end)
     if not ok or not Library then
-        warn("[CloverHub-SAE] ❌ Failed to load Obsidian UI: " .. tostring(err))
+        warn("[LunaHubHub-SAE] ❌ Failed to load Obsidian UI: " .. tostring(err))
         return
     end
     end
@@ -220,7 +220,7 @@ do
         end
     end
 
-    getgenv().__CloverHubSAE_Unload = function()
+    getgenv().__LunaHubHubSAE_Unload = function()
     if getgenv().__CHSAE_VelocityStop then pcall(getgenv().__CHSAE_VelocityStop, "unload") end
     getgenv().__CHSAE_VelocityStop = nil
     -- Between two waypoint segments the cruise presentation is active with no
@@ -236,7 +236,7 @@ do
         if ok and restored ~= false and getgenv().__CHSAE_TPRestore == tpRestore then
             getgenv().__CHSAE_TPRestore = nil
         elseif not ok then
-            warn("[CloverHub-SAE][TP] controller restore failed; respawn may be required: "
+            warn("[LunaHubHub-SAE][TP] controller restore failed; respawn may be required: "
                 .. tostring(restored))
         end
     end
@@ -245,7 +245,7 @@ do
     end
     getgenv().__CHSAE_RestoreRouteObstacles = nil
     getgenv().__CHSAE_PayloadReady = nil
-    getgenv().__CloverHubSAE_Session = nil -- stop background loops
+    getgenv().__LunaHubHubSAE_Session = nil -- stop background loops
     local idleWorkerWake = SESSION.IdleWorkerWake
     local scanWake = getgenv().__CHSAE_ScanWake
     if scanWake then pcall(function() scanWake:Fire("unload") end) end
@@ -329,7 +329,7 @@ do
     getgenv().__CHSAE_GuardRestore = nil
     pcall(function() Library:Unload() end)
     getgenv().__CHSAE_CanonicalLoaded = nil
-    getgenv().__CloverHubSAE_Unload = nil
+    getgenv().__LunaHubHubSAE_Unload = nil
     getgenv().__VoidHubSAE_Unload = nil
 end
 
@@ -457,7 +457,7 @@ local function MakeCollapsible(Groupbox, startsCollapsed)
 end
 
 -- ════════════════════════════════════════════
--- [[ CH UI KIT — the CloverHub styling standard (GAG2/TradingWorld) ]] --
+-- [[ CH UI KIT — the LunaHubHub styling standard (GAG2/TradingWorld) ]] --
 -- ════════════════════════════════════════════
 
 local function StyleGroupboxPanel(groupbox)
@@ -556,7 +556,7 @@ local function getSharedTargetOverlay()
     if not parentGui then parentGui = LocalPlayer:WaitForChild("PlayerGui") end
 
     local root = Instance.new("Frame")
-    root.Name = "CloverHubSharedPicker"
+    root.Name = "LunaHubHubSharedPicker"
     root.Size = UDim2.fromScale(1, 1)
     root.BackgroundColor3 = Color3.new(0, 0, 0)
     root.BackgroundTransparency = 0.45
@@ -911,7 +911,7 @@ local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
         if not holder then return end
         local val = summary()
         for _, e in ipairs(holder:GetDescendants()) do
-            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "CloverHubOverlayCatcher" then
+            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "LunaHubHubOverlayCatcher" then
                 pcall(function()
                     e.TextXAlignment = Enum.TextXAlignment.Left
                     e.TextYAlignment = Enum.TextYAlignment.Center
@@ -1039,7 +1039,7 @@ local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
         local anchorTo = displayBtn or holder
 
         local cover = Instance.new("TextButton")
-        cover.Name = "CloverHubOverlayCatcher"
+        cover.Name = "LunaHubHubOverlayCatcher"
         cover.BackgroundTransparency = 1
         cover.Text = ""
         cover.Size = UDim2.fromScale(1, 1)
@@ -1183,7 +1183,7 @@ function CHK.DeferTabBuild(tab, build, cleanup)
                 if state.phase == "cancelled" then
                     disconnect()
                 else
-                    warn("[CloverHub] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
+                    warn("[LunaHubHub] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
                     pcall(function()
                         Library:Notify("Could not build " .. tostring(tab.Name) .. ". Reopen the tab to retry.", 5)
                     end)
@@ -1233,8 +1233,8 @@ function CHK.Merge(groupbox, buildFn)
     if #set == 0 then return nil end
 
     local card = Instance.new("Frame")
-    card.Name = "CloverStatusCard"
-    card:SetAttribute("CloverHubStatusCard", true)
+    card.Name = "LunaHubStatusCard"
+    card:SetAttribute("LunaHubHubStatusCard", true)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     card.BorderSizePixel = 0
@@ -1289,7 +1289,7 @@ function CHK.Merge(groupbox, buildFn)
     return card
 end
 
--- Compact CloverHub slider: a card, clear value, full-width accent track, and a
+-- Compact LunaHubHub slider: a card, clear value, full-width accent track, and a
 -- larger invisible drag target. This replaces Obsidian's default slider visual.
 function CHK.Slider(groupbox, id, info)
     local minimum = tonumber(info.Min) or 0
@@ -1301,7 +1301,7 @@ function CHK.Slider(groupbox, id, info)
     local inputService = game:GetService("UserInputService")
 
     local card = Instance.new("Frame")
-    card.Name = "CloverSlider_" .. tostring(id)
+    card.Name = "LunaHubSlider_" .. tostring(id)
     card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     card.BorderSizePixel = 0
     card.Size = UDim2.new(1, 0, 0, 54)
@@ -1578,7 +1578,7 @@ function CHK.Metrics(groupbox, id, definitions, columns)
     local values = {}
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverMetrics_" .. tostring(id)
+    panel.Name = "LunaHubMetrics_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, totalHeight)
@@ -1667,7 +1667,7 @@ function CHK.Notice(groupbox, id, info)
     local z = tonumber(info.zIndex) or 2
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverNotice_" .. tostring(id)
+    panel.Name = "LunaHubNotice_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, height)
@@ -1746,7 +1746,7 @@ function CHK.SalePreview(groupbox, id, info)
     local accent = info.accent or Color3.fromRGB(248, 113, 113)
 
     local panel = Instance.new("Frame")
-    panel.Name = "CloverSalePreview_" .. tostring(id)
+    panel.Name = "LunaHubSalePreview_" .. tostring(id)
     panel.BackgroundTransparency = 1
     panel.BorderSizePixel = 0
     panel.Size = UDim2.new(1, 0, 0, height)
@@ -1893,7 +1893,7 @@ end
 
 -- [[ 3. WINDOW + TABS ]] --
 local Window = Library:CreateWindow({
-    Title            = "CloverHub",
+    Title            = "LunaHubHub",
     Footer           = RELEASE_VERSION .. "  •  Steal An Egg",
     Size             = UDim2.fromOffset(680, 540),
     ToggleKeybind    = Enum.KeyCode.LeftControl,
@@ -1913,7 +1913,7 @@ local Window = Library:CreateWindow({
 do
     if type(Library.AddDraggableButton) == "function" then
         Window.__VisibilityButton = Library:AddDraggableButton(
-            "Clover",
+            "LunaHub",
             function() end,
             true,
             false
@@ -1932,14 +1932,14 @@ do
                 (Library.WindowAnimationInfo and Library.WindowAnimationInfo.Time or 0.2) + 0.04
             )
             local pressScale = Instance.new("UIScale")
-            pressScale.Name = "CloverPressScale"
+            pressScale.Name = "LunaHubPressScale"
             pressScale.Scale = 1
             pressScale.Parent = visibilityButton
             local pressTween
             local pressInInfo = TweenInfo.new(0.075, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             local pressOutInfo = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
-            visibilityButton.Name = "CloverHubVisibilityButton"
+            visibilityButton.Name = "LunaHubHubVisibilityButton"
             visibilityButton.Active = true
             visibilityButton.Selectable = true
             visibilityButton.Interactable = true
@@ -1948,9 +1948,9 @@ do
             visibilityButton.TextSize = 15
             visibilityButton.Size = UDim2.fromOffset(92, 32)
             visibilityButton.ZIndex = 100
-            visibilityButton:SetAttribute("CloverHubInputMode", "Activated")
-            visibilityButton:SetAttribute("CloverHubDragTolerance", dragTolerance)
-            visibilityButton:SetAttribute("CloverHubPressScale", 0.965)
+            visibilityButton:SetAttribute("LunaHubHubInputMode", "Activated")
+            visibilityButton:SetAttribute("LunaHubHubDragTolerance", dragTolerance)
+            visibilityButton:SetAttribute("LunaHubHubPressScale", 0.965)
 
             local function tweenVisibilityButtonScale(targetScale, tweenInfo)
                 if not pressScale.Parent then return end
@@ -1966,10 +1966,10 @@ do
                 if Window.MainFrame then
                     windowOpen = Window.MainFrame.Visible
                 end
-                visibilityButton:SetAttribute("CloverHubWindowOpen", windowOpen)
+                visibilityButton:SetAttribute("LunaHubHubWindowOpen", windowOpen)
                 visibilityButton.Text = windowOpen
-                    and '<b><font color="#58E083">Clover</font></b>'
-                    or '<b><font color="#C4C9D1">Clover</font></b>'
+                    and '<b><font color="#58E083">LunaHub</font></b>'
+                    or '<b><font color="#C4C9D1">LunaHub</font></b>'
             end
 
             local function applyVisibilityRequest(requestId, desiredOpen, attempt)
@@ -1982,17 +1982,17 @@ do
                 Window:Toggle(desiredOpen)
                 refreshVisibilityButton()
                 if Library.Toggled == desiredOpen then
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                    visibilityButton:SetAttribute("LunaHubHubToggleQueued", false)
                     return
                 end
 
                 if attempt < 4 then
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", true)
+                    visibilityButton:SetAttribute("LunaHubHubToggleQueued", true)
                     task.delay(visibilityRetryDelay, function()
                         applyVisibilityRequest(requestId, desiredOpen, attempt + 1)
                     end)
                 else
-                    visibilityButton:SetAttribute("CloverHubToggleQueued", false)
+                    visibilityButton:SetAttribute("LunaHubHubToggleQueued", false)
                 end
             end
 
@@ -2039,18 +2039,18 @@ do
 end
 
 -- Brand only the exact window title. A bright green gradient plus a soft text
--- stroke gives CloverHub a glow without changing tab or groupbox colors.
+-- stroke gives LunaHubHub a glow without changing tab or groupbox colors.
 task.defer(function()
     pcall(function()
         for _, label in ipairs(Library.ScreenGui:GetDescendants()) do
-            if label:IsA("TextLabel") and label.Text == "CloverHub" then
+            if label:IsA("TextLabel") and label.Text == "LunaHubHub" then
                 label.TextColor3 = Color3.fromRGB(74, 222, 128)
                 label.TextStrokeColor3 = Color3.fromRGB(22, 163, 74)
                 label.TextStrokeTransparency = 0.38
-                local oldGradient = label:FindFirstChild("CloverTitleGlow")
+                local oldGradient = label:FindFirstChild("LunaHubTitleGlow")
                 if oldGradient then oldGradient:Destroy() end
                 local gradient = Instance.new("UIGradient")
-                gradient.Name = "CloverTitleGlow"
+                gradient.Name = "LunaHubTitleGlow"
                 gradient.Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0, Color3.fromRGB(187, 247, 208)),
                     ColorSequenceKeypoint.new(0.48, Color3.fromRGB(74, 222, 128)),
@@ -2372,11 +2372,11 @@ local Settings = {
 -- slider comes up with your saved value on a fresh server (rejoin, server hop,
 -- or a plain re-execute).
 --
--- FILE LAYOUT (CloverHub keeps a separate Steal an Egg profile):
+-- FILE LAYOUT (LunaHubHub keeps a separate Steal an Egg profile):
 -- can never read each other's config):
---   CloverHub/universalToggle(SAG).json  → { "UseUniversalConfig": true|false }
---   CloverHub/universalConfig(SAG).json  → shared by every account on this PC
---   CloverHub/config(SAG)_<UserId>.json  → DEFAULT: per-user, so two accounts
+--   LunaHubHub/universalToggle(SAG).json  → { "UseUniversalConfig": true|false }
+--   LunaHubHub/universalConfig(SAG).json  → shared by every account on this PC
+--   LunaHubHub/config(SAG)_<UserId>.json  → DEFAULT: per-user, so two accounts
 --                                        don't overwrite each other's setup
 --
 -- Auto-save checks scalar/selection values against the last saved snapshot every
@@ -2388,7 +2388,7 @@ local ConfigMeta = {
     migrated = false,
     legacyPath = "VoidHub/config(SAG)_" .. tostring(LocalPlayer.UserId) .. ".json",
 }
-local CONFIG_DIR    = "CloverHub"
+local CONFIG_DIR    = "LunaHubHub"
 local CONFIG_TOGGLE = CONFIG_DIR .. "/universalToggle(SAG).json"
 local CONFIG_PATH   = CONFIG_DIR .. "/config(SAG)_" .. tostring(LocalPlayer.UserId) .. ".json"
 do -- flip to the shared file only if the toggle file says so
@@ -2719,14 +2719,14 @@ end
 -- [[ AUTOMATIC CONFIG FILE ADAPTER ]] --
 ConfigMeta.persistence = ConfigMeta.CreatePersistence({
     settings = Settings, meta = ConfigMeta, alive = sessionAlive,
-    blocked = function() return getgenv().__CloverHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave end,
+    blocked = function() return getgenv().__LunaHubHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave end,
     snapshot = function() return configSnapshot(true) end,
     encode = function(snapshot) return HttpService:JSONEncode(snapshot) end,
     write = function(encoded)
         pcall(function()
             if makefolder and isfolder and not isfolder(CONFIG_DIR) then makefolder(CONFIG_DIR) end
         end)
-        if not sessionAlive() or getgenv().__CloverHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave then
+        if not sessionAlive() or getgenv().__LunaHubHubSAE_NoSave or getgenv().__VoidHubSAE_NoSave then
             error("config save cancelled", 0)
         end
         writefile(CONFIG_PATH, encoded)
@@ -3564,10 +3564,10 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
         local copy = rawget(env, "setclipboard") or rawget(env, "toclipboard")
             or (type(clipboardApi) == "table" and clipboardApi.set)
         if type(copy) ~= "function" then
-            Library:Notify("Discord: discord.gg/CloverOnTop", 5)
+            Library:Notify("Discord: discord.gg/LunaHubOnTop", 5)
             return
         end
-        local success = pcall(copy, "discord.gg/CloverOnTop")
+        local success = pcall(copy, "discord.gg/LunaHubOnTop")
         Library:Notify(success and "✅ Discord copied." or "❌ Copy failed.", 3)
     end },
 })
@@ -3576,7 +3576,7 @@ MakeButtonPanel(ServerBox, "BtnServerPanel", {
 -- avoid another long-lived top-level local in this already large Luau chunk.
 Window.__FreeReleaseBox = HomeTab:AddRightGroupbox("🛡️ Free Release")
 CHK.Notice(Window.__FreeReleaseBox, "FreeReleaseNotice", {
-    title = "CLOVERHUB IS FREE",
+    title = "LunaHubHUB IS FREE",
     text = "Never pay for access.\nSellers are unaffiliated.",
     accent = Color3.fromRGB(74, 222, 128),
     titleColor = Color3.fromRGB(134, 239, 172),
@@ -4154,7 +4154,7 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
 
 do
     local toggle = AutoStealBox:AddToggle("GuardProtectionToggle", {
-        Text = "Clover's Will",
+        Text = "LunaHub's Will",
         Default = Settings.GuardProtection,
         Tooltip = "Resist guard and bat knockback.",
     })
@@ -4496,7 +4496,7 @@ local function watchDeaths(char)
                         - (tonumber(rawget(sample, "Timestamp")) or 0)) or -1
                 local guardName, guardDistance = nearestGuardAt(root.Position)
                 local pending = rawget(getgenv(), "__CHSAE_CarryRequest")
-                warn(("[CloverHub-SAE][death] hp=%.1f->%.1f area=%s pos=%.1f,%.1f,%.1f ws=%.1f killIgnore=%s threat=%s S%s/T%s/F%s ctx=%.2f correction=%s guard=%s@%.1f carryFlight=%s"):format(
+                warn(("[LunaHubHub-SAE][death] hp=%.1f->%.1f area=%s pos=%.1f,%.1f,%.1f ws=%.1f killIgnore=%s threat=%s S%s/T%s/F%s ctx=%.2f correction=%s guard=%s@%.1f carryFlight=%s"):format(
                     tonumber(last) or -1, tonumber(h) or -1, tostring(area or "Start/Unknown"),
                     root.Position.X, root.Position.Y, root.Position.Z, tonumber(hum.WalkSpeed) or -1,
                     tostring(root:GetAttribute("KillPartIgnore")),
@@ -5746,7 +5746,7 @@ function Arb.petsSerial(fn, activity)
     local ok, err = pcall(fn)
     Arb.petsBusy, Arb.remoteOnlyActive = false, false
     Arb.remoteActivity = nil
-    if not ok then warn("[CloverHub] pets task error: " .. tostring(err)) end
+    if not ok then warn("[LunaHubHub] pets task error: " .. tostring(err)) end
     return true
 end
 
@@ -5765,7 +5765,7 @@ function Arb.sellSerial(fn, activity)
     Arb.petsBusy, Arb.sellerActive = false, false
     Arb.remoteActivity = nil
     if not results[1] then
-        warn("[CloverHub] sell task error: " .. tostring(results[2]))
+        warn("[LunaHubHub] sell task error: " .. tostring(results[2]))
         return true
     end
     return true, table.unpack(results, 2, results.n)
@@ -7997,7 +7997,7 @@ local function registerIntegrityTravel(root, direction, speed, distance, request
         integrityState = nil
         RuntimeStatus.defaultMoveFallback = true
         getgenv().__CHSAE_IntegrityState = nil
-        warn("[CloverHub-SAE][integrity] registration rejected; quarantined until respawn/reload")
+        warn("[LunaHubHub-SAE][integrity] registration rejected; quarantined until respawn/reload")
     end
     if registered then return registered, false, nil end
     return registered, false, "rejected"
@@ -8047,9 +8047,9 @@ setIntegrityGuard = function(enabled)
     if report ~= integrityReport then
         integrityReport = report
         if integrityBridge then
-            print("[CloverHub-SAE][integrity] " .. report)
+            print("[LunaHubHub-SAE][integrity] " .. report)
         else
-            warn("[CloverHub-SAE][integrity] unavailable — no live guard was invoked")
+            warn("[LunaHubHub-SAE][integrity] unavailable — no live guard was invoked")
         end
     end
     return integrityBridge ~= nil
@@ -8705,7 +8705,7 @@ if okRagdoll and type(ragdollTargets) == "table" and type(hookfunction) == "func
 end
 
 if #GuardProtection.ragdollTargets == 0 then
-    warn("[CloverHub-SAE] Guard Protection controller hooks unavailable")
+    warn("[LunaHubHub-SAE] Guard Protection controller hooks unavailable")
 end
 end
 
@@ -9823,7 +9823,7 @@ local function beginTreadmillExitRequest()
             TreadmillNet.Invoke,
             TreadmillEndpoints.REQUEST_UNEQUIP
         )
-        if getgenv().__CloverHubSAE_Session ~= requestSession then return end
+        if getgenv().__LunaHubHubSAE_Session ~= requestSession then return end
         exitState.inFlight = false
         exitState.accepted = invoked and accepted == true
         if not invoked then
@@ -9844,7 +9844,7 @@ local function requestTreadmillExit()
     local clearSince
     local transitionSettle = math.clamp(getNetworkPingSeconds() * 1.5 + 0.08, 0.16, 0.35)
     -- Session ownership is the cancellation authority. `keepGoing` was never
-    -- defined by CloverHub and existed only accidentally in some executors.
+    -- defined by LunaHubHub and existed only accidentally in some executors.
     while sessionAlive() and os.clock() < deadline do
         local inactive = detectActiveTreadmill() == nil
         local movable = ProgressionCtl.characterReadyToMove()
@@ -14474,7 +14474,7 @@ task.spawn(function()
 
         if not sessionAlive() then break end
         if not workerOk then
-            warn("[CloverHub-SAE][steal] worker recovered: " .. tostring(workerError))
+            warn("[LunaHubHub-SAE][steal] worker recovered: " .. tostring(workerError))
             RuntimeStatus.movementPhase = nil
             local pending = getgenv().__CHSAE_CarryRequest
             -- Never abandon an InvokeServer that is genuinely still running.
@@ -15612,7 +15612,7 @@ function placeEggsNow()
         task.defer(RuntimeStatus.refreshEggOverlapStatus)
     end
     if not ok then
-        warn("[CloverHub] place pass error: " .. tostring(placed))
+        warn("[LunaHubHub] place pass error: " .. tostring(placed))
         return 0, 0, false, "error"
     end
     return placed, total, full, reason
@@ -15705,7 +15705,7 @@ local function hatchReadyNow()
         end)
     end
     Arb.hatchBusy = false
-    if not ok then warn("[CloverHub] hatch pass error: " .. tostring(err)) end
+    if not ok then warn("[LunaHubHub] hatch pass error: " .. tostring(err)) end
     if ok then return hatched, nextReadyIn, nil end
     return hatched, nextReadyIn, "error"
 end
@@ -15836,7 +15836,7 @@ task.spawn(function()
             Arb.placeBusy = false
             Arb.release("Place")
             setPlaceStatus("🟡 Retrying placement")
-            warn("[CloverHub] Auto-Place worker recovered: " .. tostring(workerError))
+            warn("[LunaHubHub] Auto-Place worker recovered: " .. tostring(workerError))
             loopWait = 1
         end
         HatchScheduler.Wait(loopWait)
@@ -19341,7 +19341,7 @@ end
         end },
     })
     local list = Instance.new("ScrollingFrame")
-    list.Name = "CloverServerList"
+    list.Name = "LunaHubServerList"
     list.BackgroundTransparency = 1
     list.BorderSizePixel = 0
     list.Size = UDim2.new(1, 0, 0, 340)
@@ -19649,7 +19649,7 @@ do
 
         setWebhookStatus("🟡 Sending")
         local details = type(description) == "table" and description or nil
-        local embedTitle = tostring(title or "CloverHub")
+        local embedTitle = tostring(title or "LunaHubHub")
         local descriptionText = tostring(description or "")
         local fields = {}
         local thumbnail
@@ -19710,7 +19710,7 @@ do
         }
         if thumbnail then embed.thumbnail = thumbnail end
         local payload = {
-            username = "CloverHub",
+            username = "LunaHubHub",
             embeds = { embed },
         }
         local payloadJson = HttpService:JSONEncode(payload)
@@ -19744,7 +19744,7 @@ do
         { "📨 Send Test", function()
             currentWebhookURL()
             task.spawn(RuntimeStatus.sendWebhook, "test", "Test Message",
-                "Your CloverHub webhook is connected.", 0x49E685, true)
+                "Your LunaHubHub webhook is connected.", 0x49E685, true)
         end },
     })
     setWebhookStatus(validWebhookURL(Settings.WebhookURL) and "🟢 URL ready" or "🔗 Paste a webhook URL")
@@ -20559,7 +20559,7 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
     local blackFrame = Instance.new("Frame")
     blackFrame.Name = "CHSAE_BlackScreen"
     -- Overscan past Roblox's top inset so the 3D view and native top bar area
-    -- are both covered while the CloverHub window remains available above it.
+    -- are both covered while the LunaHubHub window remains available above it.
     blackFrame.Size = UDim2.new(1, 0, 1, 200)
     blackFrame.Position = UDim2.new(0, 0, 0, -100)
     blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -20571,8 +20571,8 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
     blackFrame.Parent = Library.ScreenGui
 
     -- Black Screen keeps the client light while still showing the information an
-    -- unattended CloverHub session actually needs. This is deliberately a compact
-    -- CloverHub dashboard, not a copy of another hub's unsupported stat list.
+    -- unattended LunaHubHub session actually needs. This is deliberately a compact
+    -- LunaHubHub dashboard, not a copy of another hub's unsupported stat list.
     local blackMonitor = (function()
         local palette = {
             panel = Color3.fromRGB(11, 15, 18),
@@ -20670,7 +20670,7 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
         outline.Parent = panel
 
         local accent = Instance.new("Frame")
-        accent.Name = "CloverAccent"
+        accent.Name = "LunaHubAccent"
         accent.Size = UDim2.new(1, 0, 0, 3)
         accent.BackgroundColor3 = palette.green
         accent.BorderSizePixel = 0
@@ -20698,9 +20698,9 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
             "C", 21, palette.green, Enum.TextXAlignment.Center, 3)
 
         local brand = addLabel(panel, "Brand", UDim2.fromOffset(62, 9), UDim2.new(1, -174, 0, 27),
-            "CLOVERHUB", 22, palette.text, Enum.TextXAlignment.Left, 3)
+            "LunaHubHUB", 22, palette.text, Enum.TextXAlignment.Left, 3)
         brand.RichText = true
-        brand.Text = '<b>CLOVER<font color="#4ADE80">HUB</font></b>'
+        brand.Text = '<b>LunaHub<font color="#4ADE80">HUB</font></b>'
 
         local userLine = addLabel(panel, "User", UDim2.fromOffset(62, 35), UDim2.new(1, -180, 0, 17),
             "@" .. tostring(LocalPlayer.Name), 13, palette.muted, Enum.TextXAlignment.Left, 3)
@@ -20739,7 +20739,7 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
         addLabel(activityCard, "Title", UDim2.fromOffset(11, 4), UDim2.new(1, -22, 0, 14),
             "CURRENT AUTOMATION", 12, palette.muted, Enum.TextXAlignment.Left, 3)
         local activityValue = addLabel(activityCard, "Value", UDim2.fromOffset(11, 18), UDim2.new(1, -22, 0, 23),
-            "Starting CloverHub…", 19, palette.green, Enum.TextXAlignment.Left, 3)
+            "Starting LunaHubHub…", 19, palette.green, Enum.TextXAlignment.Left, 3)
 
         local metricGrid = Instance.new("Frame")
         metricGrid.Name = "Metrics"
@@ -20807,13 +20807,13 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
             "Event status loading…", 13, Color3.fromRGB(216, 180, 254), Enum.TextXAlignment.Left, 3)
 
         addLabel(root, "CommunityTitle", UDim2.new(0, 0, 0, 327), UDim2.new(1, 0, 0, 14),
-            "JOIN THE CLOVERHUB COMMUNITY", 11, palette.muted, Enum.TextXAlignment.Center, 2)
+            "JOIN THE LunaHubHUB COMMUNITY", 11, palette.muted, Enum.TextXAlignment.Center, 2)
         local discordValue = addLabel(root, "Discord", UDim2.new(0, 0, 0, 342), UDim2.new(1, 0, 0, 25),
-            "discord.gg/CloverOnTop", 19, palette.cyan, Enum.TextXAlignment.Center, 2)
+            "discord.gg/LunaHubOnTop", 19, palette.cyan, Enum.TextXAlignment.Center, 2)
         discordValue.RichText = true
-        discordValue.Text = '<b>discord.gg/<font color="#4ADE80">CloverOnTop</font></b>'
+        discordValue.Text = '<b>discord.gg/<font color="#4ADE80">LunaHubOnTop</font></b>'
         addLabel(root, "Version", UDim2.new(0, 0, 0, 370), UDim2.new(1, 0, 0, 14),
-            "CloverHub " .. RELEASE_VERSION .. "  •  3D RENDERING PAUSED", 10,
+            "LunaHubHub " .. RELEASE_VERSION .. "  •  3D RENDERING PAUSED", 10,
             Color3.fromRGB(91, 105, 113), Enum.TextXAlignment.Center, 2)
 
         local monitor = { Root = root }
@@ -20855,7 +20855,7 @@ if type(getgenv().__CHSAE_ConfigControllers) == "table" then getgenv().__CHSAE_C
                 Ping = pingValue.Text,
                 Session = sessionValue.Text,
                 Event = eventValue.Text,
-                Discord = "discord.gg/CloverOnTop",
+                Discord = "discord.gg/LunaHubOnTop",
             }
         end
 
@@ -21573,7 +21573,7 @@ Window.__BuildAccountTab = function(alive)
                                         end)
                                         task.wait(0.15)
                                         pcall(function()
-                                            LocalPlayer:Kick("Logged out of CloverHub. Your key is unbound and can be entered again.")
+                                            LocalPlayer:Kick("Logged out of LunaHubHub. Your key is unbound and can be entered again.")
                                         end)
                                         return
                                     end
@@ -21643,7 +21643,7 @@ DevBox:AddLabel("ProtectedReleaseNotice", {
     DoesWrap = true,
 })
 
--- Official Obsidian SaveManager with a CloverHub snapshot bridge. SaveManager
+-- Official Obsidian SaveManager with a LunaHubHub snapshot bridge. SaveManager
 -- owns the named-config workflow and confirmation dialogs; the snapshot keeps
 -- custom overlay dropdowns and CHK controls lossless alongside native controls.
 task.defer(function()
@@ -21656,12 +21656,12 @@ task.defer(function()
         Library.__SaveManager = loadedManager
     end
     local manager = Library.__SaveManager
-    getgenv().__LunaCloverConfigManager = manager
+    getgenv().__LunaLunaHubConfigManager = manager
     if type(manager) == "table" then
         local configured, configBox = pcall(function()
             manager:SetLibrary(Library)
             manager:IgnoreThemeSettings()
-            manager:SetFolder("CloverHub")
+            manager:SetFolder("LunaHubHub")
             manager:SetSubFolder("StealAnEgg")
             manager:SetIgnoreIndexes({
                 "EggTargetRarities", "EggTargetCategories", "EggTargetAreas", "EggTargetPriority",
@@ -21677,8 +21677,8 @@ task.defer(function()
                 "AutoRiftBossToggle", "RiftBossFirstToggle", "AutoClaimBossMasteryToggle", "AutoBuyRiftShopToggle", "RiftShopDropdown",
                 "StealMovementTypeDropdown", "BurstTweenToggle", "StealSpeedSlider", "StealSpeedInput",
                 "SidewaysGlideToggle", "GuardProtectionToggle", "EggESPAreas",
-                "CloverConfigName", "CloverConfigList", "CloverConfigJSON", "WebhookURLInput",
-                -- The complete Clover snapshot below owns automated seller state.
+                "LunaHubConfigName", "LunaHubConfigList", "LunaHubConfigJSON", "WebhookURLInput",
+                -- The complete LunaHub snapshot below owns automated seller state.
                 "AutoSellToggle", "AutoSellEggToggle",
                 "SellPetsWhenFullToggle", "SellEggsWhenFullToggle",
             })
@@ -21797,7 +21797,7 @@ task.defer(function()
                 if not success then return encoded, success, err end
                 local ok, payload = pcall(HttpService.JSONDecode, HttpService, encoded)
                 if not (ok and type(payload) == "table") then
-                    return "", false, "Failed to attach CloverHub settings"
+                    return "", false, "Failed to attach LunaHubHub settings"
                 end
                 -- Defense in depth: IgnoreIndexes should already omit this
                 -- native input, but scrub the generated object list as well so
@@ -21818,11 +21818,11 @@ task.defer(function()
                 local exportSchema = {}
                 for key in pairs(exportSettings) do exportSchema[#exportSchema + 1] = key end
                 table.sort(exportSchema)
-                payload.cloverSettings = exportSettings
-                payload.cloverSettingsSchema = exportSchema
-                payload.cloverSettingsRevision = Settings.ConfigRevision
+                payload.LunaHubSettings = exportSettings
+                payload.LunaHubSettingsSchema = exportSchema
+                payload.LunaHubSettingsRevision = Settings.ConfigRevision
                 local encodeOk, bridged = pcall(HttpService.JSONEncode, HttpService, payload)
-                if not encodeOk then return "", false, "Failed to encode CloverHub settings" end
+                if not encodeOk then return "", false, "Failed to encode LunaHubHub settings" end
                 return bridged, true
             end
             manager.LoadJSON = function(self, content)
@@ -21832,10 +21832,10 @@ task.defer(function()
                 local safeContent = content
                 local invalidPetThreshold, invalidEggThreshold = false, false
                 if decodeOk and type(payload) == "table" then
-                    invalidPetThreshold, invalidEggThreshold = applySnapshot(payload.cloverSettings)
+                    invalidPetThreshold, invalidEggThreshold = applySnapshot(payload.LunaHubSettings)
                     if type(payload.objects) == "table" then
                         local safeObjects = {}
-                        local cloverOwned = {
+                        local LunaHubOwned = {
                             AntiAFKMethodDropdown = true, -- retired v149 selector
                             -- Retired UI tombstone: strip old named-config objects
                             -- so SaveManager never tries to restore a removed control.
@@ -21872,21 +21872,21 @@ task.defer(function()
                         }
                         for _, object in ipairs(payload.objects) do
                             if type(object) ~= "table" or (object.idx ~= "WebhookURLInput"
-                                and cloverOwned[object.idx] ~= true) then
+                                and LunaHubOwned[object.idx] ~= true) then
                                 safeObjects[#safeObjects + 1] = object
                             end
                         end
                         payload.objects = safeObjects
                     end
-                    payload.cloverSettings = configSnapshot(false)
-                    payload.cloverSettingsSchema = nil
+                    payload.LunaHubSettings = configSnapshot(false)
+                    payload.LunaHubSettingsSchema = nil
                     local encodeOk, encoded = pcall(HttpService.JSONEncode, HttpService, payload)
                     if encodeOk then safeContent = encoded end
                 end
                 local loadOk, success, err = pcall(rawLoadJSON, self, safeContent)
                 local loadSucceeded = loadOk and success == true
                 -- A malicious/old native object entry must not re-arm a seller
-                -- after its invalid floor was rejected by the Clover snapshot.
+                -- after its invalid floor was rejected by the LunaHub snapshot.
                 if invalidPetThreshold then
                     Settings.AutoSell = false
                     Settings.SellPetsWhenFull = false
@@ -21896,7 +21896,7 @@ task.defer(function()
                     Settings.SellEggsWhenFull = false
                 end
                 if not loadSucceeded then
-                    -- The Clover snapshot is applied before the native objects.
+                    -- The LunaHub snapshot is applied before the native objects.
                     -- If native loading fails, never leave irreversible seller
                     -- flags armed from a config which the UI reports as failed.
                     Settings.AutoSell = false
@@ -21916,10 +21916,10 @@ task.defer(function()
             end
 
             -- Keep SaveManager as the storage/serialization engine, but build the
-            -- surface with CloverHub controls. The addon's stock BuildConfigSection
+            -- surface with LunaHubHub controls. The addon's stock BuildConfigSection
             -- uses flat AddButton elements which do not match the rest of this UI.
             local box = SettingsTab:AddGroupbox({ Side = "Left", Name = "💾 Config" })
-            local configNameInput = box:AddInput("CloverConfigName", {
+            local configNameInput = box:AddInput("LunaHubConfigName", {
                 Text = "Name", Placeholder = "My config", Finished = false,
                 Tooltip = "Name a new config.",
             })
@@ -21940,7 +21940,7 @@ task.defer(function()
                 setAutoloadLabel()
                 return values
             end
-            configList = BindDropdownOverlay(box, "CloverConfigList", "Configs",
+            configList = BindDropdownOverlay(box, "LunaHubConfigList", "Configs",
                 manager:RefreshConfigList(), {
                     multi = false, text = "Configs", tooltip = "Choose a saved config.",
                     get = function() return selectedConfig end,
@@ -22000,13 +22000,13 @@ task.defer(function()
                 end
             end
 
-            MakeButtonPanel(box, "CloverConfigCreateButtons", {
+            MakeButtonPanel(box, "LunaHubConfigCreateButtons", {
                 { "+ Create Config", function()
                     local name = configName()
                     if not name then return end
                     local exists = table.find(manager:RefreshConfigList(), name) ~= nil
                     if exists then
-                        confirm("CloverConfigCreateDialog", "Config exists",
+                        confirm("LunaHubConfigCreateDialog", "Config exists",
                             ("Overwrite %q with your current settings?"):format(name),
                             "Overwrite", true, function() saveNamed(name, "Overwritten") end)
                     else
@@ -22015,10 +22015,10 @@ task.defer(function()
                 end },
             })
 
-            MakeButtonPanel(box, "CloverConfigManageButtons", {
+            MakeButtonPanel(box, "LunaHubConfigManageButtons", {
                 { "📂 Load Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigLoadDialog", "Load config",
+                    confirm("LunaHubConfigLoadDialog", "Load config",
                         ("Load %q and replace the current settings?"):format(name),
                         "Load", false, function()
                             local success, err = manager:Load(name)
@@ -22027,13 +22027,13 @@ task.defer(function()
                 end },
                 { "💾 Overwrite Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigOverwriteDialog", "Overwrite config",
+                    confirm("LunaHubConfigOverwriteDialog", "Overwrite config",
                         ("Replace %q with the current settings?"):format(name),
                         "Overwrite", true, function() saveNamed(name, "Overwritten") end)
                 end },
                 { "🗑 Delete Config", function()
                     local name = chosen(); if not name then return end
-                    confirm("CloverConfigDeleteDialog", "Delete config",
+                    confirm("LunaHubConfigDeleteDialog", "Delete config",
                         ("Delete %q? This cannot be undone."):format(name),
                         "Delete", true, function()
                             local success, err = manager:Delete(name)
@@ -22044,7 +22044,7 @@ task.defer(function()
                 { "🔄 Refresh Configs", function() refreshList(true) end },
             })
 
-            MakeButtonPanel(box, "CloverConfigAutoloadButtons", {
+            MakeButtonPanel(box, "LunaHubConfigAutoloadButtons", {
                 { "⭐ Set Autoload", function()
                     local name = chosen(); if not name then return end
                     local success, err = manager:SaveAutoloadConfig(name)
@@ -22052,7 +22052,7 @@ task.defer(function()
                     setAutoloadLabel()
                 end },
                 { "🗑 Clear Autoload", function()
-                    confirm("CloverConfigClearAutoloadDialog", "Clear autoload",
+                    confirm("LunaHubConfigClearAutoloadDialog", "Clear autoload",
                         "Stop loading a named config on startup?", "Clear", true, function()
                             local success, err = manager:DeleteAutoLoadConfig()
                             if not success and tostring(err):find("not set", 1, true) then success = true end
@@ -22061,19 +22061,19 @@ task.defer(function()
                         end)
                 end },
             })
-            autoloadLabel = box:AddLabel("CloverConfigAutoload", {
+            autoloadLabel = box:AddLabel("LunaHubConfigAutoload", {
                 Text = "⭐ Autoload: none", DoesWrap = true,
             })
 
-            local configJSONInput = box:AddInput("CloverConfigJSON", {
+            local configJSONInput = box:AddInput("LunaHubConfigJSON", {
                 Text = "Config JSON", Placeholder = "Exported JSON appears here",
                 Finished = false, Tooltip = "Paste JSON to import or export.",
             })
-            MakeButtonPanel(box, "CloverConfigJSONButtons", {
+            MakeButtonPanel(box, "LunaHubConfigJSONButtons", {
                 { "📥 Import JSON", function()
                     local content = tostring(configJSONInput.Value or "")
                     if content:match("^%s*$") then Library:Notify("Paste config JSON first.", 3); return end
-                    confirm("CloverConfigImportDialog", "Import config",
+                    confirm("LunaHubConfigImportDialog", "Import config",
                         "Apply the JSON and replace the current settings?", "Import", false, function()
                             local success, err = manager:LoadJSON(content)
                             report("Imported", "JSON", success, err)
@@ -22121,7 +22121,7 @@ end)
 end -- scoped SETTINGS helpers
 
 -- ════════════════════════════════════════════
--- [[ UI STYLING PASS — the CloverHub look ]] --
+-- [[ UI STYLING PASS — the LunaHubHub look ]] --
 -- ════════════════════════════════════════════
 pcall(function()
     local ALL_BOXES = {
@@ -22190,7 +22190,7 @@ pcall(function()
         for _, el in ipairs(container:GetChildren()) do
             if not el:IsA("GuiObject") then
                 -- skip layout objects
-            elseif el:GetAttribute("CloverHubStatusCard") == true then
+            elseif el:GetAttribute("LunaHubHubStatusCard") == true then
                 -- CHK.Merge already owns this card's geometry, padding and
                 -- layering.  Generic cardification would shrink its horizontal
                 -- padding and recreate the status-layout regression.
@@ -22444,13 +22444,13 @@ task.defer(Window.__ApplyMobileScrollFix)
 CHK.DeferTabBuild(Window.__AccountTab, Window.__BuildAccountTab, Window.__CleanupAccountTab)
 
 getgenv().__CHSAE_PayloadReady = true
-print("[CloverHub " .. RELEASE_VERSION .. "][" .. BUILD_ID
+print("[LunaHubHub " .. RELEASE_VERSION .. "][" .. BUILD_ID
     .. "] Steal an Egg loaded for " .. LocalPlayer.Name)
 -- [[ LUNAHUB BACKEND EXPORT ]]
 do
     local env = getgenv()
     env.__CHSAE_Settings = Settings
-    env.__LunaClover = {
+    env.__LunaLunaHub = {
         Settings = Settings,
         RuntimeStatus = RuntimeStatus,
         ConfigControllers = env.__CHSAE_ConfigControllers,
@@ -22474,8 +22474,8 @@ do
             return out
         end)(),
     }
-    env.__LunaCloverApply = function(key, value)
-        local s = env.__LunaClover.Settings
+    env.__LunaLunaHubApply = function(key, value)
+        local s = env.__LunaLunaHub.Settings
         local registry = env.__CHSAE_ConfigControllers
         local c = registry and registry[key]
         if type(c) == "table" and type(c.SetValue) == "function" then
@@ -22501,20 +22501,20 @@ do
         end
         return true
     end
-    env.__LunaCloverSet = env.__LunaCloverApply
-    env.__LunaCloverSellPets = function()
+    env.__LunaLunaHubSet = env.__LunaLunaHubApply
+    env.__LunaLunaHubSellPets = function()
         if type(autoSellPass) == "function" then return autoSellPass(nil) end
         return false
     end
-    env.__LunaCloverSellEggs = function()
+    env.__LunaLunaHubSellEggs = function()
         if type(autoSellEggPass) == "function" then return autoSellEggPass(nil) end
         return false
     end
-    env.__LunaCloverEquipBest = function()
+    env.__LunaLunaHubEquipBest = function()
         if type(equipBestNow) == "function" then return equipBestNow() end
         return false
     end
-    env.__LunaCloverSendWebhookTest = function()
+    env.__LunaLunaHubSendWebhookTest = function()
         if RuntimeStatus and type(RuntimeStatus.sendWebhook) == "function" then
             return RuntimeStatus.sendWebhook("test", "LunaHub Test", "Webhook test", 0x49E685, true)
         end
@@ -22522,7 +22522,7 @@ do
     end
 end
 
--- Keep Clover's tested workers alive but hide its duplicate visual shell.
+-- Keep LunaHub's tested workers alive but hide its duplicate visual shell.
 task.defer(function()
     pcall(function()
         if Library and Library.ScreenGui then Library.ScreenGui.Enabled = false end
@@ -22531,21 +22531,21 @@ end)
 
 ]==]
 
-local __CloverLoaded, __CloverLoadError = false, nil
+local __LunaHubLoaded, __LunaHubLoadError = false, nil
 do
     local ok, result = pcall(function()
-        local fn = loadstring(__CloverSource)
+        local fn = loadstring(__LunaHubSource)
         if type(fn) ~= "function" then error("loadstring unavailable") end
         return fn()
     end)
-    __CloverLoaded, __CloverLoadError = ok, ok and nil or result
+    __LunaHubLoaded, __LunaHubLoadError = ok, ok and nil or result
 end
 
-if not __CloverLoaded then
-    warn("[LunaHub] Clover backend failed: " .. tostring(__CloverLoadError))
+if not __LunaHubLoaded then
+    warn("[LunaHub] LunaHub backend failed: " .. tostring(__LunaHubLoadError))
 end
 
-local Clover = getgenv().__LunaClover or {
+local LunaHub = getgenv().__LunaLunaHub or {
     Settings = getgenv().__CHSAE_Settings or {},
     ConfigControllers = getgenv().__CHSAE_ConfigControllers or {},
     TargetRarityItems = {},
@@ -22554,53 +22554,53 @@ local Clover = getgenv().__LunaClover or {
     MutationItems = {},
     TrailItems = {},
 }
-local CloverSettings = Clover.Settings or {}
-local CloverControllers = Clover.ConfigControllers or getgenv().__CHSAE_ConfigControllers or {}
+local LunaHubSettings = LunaHub.Settings or {}
+local LunaHubControllers = LunaHub.ConfigControllers or getgenv().__CHSAE_ConfigControllers or {}
 
-local function CloverSet(key, value)
-    local apply = getgenv().__LunaCloverApply
+local function LunaHubSet(key, value)
+    local apply = getgenv().__LunaLunaHubApply
     if type(apply) == "function" then
         local ok = pcall(apply, key, value)
         if ok then return true end
     end
-    local c = CloverControllers[key]
+    local c = LunaHubControllers[key]
     if type(c) == "table" and type(c.SetValue) == "function" then
         local ok = pcall(c.SetValue, c, value)
         if ok then return true end
     end
-    CloverSettings[key] = value
+    LunaHubSettings[key] = value
     return true
 end
 
-local function CloverGet(key, fallback)
-    local v = CloverSettings[key]
+local function LunaHubGet(key, fallback)
+    local v = LunaHubSettings[key]
     if v == nil then return fallback end
     return v
 end
 
-local function CloverMulti(key)
+local function LunaHubMulti(key)
     local out = {}
-    for name, enabled in pairs(CloverSettings[key] or {}) do
+    for name, enabled in pairs(LunaHubSettings[key] or {}) do
         if enabled then out[#out + 1] = name end
     end
     table.sort(out)
     return out
 end
 
-local function CloverManager()
-    return getgenv().__LunaCloverConfigManager
+local function LunaHubManager()
+    return getgenv().__LunaLunaHubConfigManager
 end
 
 do
     local deadline = os.clock() + 10
-    while not CloverManager() and os.clock() < deadline do task.wait(0.05) end
-    local manager = CloverManager()
+    while not LunaHubManager() and os.clock() < deadline do task.wait(0.05) end
+    local manager = LunaHubManager()
     if manager and type(manager.LoadAutoloadConfig) == "function" then
         pcall(manager.LoadAutoloadConfig, manager)
     end
 end
 
-local function CloverValues(list, fallback)
+local function LunaHubValues(list, fallback)
     if type(list) == "table" and #list > 0 then return list end
     return fallback or {}
 end
@@ -22741,41 +22741,41 @@ local AutoStealSection = Tab2:Section({
 
 AutoStealSection:Toggle({
 	Title = "Auto-Steal",
-	Default = CloverGet("AutoSteal", false),
+	Default = LunaHubGet("AutoSteal", false),
 	Callback = function(Value)
-CloverSet("AutoSteal", Value)
+LunaHubSet("AutoSteal", Value)
 	end,
 })
 
 AutoStealSection:Toggle({
 	Title = "Persistent Steal",
-	Default = CloverGet("PersistentSteal", false),
+	Default = LunaHubGet("PersistentSteal", false),
 	Callback = function(Value)
-CloverSet("PersistentSteal", Value)
+LunaHubSet("PersistentSteal", Value)
 	end,
 })
 
 AutoStealSection:Toggle({
-	Title = "Clover's Will",
-	Default = CloverGet("GuardProtection", false),
+	Title = "LunaHub's Will",
+	Default = LunaHubGet("GuardProtection", false),
 	Callback = function(Value)
-CloverSet("GuardProtection", Value)
+LunaHubSet("GuardProtection", Value)
 	end,
 })
 
 AutoStealSection:Toggle({
 	Title = "Prevent Traps",
-	Default = CloverGet("PreventTraps", false),
+	Default = LunaHubGet("PreventTraps", false),
 	Callback = function(Value)
-CloverSet("PreventTraps", Value)
+LunaHubSet("PreventTraps", Value)
 	end,
 })
 
 AutoStealSection:Toggle({
 	Title = "Anti AFK",
-	Default = CloverGet("AntiAFK", false),
+	Default = LunaHubGet("AntiAFK", false),
 	Callback = function(Value)
-CloverSet("AntiAFK", Value)
+LunaHubSet("AntiAFK", Value)
 	end,
 })
 
@@ -22788,70 +22788,70 @@ local FilterSelection = Tab2:Section({
 
 FilterSelection:Dropdown({
 		Title = "Areas",
-		Values = CloverValues(Clover.TargetAreaItems, {"Titan Temple", "Cherry Blossom"}),
-		Value = CloverMulti("TargetAreas"),
+		Values = LunaHubValues(LunaHub.TargetAreaItems, {"Titan Temple", "Cherry Blossom"}),
+		Value = LunaHubMulti("TargetAreas"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("TargetAreas", selectedValue)
+LunaHubSet("TargetAreas", selectedValue)
 		end,
 	})
 
 FilterSelection:Dropdown({
 		Title = "Categories",
-		Values = CloverValues(Clover.TargetCategoryItems, {"ArchAngel", "World Burner"}),
-		Value = CloverMulti("TargetCategories"),
+		Values = LunaHubValues(LunaHub.TargetCategoryItems, {"ArchAngel", "World Burner"}),
+		Value = LunaHubMulti("TargetCategories"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("TargetCategories", selectedValue)
+LunaHubSet("TargetCategories", selectedValue)
 		end,
 	})
 
 FilterSelection:Dropdown({
 		Title = "Rarities",
-		Values = CloverValues(Clover.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
-		Value = CloverMulti("TargetRarities"),
+		Values = LunaHubValues(LunaHub.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
+		Value = LunaHubMulti("TargetRarities"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("TargetRarities", selectedValue)
+LunaHubSet("TargetRarities", selectedValue)
 		end,
 	})
 
 FilterSelection:Dropdown({
 		Title = "Priority",
 		Values = {"Rarest", "Nearest", "Highest Value", "Highest KG", "Has Mutation", "Farthest"},
-		Value = CloverGet("TargetPriority", "Rarity"),
+		Value = LunaHubGet("TargetPriority", "Rarity"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("TargetPriority", selectedValue)
+LunaHubSet("TargetPriority", selectedValue)
 		end,
 	})
 
 FilterSelection:Dropdown({
 		Title = "KG RULE",
 		Values = {"Any", "Below", "Above"},
-		Value = CloverGet("TargetKGMode", "Any"),
+		Value = LunaHubGet("TargetKGMode", "Any"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("TargetKGMode", selectedValue)
+LunaHubSet("TargetKGMode", selectedValue)
 		end,
 	})
 
 FilterSelection:Input({
 	Title = "KG Threshold",
-    Value = tostring(CloverGet("TargetKGThreshold", 0)),
+    Value = tostring(LunaHubGet("TargetKGThreshold", 0)),
 	Callback = function(value)
-CloverSet("TargetKGThreshold", tonumber(value) or 0)
+LunaHubSet("TargetKGThreshold", tonumber(value) or 0)
 	end,
 })
 
 FilterSelection:Input({
 	Title = "Minimum Value",
-     Value = tostring(CloverGet("TargetValueThreshold", 0)),
+     Value = tostring(LunaHubGet("TargetValueThreshold", 0)),
 	Callback = function(value)
-CloverSet("TargetValueThreshold", value)
+LunaHubSet("TargetValueThreshold", value)
 	end,
 })
 
@@ -22867,28 +22867,28 @@ local StealMethodSelection = Tab2:Section({
 StealMethodSelection:Dropdown({
 		Title = "Movement Type",
 		Values = {"TP", "Tween"},
-		Value = CloverGet("StealMovementType", "TP"),
+		Value = LunaHubGet("StealMovementType", "TP"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("StealMovementType", selectedValue)
+LunaHubSet("StealMovementType", selectedValue)
 		end,
 	})
 
 StealMethodSelection:Toggle({
 	Title = "Burst Tween",
-	Default = CloverGet("BurstTween", false),
+	Default = LunaHubGet("BurstTween", false),
 	Callback = function(Value)
-CloverSet("BurstTween", Value)
+LunaHubSet("BurstTween", Value)
 	end,
 })
 
 StealMethodSelection:Dropdown({
 		Title = "Method",
 		Values = {"Straight", "Fly", "Turbo Hybrid", "Default"},
-		Value = CloverGet("StealRoute", "Straight"),
+		Value = LunaHubGet("StealRoute", "Straight"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("StealRoute", selectedValue)
+LunaHubSet("StealRoute", selectedValue)
 		end,
 	})
 
@@ -22902,23 +22902,23 @@ StealMethodSelection:Slider({
 		Default = 1000,
 	},
 	Callback = function(value)
-CloverSet("StealSpeed", value)
+LunaHubSet("StealSpeed", value)
 	end,
 })
 
 StealMethodSelection:Input({
 	Title = "Exact Tween Speed",
-     Value = tostring(CloverGet("StealSpeed", 1000)),
+     Value = tostring(LunaHubGet("StealSpeed", 1000)),
 	Callback = function(value)
-CloverSet("StealSpeed", tonumber(value) or 1000)
+LunaHubSet("StealSpeed", tonumber(value) or 1000)
 	end,
 })
 
 StealMethodSelection:Toggle({
 	Title = "Auto Calibrate Speed",
-	Default = CloverGet("AutoCalibrateSpeed", false),
+	Default = LunaHubGet("AutoCalibrateSpeed", false),
 	Callback = function(Value)
-CloverSet("AutoCalibrateSpeed", Value)
+LunaHubSet("AutoCalibrateSpeed", Value)
 	end,
 })
 
@@ -22931,68 +22931,68 @@ local StealMethodSelection1 = Tab2:Section({
 
 StealMethodSelection1:Dropdown({
 		Title = "Categories",
-		Values = CloverValues(Clover.TargetCategoryItems, {"ArchAngel", "World Burner"}),
-		Value = CloverMulti("PlaceCategories"),
+		Values = LunaHubValues(LunaHub.TargetCategoryItems, {"ArchAngel", "World Burner"}),
+		Value = LunaHubMulti("PlaceCategories"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("PlaceCategories", selectedValue)
+LunaHubSet("PlaceCategories", selectedValue)
 		end,
 	})
 
 StealMethodSelection1:Dropdown({
 		Title = "Rarities",
-		Values = CloverValues(Clover.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
-		Value = CloverMulti("PlaceRarities"),
+		Values = LunaHubValues(LunaHub.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
+		Value = LunaHubMulti("PlaceRarities"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("PlaceRarities", selectedValue)
+LunaHubSet("PlaceRarities", selectedValue)
 		end,
 	})
 
 StealMethodSelection1:Dropdown({
 		Title = "Mutation",
-		Values = CloverValues(Clover.MutationItems, {"Boss", "Golden", "GreatBloom"}),
-		Value = CloverMulti("PlaceMutations"),
+		Values = LunaHubValues(LunaHub.MutationItems, {"Boss", "Golden", "GreatBloom"}),
+		Value = LunaHubMulti("PlaceMutations"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("PlaceMutations", selectedValue)
+LunaHubSet("PlaceMutations", selectedValue)
 		end,
 	})
 
 StealMethodSelection1:Dropdown({
 		Title = "Order",
 		Values = {"Back-Front", "Front-Back", "Edge-Inward", "Center-Out"},
-		Value = CloverGet("PlaceOrder", "Back → Front"),
+		Value = LunaHubGet("PlaceOrder", "Back → Front"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("PlaceOrder", selectedValue)
+LunaHubSet("PlaceOrder", selectedValue)
 		end,
 	})
 
 StealMethodSelection1:Toggle({
 	Title = "Auto Place",
-	Default = CloverGet("AutoPlace", false),
+	Default = LunaHubGet("AutoPlace", false),
 	Callback = function(Value)
-CloverSet("AutoPlace", Value)
+LunaHubSet("AutoPlace", Value)
 	end,
 })
 
 StealMethodSelection1:Toggle({
 	Title = "Prevent Snap",
-	Default = CloverGet("PlaceInRangeOnly", false),
+	Default = LunaHubGet("PlaceInRangeOnly", false),
 	Callback = function(Value)
-CloverSet("PlaceInRangeOnly", Value)
+LunaHubSet("PlaceInRangeOnly", Value)
 	end,
 })
 
 StealMethodSelection1:Toggle({
 	Title = "Auto Hatch",
-	Default = CloverGet("AutoHatch", false),
+	Default = LunaHubGet("AutoHatch", false),
 	Callback = function(Value)
-CloverSet("AutoHatch", Value)
+LunaHubSet("AutoHatch", Value)
 	end,
 })
 --------------------------------------------------------WINDOW 3 INFO-------------------------------------------------------------------
@@ -23006,60 +23006,60 @@ local UpgradeSection = Tab3:Section({
 
 UpgradeSection:Toggle({
 	Title = "Upgrade Pen",
-	Default = CloverGet("AutoUpgradePen", false),
+	Default = LunaHubGet("AutoUpgradePen", false),
 	Callback = function(Value)
-CloverSet("AutoUpgradePen", Value)
+LunaHubSet("AutoUpgradePen", Value)
 	end,
 })
 
 UpgradeSection:Toggle({
 	Title = "Auto Treadmill",
-	Default = CloverGet("AutoTreadmill", false),
+	Default = LunaHubGet("AutoTreadmill", false),
 	Callback = function(Value)
-CloverSet("AutoTreadmill", Value)
+LunaHubSet("AutoTreadmill", Value)
 	end,
 })
 
 UpgradeSection:Toggle({
 	Title = "Upgrade Treadmill",
-	Default = CloverGet("AutoUpgradeTreadmill", false),
+	Default = LunaHubGet("AutoUpgradeTreadmill", false),
 	Callback = function(Value)
-CloverSet("AutoUpgradeTreadmill", Value)
+LunaHubSet("AutoUpgradeTreadmill", Value)
 	end,
 })
 
 UpgradeSection:Dropdown({
 		Title = "Trails",
-		Values = CloverValues(Clover.TrailItems, {"Grey Trail", "Green Trail", "Blue Trail"}),
-		Value = CloverMulti("TrailNames"),
+		Values = LunaHubValues(LunaHub.TrailItems, {"Grey Trail", "Green Trail", "Blue Trail"}),
+		Value = LunaHubMulti("TrailNames"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("TrailNames", selectedValue)
+LunaHubSet("TrailNames", selectedValue)
 		end,
 	})
 
 UpgradeSection:Toggle({
 	Title = "Auto Buy Trail",
-	Default = CloverGet("AutoBuyTrail", false),
+	Default = LunaHubGet("AutoBuyTrail", false),
 	Callback = function(Value)
-CloverSet("AutoBuyTrail", Value)
+LunaHubSet("AutoBuyTrail", Value)
 	end,
 })
 
 UpgradeSection:Toggle({
 	Title = "Claim Index",
-	Default = CloverGet("AutoClaimIndex", false),
+	Default = LunaHubGet("AutoClaimIndex", false),
 	Callback = function(Value)
-CloverSet("AutoClaimIndex", Value)
+LunaHubSet("AutoClaimIndex", Value)
 	end,
 })
 
 UpgradeSection:Toggle({
 	Title = "Collect Cash",
-	Default = CloverGet("AutoCollectCash", false),
+	Default = LunaHubGet("AutoCollectCash", false),
 	Callback = function(Value)
-CloverSet("AutoCollectCash", Value)
+LunaHubSet("AutoCollectCash", Value)
 	end,
 })
 
@@ -23077,17 +23077,17 @@ local SellSection = Tab4:Section({
 
 SellSection:Toggle({
 	Title = "Auto Equip Best",
-	Default = CloverGet("AutoEquipBest", false),
+	Default = LunaHubGet("AutoEquipBest", false),
 	Callback = function(Value)
-CloverSet("AutoEquipBest", Value)
+LunaHubSet("AutoEquipBest", Value)
 	end,
 })
 
 SellSection:Input({
 	Title = "Interval (Seconds)",
-     Value = tostring(CloverGet("EquipInterval", 30)),
+     Value = tostring(LunaHubGet("EquipInterval", 30)),
 	Callback = function(value)
-CloverSet("EquipInterval", tonumber(value) or 30)
+LunaHubSet("EquipInterval", tonumber(value) or 30)
 	end,
 })
 
@@ -23100,83 +23100,83 @@ local SellSection1 = Tab4:Section({
 
 SellSection1:Dropdown({
 		Title = "Categories",
-		Values = CloverValues(Clover.TargetCategoryItems, {"ArchAngel", "World Burner"}),
-		Value = CloverMulti("SellPets"),
+		Values = LunaHubValues(LunaHub.TargetCategoryItems, {"ArchAngel", "World Burner"}),
+		Value = LunaHubMulti("SellPets"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellPets", selectedValue)
+LunaHubSet("SellPets", selectedValue)
 		end,
 	})
 
 SellSection1:Dropdown({
 		Title = "Rarities",
-		Values = CloverValues(Clover.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
-		Value = CloverMulti("SellRarities"),
+		Values = LunaHubValues(LunaHub.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
+		Value = LunaHubMulti("SellRarities"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellRarities", selectedValue)
+LunaHubSet("SellRarities", selectedValue)
 		end,
 	})
 
 SellSection1:Dropdown({
 		Title = "Mutation",
-		Values = CloverValues(Clover.MutationItems, {"Boss", "Golden", "GreatBloom"}),
-		Value = CloverMulti("SellMutations"),
+		Values = LunaHubValues(LunaHub.MutationItems, {"Boss", "Golden", "GreatBloom"}),
+		Value = LunaHubMulti("SellMutations"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellMutations", selectedValue)
+LunaHubSet("SellMutations", selectedValue)
 		end,
 	})
 
 SellSection1:Dropdown({
 		Title = "KG RULE",
 		Values = {"Any", "Below", "Above"},
-		Value = CloverGet("SellPetKGMode", "Any"),
+		Value = LunaHubGet("SellPetKGMode", "Any"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("SellPetKGMode", selectedValue)
+LunaHubSet("SellPetKGMode", selectedValue)
 		end,
 	})
 
 SellSection1:Input({
 	Title = "KG Threshold",
-    Value = tostring(CloverGet("SellPetKGThreshold", 0)),
+    Value = tostring(LunaHubGet("SellPetKGThreshold", 0)),
 	Callback = function(value)
-CloverSet("SellPetKGThreshold", tonumber(value) or 0)
+LunaHubSet("SellPetKGThreshold", tonumber(value) or 0)
 	end,
 })
 
 SellSection1:Input({
 	Title = "Minimum Value",
-     Value = tostring(CloverGet("SellPetValueThreshold", 0)),
+     Value = tostring(LunaHubGet("SellPetValueThreshold", 0)),
 	Callback = function(value)
-CloverSet("SellPetValueThreshold", value)
+LunaHubSet("SellPetValueThreshold", value)
 	end,
 })
 
 SellSection1:Toggle({
 	Title = "Auto-Sell",
-	Default = CloverGet("AutoSell", false),
+	Default = LunaHubGet("AutoSell", false),
 	Callback = function(Value)
-CloverSet("AutoSell", Value)
+LunaHubSet("AutoSell", Value)
 	end,
 })
 
 SellSection1:Toggle({
 	Title = "Sell Full",
-	Default = CloverGet("SellPetsWhenFull", false),
+	Default = LunaHubGet("SellPetsWhenFull", false),
 	Callback = function(Value)
-CloverSet("SellPetsWhenFull", Value)
+LunaHubSet("SellPetsWhenFull", Value)
 	end,
 })
 
 SellSection1:Button({
 	Title = "Sell Pets",
 	Callback = function()
-		local fn = getgenv().__LunaCloverSellPets
+		local fn = getgenv().__LunaLunaHubSellPets
 		if type(fn) == "function" then task.spawn(fn) end
 	end,
 })
@@ -23191,83 +23191,83 @@ local SellSection2 = Tab4:Section({
 
 SellSection2:Dropdown({
 		Title = "Categories",
-		Values = CloverValues(Clover.TargetCategoryItems, {"ArchAngel", "World Burner"}),
-		Value = CloverMulti("SellEggNames"),
+		Values = LunaHubValues(LunaHub.TargetCategoryItems, {"ArchAngel", "World Burner"}),
+		Value = LunaHubMulti("SellEggNames"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellEggNames", selectedValue)
+LunaHubSet("SellEggNames", selectedValue)
 		end,
 	})
 
 SellSection2:Dropdown({
 		Title = "Rarities",
-		Values = CloverValues(Clover.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
-		Value = CloverMulti("SellEggRarities"),
+		Values = LunaHubValues(LunaHub.TargetRarityItems, {"Divine", "Eternal", "Secret"}),
+		Value = LunaHubMulti("SellEggRarities"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellEggRarities", selectedValue)
+LunaHubSet("SellEggRarities", selectedValue)
 		end,
 	})
 
 SellSection2:Dropdown({
 		Title = "Mutation",
-		Values = CloverValues(Clover.MutationItems, {"Boss", "Golden", "GreatBloom"}),
-		Value = CloverMulti("SellEggMutations"),
+		Values = LunaHubValues(LunaHub.MutationItems, {"Boss", "Golden", "GreatBloom"}),
+		Value = LunaHubMulti("SellEggMutations"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("SellEggMutations", selectedValue)
+LunaHubSet("SellEggMutations", selectedValue)
 		end,
 	})
 
 SellSection2:Dropdown({
 		Title = "KG RULE",
 		Values = {"Any", "Below", "Above"},
-		Value = CloverGet("SellEggKGMode", "Any"),
+		Value = LunaHubGet("SellEggKGMode", "Any"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("SellEggKGMode", selectedValue)
+LunaHubSet("SellEggKGMode", selectedValue)
 		end,
 	})
 
 SellSection2:Input({
 	Title = "KG Threshold",
-    Value = tostring(CloverGet("SellEggKGThreshold", 0)),
+    Value = tostring(LunaHubGet("SellEggKGThreshold", 0)),
 	Callback = function(value)
-CloverSet("SellEggKGThreshold", tonumber(value) or 0)
+LunaHubSet("SellEggKGThreshold", tonumber(value) or 0)
 	end,
 })
 
 SellSection2:Input({
 	Title = "Minimum Value",
-     Value = tostring(CloverGet("SellEggValueThreshold", 0)),
+     Value = tostring(LunaHubGet("SellEggValueThreshold", 0)),
 	Callback = function(value)
-CloverSet("SellEggValueThreshold", value)
+LunaHubSet("SellEggValueThreshold", value)
 	end,
 })
 
 SellSection2:Toggle({
 	Title = "Auto-Sell Eggs",
-	Default = CloverGet("AutoSellEggs", false),
+	Default = LunaHubGet("AutoSellEggs", false),
 	Callback = function(Value)
-CloverSet("AutoSellEggs", Value)
+LunaHubSet("AutoSellEggs", Value)
 	end,
 })
 
 SellSection2:Toggle({
 	Title = "Sell Full",
-	Default = CloverGet("SellEggsWhenFull", false),
+	Default = LunaHubGet("SellEggsWhenFull", false),
 	Callback = function(Value)
-CloverSet("SellEggsWhenFull", Value)
+LunaHubSet("SellEggsWhenFull", Value)
 	end,
 })
 
 SellSection2:Button({
 	Title = "Sell Eggs",
 	Callback = function()
-		local fn = getgenv().__LunaCloverSellEggs
+		local fn = getgenv().__LunaLunaHubSellEggs
 		if type(fn) == "function" then task.spawn(fn) end
 	end,
 })
@@ -23286,46 +23286,46 @@ local FuseSection = Tab5:Section({
 
 FuseSection:Dropdown({
 		Title = "Categories",
-		Values = CloverValues(Clover.TargetCategoryItems, {"ArchAngel", "World Burner"}),
-		Value = CloverMulti("FuseCategories"),
+		Values = LunaHubValues(LunaHub.TargetCategoryItems, {"ArchAngel", "World Burner"}),
+		Value = LunaHubMulti("FuseCategories"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("FuseCategories", selectedValue)
+LunaHubSet("FuseCategories", selectedValue)
 		end,
 	})
 
 FuseSection:Dropdown({
 		Title = "Prevent KG",
 		Values = {"Any", "Below", "Above"},
-		Value = CloverGet("FuseKGMode", "Any"),
+		Value = LunaHubGet("FuseKGMode", "Any"),
 		--AllowNone = true,
 		Callback = function(selectedValue)
-CloverSet("FuseKGMode", selectedValue)
+LunaHubSet("FuseKGMode", selectedValue)
 		end,
 	})
 
 FuseSection:Input({
 	Title = "KG Threshold",
-    Value = tostring(CloverGet("FuseKGThreshold", 0)),
+    Value = tostring(LunaHubGet("FuseKGThreshold", 0)),
 	Callback = function(value)
-CloverSet("FuseKGThreshold", tonumber(value) or 0)
+LunaHubSet("FuseKGThreshold", tonumber(value) or 0)
 	end,
 })
 
 FuseSection:Input({
 	Title = " Prevent Minimum Value",
-     Value = tostring(CloverGet("FuseMinimumValue", 0)),
+     Value = tostring(LunaHubGet("FuseMinimumValue", 0)),
 	Callback = function(value)
-CloverSet("FuseMinimumValue", value)
+LunaHubSet("FuseMinimumValue", value)
 	end,
 })
 
 FuseSection:Toggle({
 	Title = "Auto Fuse",
-	Default = CloverGet("AutoFuse", false),
+	Default = LunaHubGet("AutoFuse", false),
 	Callback = function(Value)
-CloverSet("AutoFuse", Value)
+LunaHubSet("AutoFuse", Value)
 	end,
 })
 
@@ -23342,17 +23342,17 @@ local EventSection = Tab6:Section({
 
 EventSection:Input({
 	Title = " Prevent Minimum Value",
-     Value = tostring(CloverGet("RiftMinimumValue", 0)),
+     Value = tostring(LunaHubGet("RiftMinimumValue", 0)),
 	Callback = function(value)
-CloverSet("RiftMinimumValue", value)
+LunaHubSet("RiftMinimumValue", value)
 	end,
 })
 
 EventSection:Toggle({
 	Title = "Auto Rift",
-	Default = CloverGet("AutoRift", false),
+	Default = LunaHubGet("AutoRift", false),
 	Callback = function(Value)
-CloverSet("AutoRift", Value)
+LunaHubSet("AutoRift", Value)
 	end,
 })
 
@@ -23365,9 +23365,9 @@ local EventSection1 = Tab6:Section({
 
 EventSection1:Toggle({
 	Title = "Auto Attack Rift Boss",
-	Default = CloverGet("AutoRiftBoss", false),
+	Default = LunaHubGet("AutoRiftBoss", false),
 	Callback = function(Value)
-CloverSet("AutoRiftBoss", Value)
+LunaHubSet("AutoRiftBoss", Value)
 	end,
 })
 
@@ -23381,20 +23381,20 @@ local EventSection2 = Tab6:Section({
 EventSection2:Dropdown({
 		Title = "Items",
 		Values = {"2x Cash Booster", "1.25 Speed"},
-		Value = CloverMulti("RiftShopItems"),
+		Value = LunaHubMulti("RiftShopItems"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("RiftShopItems", selectedValue)
+LunaHubSet("RiftShopItems", selectedValue)
 		end,
 	})
 
 
 EventSection2:Toggle({
 	Title = "Auto Buy",
-	Default = CloverGet("AutoBuyRiftShop", false),
+	Default = LunaHubGet("AutoBuyRiftShop", false),
 	Callback = function(Value)
-CloverSet("AutoBuyRiftShop", Value)
+LunaHubSet("AutoBuyRiftShop", Value)
 	end,
 })
 
@@ -23407,9 +23407,9 @@ local EventSection3 = Tab6:Section({
 
 EventSection3:Toggle({
 	Title = "Auto Claim Boss Mastery",
-	Default = CloverGet("AutoClaimBossMastery", false),
+	Default = LunaHubGet("AutoClaimBossMastery", false),
 	Callback = function(Value)
-CloverSet("AutoClaimBossMastery", Value)
+LunaHubSet("AutoClaimBossMastery", Value)
 	end,
 })
 
@@ -23429,7 +23429,7 @@ WebhookSection:Input({
 WebhookSection:Button({
 	Title = "Send Test",
 	Callback = function()
-		local fn = getgenv().__LunaCloverSendWebhookTest
+		local fn = getgenv().__LunaLunaHubSendWebhookTest
 		if type(fn) == "function" then task.spawn(fn) end
 	end,
 })
@@ -23443,41 +23443,41 @@ local WebhookSection1 = Tab7:Section({
 
 WebhookSection1:Toggle({
 	Title = "Steal Alerts",
-	Default = CloverGet("WebhookSteals", false),
+	Default = LunaHubGet("WebhookSteals", false),
 	Callback = function(Value)
-CloverSet("WebhookSteals", Value)
+LunaHubSet("WebhookSteals", Value)
 	end,
 })
 
 WebhookSection1:Toggle({
 	Title = "Mutation Alerts",
-	Default = CloverGet("WebhookMutations", false),
+	Default = LunaHubGet("WebhookMutations", false),
 	Callback = function(Value)
-CloverSet("WebhookMutations", Value)
+LunaHubSet("WebhookMutations", Value)
 	end,
 })
 
 WebhookSection1:Toggle({
 	Title = " Hatch Alerts",
-	Default = CloverGet("WebhookHatches", false),
+	Default = LunaHubGet("WebhookHatches", false),
 	Callback = function(Value)
-CloverSet("WebhookHatches", Value)
+LunaHubSet("WebhookHatches", Value)
 	end,
 })
 
 WebhookSection1:Toggle({
 	Title = "Disconnect Alerts",
-	Default = CloverGet("WebhookDisconnects", false),
+	Default = LunaHubGet("WebhookDisconnects", false),
 	Callback = function(Value)
-CloverSet("WebhookDisconnects", Value)
+LunaHubSet("WebhookDisconnects", Value)
 	end,
 })
 
 WebhookSection1:Toggle({
 	Title = "Inventory FUll Alerts",
-	Default = CloverGet("WebhookInventoryFull", false),
+	Default = LunaHubGet("WebhookInventoryFull", false),
 	Callback = function(Value)
-CloverSet("WebhookInventoryFull", Value)
+LunaHubSet("WebhookInventoryFull", Value)
 	end,
 })
 
@@ -23494,41 +23494,41 @@ local SettingsSection = Tab8:Section({
 
 SettingsSection:Toggle({
 	Title = "Hide Pets",
-	Default = CloverGet("HidePets", false),
+	Default = LunaHubGet("HidePets", false),
 	Callback = function(Value)
-CloverSet("HidePets", Value)
+LunaHubSet("HidePets", Value)
 	end,
 })
 
 SettingsSection:Toggle({
 	Title = "Remove Pen Eggs",
-	Default = CloverGet("RemovePenEggs", false),
+	Default = LunaHubGet("RemovePenEggs", false),
 	Callback = function(Value)
-CloverSet("RemovePenEggs", Value)
+LunaHubSet("RemovePenEggs", Value)
 	end,
 })
 
 SettingsSection:Toggle({
 	Title = "Delete Unnecessary Models",
-	Default = CloverGet("ExtremeFPS", false),
+	Default = LunaHubGet("ExtremeFPS", false),
 	Callback = function(Value)
-CloverSet("ExtremeFPS", Value)
+LunaHubSet("ExtremeFPS", Value)
 	end,
 })
 
 SettingsSection:Toggle({
 	Title = "Black Screen",
-	Default = CloverGet("BlackScreen", false),
+	Default = LunaHubGet("BlackScreen", false),
 	Callback = function(Value)
-CloverSet("BlackScreen", Value)
+LunaHubSet("BlackScreen", Value)
 	end,
 })
 
 SettingsSection:Toggle({
 	Title = "Boost Tick Rate",
-	Default = CloverGet("BoostTickRate", false),
+	Default = LunaHubGet("BoostTickRate", false),
 	Callback = function(Value)
-CloverSet("BoostTickRate", Value)
+LunaHubSet("BoostTickRate", Value)
 	end,
 })
 
@@ -23544,36 +23544,36 @@ local SettingsSection1 = Tab8:Section({
 
 SettingsSection1:Toggle({
 	Title = "Egg ESP",
-	Default = CloverGet("EggESP", false),
+	Default = LunaHubGet("EggESP", false),
 	Callback = function(Value)
-CloverSet("EggESP", Value)
+LunaHubSet("EggESP", Value)
 	end,
 })
 
 SettingsSection1:Dropdown({
 		Title = "Areas",
-		Values = CloverValues(Clover.TargetAreaItems, {"Titan Temple", "Cherry Blossom"}),
-		Value = CloverMulti("EggESPAreas"),
+		Values = LunaHubValues(LunaHub.TargetAreaItems, {"Titan Temple", "Cherry Blossom"}),
+		Value = LunaHubMulti("EggESPAreas"),
 		AllowNone = true,
 		Multi = true,
 		Callback = function(selectedValue)
-CloverSet("EggESPAreas", selectedValue)
+LunaHubSet("EggESPAreas", selectedValue)
 		end,
 	})
 
 SettingsSection1:Toggle({
 	Title = "Pen ESP",
-	Default = CloverGet("PenESP", false),
+	Default = LunaHubGet("PenESP", false),
 	Callback = function(Value)
-CloverSet("PenESP", Value)
+LunaHubSet("PenESP", Value)
 	end,
 })
 
 SettingsSection1:Toggle({
 	Title = "Inventory ESP",
-	Default = CloverGet("InventoryESP", false),
+	Default = LunaHubGet("InventoryESP", false),
 	Callback = function(Value)
-CloverSet("InventoryESP", Value)
+LunaHubSet("InventoryESP", Value)
 	end,
 })
 
@@ -23605,7 +23605,7 @@ local function ConfigNotify(title, content)
 end
 
 local function ConfigManager()
-	return CloverManager()
+	return LunaHubManager()
 end
 
 local function RefreshConfigs(preserve)
