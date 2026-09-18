@@ -1,3 +1,4 @@
+--gg
 -- LOCAL STANDALONE TEST COPY. This Maintenance build intentionally does not use
 -- the KeySystem/runtime-capability gate. Re-executing it is supported: the
 -- existing CloverHub instance is unloaded below before this copy takes ownership.
@@ -259,7 +260,7 @@ end
 
 local function CompatSection(tab,title)
     local section=tab:Section({Title=tostring(title or "Section"),Box=true,BoxBorder=true})
-    local group={Raw=section,Container=section,Holder=section}
+    local group={Raw=section,Container=section,Holder=section,__WindUICompat=true}
 
     function group:AddToggle(id,info)
         info=info or {}
@@ -1381,6 +1382,9 @@ end
 
 CHK.mergeSets = {}
 function CHK.Merge(groupbox, buildFn)
+    if groupbox and groupbox.__WindUICompat then
+        return buildFn()
+    end
     local container = groupbox.Container
     local before = {}
     for _, child in ipairs(container:GetChildren()) do
