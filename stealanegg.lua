@@ -741,129 +741,9 @@ Library.Toggled=true
 local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
 
 -- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
-do
-    local EXTRA_HEIGHT  = 6
-    local CUSTOM_RADIUS = 8
-
-    local Funcs = getmetatable(SessionBox).__index
-
-    local function MakeDropdownLazy(Dropdown, startDirty)
-        local origBuild = Dropdown.BuildDropdownList
-        local menu = Dropdown.Menu
-        if not (origBuild and menu and menu.Open) then return end
-
-        local dirty = (startDirty == true)
-
-        Dropdown.BuildDropdownList = function(...)
-            if menu.Active then
-                dirty = false
-                return origBuild(...)
-            end
-            dirty = true
-        end
-
-        local origOpen = menu.Open
-        menu.Open = function(mself, ...)
-            if dirty then
-                dirty = false
-                origBuild()
-            end
-            return origOpen(mself, ...)
-        end
-    end
-
-    local OriginalAddDropdown = Funcs.AddDropdown
-    Funcs.AddDropdown = function(self, Idx, Info)
-        local stashedValues = nil
-        if type(Info) == "table" and type(Info.Values) == "table"
-            and #Info.Values > 40 and Info.Default == nil then
-            stashedValues = Info.Values
-            Info.Values = {}
-        end
-
-        local Dropdown = OriginalAddDropdown(self, Idx, Info)
-
-        MakeDropdownLazy(Dropdown, stashedValues ~= nil)
-        if stashedValues then
-            Dropdown.Values = stashedValues
-            Dropdown.DefaultValues = stashedValues
-        end
-
-        local Children = self.Container:GetChildren()
-        local Holder = Children[#Children]
-
-        if Holder and Holder:IsA("Frame") then
-            local hasLabel = Holder.Size.Y.Offset > 21
-            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
-
-            local DisplayContainer = Holder:FindFirstChildWhichIsA("TextButton")
-            if DisplayContainer then
-                DisplayContainer.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-
-                local existingCorner = DisplayContainer:FindFirstChildOfClass("UICorner")
-                if existingCorner then
-                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                else
-                    local corner = Instance.new("UICorner")
-                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                    corner.Parent = DisplayContainer
-                end
-
-                local DisplayButton = DisplayContainer:FindFirstChildWhichIsA("TextButton")
-                if DisplayButton then
-                    DisplayButton.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-                end
-
-                DisplayContainer.TextYAlignment = Enum.TextYAlignment.Center
-                for _, d in ipairs(DisplayContainer:GetDescendants()) do
-                    if d:IsA("TextLabel") or d:IsA("TextButton") then
-                        d.TextYAlignment = Enum.TextYAlignment.Center
-                    end
-                end
-            end
-        end
-
-        return Dropdown
-    end
-
-    local OriginalAddInput = Funcs.AddInput
-    Funcs.AddInput = function(self, Idx, Info)
-        local Input = OriginalAddInput(self, Idx, Info)
-
-        local Children = self.Container:GetChildren()
-        local Holder = Children[#Children]
-
-        if Holder and Holder:IsA("Frame") then
-            local hasLabel = Holder.Size.Y.Offset > 21
-            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
-
-            local Box = Holder:FindFirstChildWhichIsA("TextBox")
-            if Box then
-                Box.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
-                Box.ClearTextOnFocus = false
-                Box.TextScaled = false
-                Box.TextSize = 13
-                Box.TextYAlignment = Enum.TextYAlignment.Center
-                for _, d in ipairs(Box:GetDescendants()) do
-                    if d:IsA("TextLabel") or d:IsA("TextButton") then
-                        d.TextYAlignment = Enum.TextYAlignment.Center
-                    end
-                end
-
-                local existingCorner = Box:FindFirstChildOfClass("UICorner")
-                if existingCorner then
-                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                else
-                    local corner = Instance.new("UICorner")
-                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
-                    corner.Parent = Box
-                end
-            end
-        end
-
-        return Input
-    end
-end
+-- Removed from the Obsidian migration. WindUI creates and manages these
+-- controls natively; the old patch accessed Obsidian internals and stopped
+-- the script before the first tab could finish building.
 
 -- [[ 4. SETTINGS STATE ]] --
 local Settings = {
@@ -9083,7 +8963,8 @@ do
         if not ok then RuntimeStatus.statusLabelCache[trailStatusLbl] = nil end
         return ok
     end)
-    trailController:Own(TrailBox.Container.Destroying:Connect(function() statusConnection:Disconnect() end))
+    -- WindUI sections do not expose the old Obsidian Container.Destroying signal.
+    -- The controller owns its status connection independently.
 end
 end -- scoped PROGRESSION helpers (exports only the controls needed by Auto-Steal)
 
