@@ -51,6 +51,15 @@ local Window = WindUI:CreateWindow({
 	]]
 })
 
+-----------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------LOGICS--------------------------------------------------------------------
+--DITO LALAGAY MGA LOGIC 
+
+
+
+
+
 
 -----------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------------------------------------------
@@ -153,7 +162,7 @@ local AutoStealSection = Tab2:Section({
 })
 
 AutoStealSection:Toggle({
-	Title = "Auto Steal Eggs",
+	Title = "Auto-Steal",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -165,7 +174,19 @@ AutoStealSection:Toggle({
 })
 
 AutoStealSection:Toggle({
-	Title = "Avoid Traps",
+	Title = "Persistent Steal",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			AutoStealEggs()
+		else
+			print("Auto Steal Eggs disabled!")
+		end
+	end,
+})
+
+AutoStealSection:Toggle({
+	Title = "Prevent Traps",
 	Default = false,
 	Callback = function(Value)
 		if Value then
@@ -178,7 +199,7 @@ AutoStealSection:Toggle({
 
 
 AutoStealSection:Slider({
-	Title = "Glide Speed",
+	Title = "Tween Speed",
 	Step = 1,
 	Width = 200,
 	Value = {
@@ -192,7 +213,7 @@ AutoStealSection:Slider({
 })
 
 AutoStealSection:Input({
-	Title = "Exact Glide Speed",
+	Title = "Exact Tween Speed",
      Value = "1000",
 	Callback = function(value)
 		print("Input:", value)
@@ -273,7 +294,7 @@ FilterSelection:Dropdown({
 		end,
 	})
 FilterSelection:Dropdown({
-		Title = "Category",
+		Title = "Categories",
 		Values = {
 			"ArchAngel",
 			"World Burner",
@@ -296,6 +317,20 @@ FilterSelection:Dropdown({
 		Value = nil,
 		AllowNone = true,
 		Multi = true,
+		Callback = function(selectedValue)
+			print("Selected: " .. selectedValue)
+		end,
+	})
+
+FilterSelection:Dropdown({
+		Title = "Priority",
+		Values = {
+			"Any",
+			"Below",
+			"Above",
+},
+		Value = 1,
+		--AllowNone = true,
 		Callback = function(selectedValue)
 			print("Selected: " .. selectedValue)
 		end,
@@ -334,14 +369,14 @@ FilterSelection:Input({
 
 
 local StealMethodSelection = Tab2:Section({
-	Title = "MOVEMENT METHOD",
+	Title = "MOVEMENT",
 	IconThemed = true,
 	Box = true,
 	BoxBorder = true,
 })
 
 StealMethodSelection:Dropdown({
-		Title = "Steal Type",
+		Title = "Movement Type",
 		Values = {
 			"TP",
 			"TWEEN",			
@@ -366,7 +401,7 @@ StealMethodSelection:Toggle({
 })
 
 StealMethodSelection:Dropdown({
-		Title = "Steal Method",
+		Title = "Method",
 		Values = {
 			"Straight",
 			"Fly",
