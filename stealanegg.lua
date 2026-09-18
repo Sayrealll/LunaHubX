@@ -2,13 +2,6 @@
 -- the KeySystem/runtime-capability gate. Re-executing it is supported: the
 -- existing CloverHub instance is unloaded below before this copy takes ownership.
 
--- [[ PLACE GUARD ]] --
-local EXPECTED_PLACE_ID = "107778070777162"
-if tostring(game.PlaceId) ~= EXPECTED_PLACE_ID then
-    print("[CloverHub-SAE] Not Steal An Egg (PlaceId " .. tostring(game.PlaceId) .. "). Aborting.")
-    return
-end
-
 -- Production payloads still require the private loader capability. Only this
 -- local Maintenance copy skips that requirement for direct executor testing.
 
@@ -161,254 +154,305 @@ local function setStealControlLock(_enabled)
     pcall(function() controls:Enable() end)
 end
 
--- [[ WINDUI MIGRATION LAYER ]] --
--- The original CloverHub feature/runtime code is retained below. This layer
--- replaces the Obsidian UI objects with WindUI tabs/sections/elements.
-local cloneref = (cloneref or clonereference or function(instance) return instance end)
-local RunService = cloneref(game:GetService("RunService"))
-local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
-local UserInputService = cloneref(game:GetService("UserInputService"))
-local LocalPlayer = game:GetService("Players").LocalPlayer
-
+-- [[ WINDUI LOADER ]] --
 local WindUI
+
 do
-    local ok, result = pcall(function() return require("./src/Init") end)
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+
     if ok then
         WindUI = result
-    elseif RunService:IsStudio() or not writefile then
-        WindUI = require(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init"))
     else
-        WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+        if RunService:IsStudio() or not writefile then
+            WindUI = require(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init"))
+        else
+            WindUI = loadstring(game:HttpGet(
+                "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+            ))()
+        end
     end
 end
 
-local Window
-local __windSignals = {}
-local function giveSignal(conn)
-    if conn then __windSignals[#__windSignals + 1] = conn end
-    return conn
-end
-local function disconnectSignals()
-    for _, c in ipairs(__windSignals) do pcall(function() c:Disconnect() end) end
-    table.clear(__windSignals)
+local ThemeName = "Dark"
+
+-- Extra layer for the few legacy informational overlays that are not native
+-- WindUI elements. Gameplay logic never depends on this layer.
+local CloverExtraGui
+do
+    local parent = nil
+    pcall(function() parent = gethui and gethui() end)
+    parent = parent or game:GetService("CoreGui")
+    CloverExtraGui = Instance.new("ScreenGui")
+    CloverExtraGui.Name = "CloverHub_WindUI_Extras"
+    CloverExtraGui.ResetOnSpawn = false
+    CloverExtraGui.IgnoreGuiInset = true
+    CloverExtraGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    CloverExtraGui.Parent = parent
 end
 
-local compatGui = Instance.new("ScreenGui")
-compatGui.Name = "CloverHubCompat"
-compatGui.ResetOnSpawn = false
-compatGui.IgnoreGuiInset = true
-compatGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-pcall(function() compatGui.Parent = gethui and gethui() or game:GetService("CoreGui") end)
-if not compatGui.Parent then compatGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+local Library = {}
 
-local Library = {
-    IsMobile = UserInputService.TouchEnabled,
-    ScreenGui = compatGui,
-    Toggled = true,
-    DPIScale = 1,
-    Scheme = {
-        MainColor = Color3.fromRGB(28, 28, 28),
-        BackgroundColor = Color3.fromRGB(18, 18, 18),
-        OutlineColor = Color3.fromRGB(62, 62, 62),
-        FontColor = Color3.fromRGB(235, 235, 235),
-        AccentColor = Color3.fromRGB(74, 222, 128),
-        Font = Enum.Font.Gotham,
-    },
+Library.ScreenGui = CloverExtraGui
+Library.DPIScale = 100
+Library.IsMobile = false
+pcall(function()
+    Library.IsMobile = game:GetService("UserInputService").TouchEnabled
+end)
+
+Library.Scheme = {
+    BackgroundColor = Color3.fromRGB(20, 20, 20),
+    MainColor = Color3.fromRGB(28, 28, 28),
+    OutlineColor = Color3.fromRGB(65, 65, 65),
+    FontColor = Color3.fromRGB(235, 235, 235),
+    AccentColor = Color3.fromRGB(74, 222, 128),
+    Font = Enum.Font.Gotham,
 }
-function Library:GiveSignal(c) return giveSignal(c) end
-function Library:SetDPIScale(v) self.DPIScale = (tonumber(v) or 100) / 100 end
-function Library:GetBetterColor(c, delta)
-    local n = tonumber(delta) or 0
-    return Color3.new(math.clamp(c.R + n/255,0,1), math.clamp(c.G + n/255,0,1), math.clamp(c.B + n/255,0,1))
+
+function Library:GetBetterColor(color, amount)
+    local c = typeof(color) == "Color3" and color or Color3.fromRGB(255,255,255)
+    local a = tonumber(amount) or 0
+    return Color3.new(
+        math.clamp(c.R + a / 255, 0, 1),
+        math.clamp(c.G + a / 255, 0, 1),
+        math.clamp(c.B + a / 255, 0, 1)
+    )
 end
-function Library:Notify(msg, duration)
-    local content = tostring(msg)
+
+function Library:GiveSignal(connection)
+    return connection
+end
+
+function Library:SetDPIScale(scale)
+    self.DPIScale = tonumber(scale) or self.DPIScale
+end
+
+function Library:Notify(message, duration)
     pcall(function()
-        WindUI:Notify({Title = "CloverHub", Content = content, Duration = tonumber(duration) or 4, CanClose = true})
+        WindUI:Notify({
+            Title = "CloverHub",
+            Content = tostring(message),
+            Duration = tonumber(duration) or 4,
+        })
     end)
 end
+
+function Library:AddDraggableLabel(text)
+    local label = Instance.new("TextLabel")
+    label.Name = "CloverHubStatusLabel"
+    label.BackgroundTransparency = 0.15
+    label.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+    label.BorderSizePixel = 0
+    label.Size = UDim2.fromOffset(260, 30)
+    label.Position = UDim2.fromOffset(20, 120)
+    label.Text = tostring(text or "")
+    label.TextColor3 = Color3.fromRGB(235,235,235)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamSemibold
+    label.Parent = self.ScreenGui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 7)
+    corner.Parent = label
+    return label
+end
+
 function Library:Unload()
-    disconnectSignals()
-    if Window then pcall(function() Window:Destroy() end) end
-    pcall(function() compatGui:Destroy() end)
+    pcall(function() if CloverExtraGui then CloverExtraGui:Destroy() end end)
+    pcall(function() if WindWindow then WindWindow:Destroy() end end)
 end
 
--- WindUI-compatible element aliases used by the old runtime code.
-local function patchElement(obj, kind)
-    if not obj then return obj end
-    if kind == "toggle" then
-        if not obj.SetValue and obj.Set then obj.SetValue = obj.Set end
-    elseif kind == "input" then
-        if not obj.SetValue and obj.Set then obj.SetValue = obj.Set end
-    elseif kind == "slider" then
-        if not obj.SetValue and obj.Set then obj.SetValue = obj.Set end
-    elseif kind == "dropdown" then
-        if not obj.SetValue and obj.Select then obj.SetValue = obj.Select end
-        if not obj.SetItems and obj.Refresh then obj.SetItems = obj.Refresh end
-    end
-    return obj
-end
+local WindWindow = WindUI:CreateWindow({
+    Title = "CloverHub",
+    Author = "Steal An Egg",
+    Icon = "solar:wind-bold",
+    Theme = ThemeName,
+    ToggleKey = Enum.KeyCode.LeftControl,
+})
 
+WindWindow:Tag({
+    Title = RELEASE_VERSION .. " • Steal An Egg",
+    Color = "ElementBackground",
+})
+
+-- Native WindUI section wrapper. It keeps the feature code's local object
+-- interface stable while every visible control is a WindUI element.
 local function makeSection(tab, title)
-    local section = tab:Section({Title = tostring(title or "Section"), Box = true, BoxBorder = true, Opened = true})
-    local box = {}
-    box.__native = section
-    function box:AddToggle(id, cfg)
-        cfg = cfg or {}
-        local o = section:Toggle({Title = cfg.Text or id, Desc = cfg.Desc, Value = cfg.Default == true, Tooltip = cfg.Tooltip, Callback = cfg.Callback})
-        return patchElement(o, "toggle")
+    local section = tab:Section({
+        Title = tostring(title or ""),
+        Box = true,
+        BoxBorder = true,
+        Opened = true,
+    })
+
+    local proxy = {
+        __section = section,
+        Holder = section,
+        Container = section,
+    }
+
+    function proxy:AddToggle(id, info)
+        info = info or {}
+        local element = section:Toggle({
+            Title = tostring(info.Text or info.Title or id),
+            Desc = info.Description or info.Desc,
+            Value = info.Default == true,
+            Flag = info.Flag,
+            Callback = info.Callback,
+        })
+        return element
     end
-    function box:AddInput(id, cfg)
-        cfg = cfg or {}
-        local o = section:Input({Title = cfg.Text or id, Desc = cfg.Desc, Value = cfg.Default ~= nil and tostring(cfg.Default) or "", Placeholder = cfg.Placeholder or "", Type = cfg.Type == "Textarea" and "Textarea" or "Input", Callback = cfg.Callback})
-        return patchElement(o, "input")
+
+    function proxy:AddInput(id, info)
+        info = info or {}
+        local element = section:Input({
+            Title = tostring(info.Text or info.Title or id),
+            Desc = info.Description or info.Desc,
+            Value = info.Default ~= nil and tostring(info.Default) or nil,
+            Placeholder = info.Placeholder or "",
+            Type = info.Type == "Textarea" and "Textarea" or "Input",
+            Callback = info.Callback,
+        })
+        return element
     end
-    function box:AddDropdown(id, cfg)
-        cfg = cfg or {}
-        local values = cfg.Values or {}
-        local value = cfg.Default
-        if value == "---" then value = nil end
-        local o = section:Dropdown({Title = cfg.Text or id, Desc = cfg.Desc, Values = values, Value = value, Multi = cfg.Multi == true, AllowNone = true, SearchBarEnabled = true, Callback = cfg.Callback})
-        return patchElement(o, "dropdown")
+
+    function proxy:AddDropdown(id, info)
+        info = info or {}
+        local values = info.Values or {}
+        local default = info.Default
+        if default == nil and #values > 0 then default = values[1] end
+        return section:Dropdown({
+            Title = tostring(info.Text or info.Title or id),
+            Desc = info.Description or info.Desc,
+            Values = values,
+            Value = default,
+            Multi = info.Multi == true,
+            AllowNone = info.AllowNone == true,
+            Callback = info.Callback,
+        })
     end
-    function box:AddLabel(id, cfg)
-        cfg = cfg or {}
-        local p = section:Paragraph({Title = "", Desc = tostring(cfg.Text or "")})
-        local label = { Value = tostring(cfg.Text or "") }
-        function label:SetText(v)
-            self.Value = tostring(v or "")
-            pcall(function() p:SetDesc(self.Value) end)
-        end
-        function label:Destroy() pcall(function() p:Destroy() end) end
+
+    function proxy:AddLabel(id, info)
+        info = info or {}
+        local paragraph = section:Paragraph({
+            Title = tostring(info.Text or info.Title or id),
+            Desc = tostring(info.Desc or info.Description or ""),
+        })
+        local label = {
+            Holder = paragraph,
+            SetText = function(_, value)
+                pcall(function() paragraph:SetDesc(tostring(value or "")) end)
+            end,
+        }
         return label
     end
-    function box:AddUIPassthrough(id, cfg)
-        -- WindUI owns layout. Raw legacy panels are allowed to parent into the
-        -- compatibility ScreenGui rather than Obsidian's groupbox container.
-        local inst = cfg and cfg.Instance
-        if inst then
-            inst.Parent = compatGui
-            inst.AnchorPoint = Vector2.new(0.5, 0)
-            inst.Position = UDim2.new(0.5, 0, 0.82, 0)
-        end
-        return inst
-    end
-    function box:Destroy() pcall(function() section:Destroy() end) end
-    return box
-end
 
-function Library:WrapTab(tab) return tab end
-
--- Replace old Obsidian helper objects with WindUI-native equivalents.
-function MakeCollapsible(_) end
-function StyleGroupboxPanel(_) end
-
-local CHK = {}
-function CHK.Merge(box, buildFn) buildFn(); return nil end
-function CHK.DeferTabBuild(tab, build, cleanup)
-    local state = {phase = "building", attempts = 1}
-    local ok, err = pcall(build, function() return sessionAlive() end)
-    if not ok then state.phase = "failed"; if cleanup then pcall(cleanup) end; warn("[CloverHub] UI: " .. tostring(err))
-    else state.phase = "ready" end
-    return state
-end
-function CHK.CardifyBox(_) end
-function CHK.Slider(box, id, info)
-    info = info or {}
-    local o = box.__native:Slider({
-        Title = info.Text or id,
-        Desc = info.Desc,
-        Step = tonumber(info.Step) or (tonumber(info.Rounding) and 10 ^ -tonumber(info.Rounding) or 1),
-        Value = {Min = tonumber(info.Min) or 0, Max = tonumber(info.Max) or 100, Default = tonumber(info.Default) or tonumber(info.Min) or 0},
-        IsTooltip = true, IsTextbox = true,
-    })
-    return patchElement(o, "slider")
-end
-function CHK.Notice(box, id, info)
-    info = info or {}
-    local p = box.__native:Paragraph({Title = tostring(info.title or id), Desc = tostring(info.text or "")})
-    return {Holder = p, Card = p, Title = {Text = info.title or id}, Body = {Text = info.text or "", SetText = function(self,v) self.Text=tostring(v) end}}
-end
-function CHK.SalePreview(box, id, info)
-    local p = box.__native:Paragraph({Title = tostring(id), Desc = tostring(info and info.snapshot and info.snapshot.Summary or "0 items selected")})
-    local out = {Holder = p}
-    function out:SetSnapshot(snapshot)
-        local text = tostring(type(snapshot)=="table" and snapshot.Summary or "0 items selected")
-        pcall(function() p:SetDesc(text) end)
+    function proxy:AddSlider(id, info)
+        info = info or {}
+        return section:Slider({
+            Title = tostring(info.Text or info.Title or id),
+            Desc = info.Description or info.Desc,
+            Value = {
+                Min = tonumber(info.Min) or 0,
+                Max = tonumber(info.Max) or 100,
+                Default = tonumber(info.Default) or tonumber(info.Min) or 0,
+            },
+            Step = tonumber(info.Step) or 1,
+            Callback = info.Callback,
+        })
     end
-    return out
-end
-function CHK.Metrics(box, id, definitions)
-    local values, paragraphs = {}, {}
-    for _, def in ipairs(definitions or {}) do
-        local p = box.__native:Paragraph({Title = tostring(def.title or def.key), Desc = "--"})
-        paragraphs[def.key] = p
-        values[def.key] = "--"
-    end
-    local out = {}
-    function out:Set(key, value)
-        values[key] = tostring(value or "")
-        local p = paragraphs[key]
-        if p then pcall(function() p:SetDesc(values[key]) end) end
-    end
-    return out
-end
 
-function MakeButtonPanel(box, panelId, buttons)
-    for _, def in ipairs(buttons or {}) do
-        box.__native:Button({Title = tostring(def[1]), Justify = "Center", Callback = def[2]})
+    function proxy:AddButton(info)
+        info = info or {}
+        return section:Button({
+            Title = tostring(info.Text or info.Title or "Button"),
+            Desc = info.Desc or info.Description,
+            Icon = info.Icon,
+            Callback = info.Callback,
+        })
     end
-end
 
-function BindDropdownOverlay(box, dropdownIdx, title, items, opts)
-    opts = opts or {}
-    local store = opts.store or {}
-    local current = opts.get and opts.get() or nil
-    local value = opts.multi and nil or current
-    local dd = box.__native:Dropdown({
-        Title = opts.text or title,
-        Values = items or {},
-        Value = opts.multi and nil or value,
-        Multi = opts.multi == true,
-        AllowNone = true,
-        SearchBarEnabled = true,
-        Callback = function(v)
-            if opts.multi then
-                for k in pairs(store) do store[k] = nil end
-                if type(v) == "table" then for _, name in ipairs(v) do store[name] = true end end
-                if opts.onChange then pcall(opts.onChange) end
-            else
-                if opts.set then pcall(opts.set, v) end
-                if opts.onChange then pcall(opts.onChange) end
+    function proxy:AddUIPassthrough(id, info)
+        -- Only the server-browser list still uses this path. Put it into the
+        -- dedicated extra layer rather than trying to access WindUI internals.
+        local instance = info and info.Instance
+        if typeof(instance) == "Instance" then
+            instance.Parent = CloverExtraGui
+            if instance:IsA("GuiObject") then
+                instance.AnchorPoint = Vector2.new(0.5, 0)
+                instance.Position = UDim2.new(0.5, 0, 0, 180)
+                instance.Size = UDim2.fromOffset(560, tonumber(info.Height) or 340)
+                instance.ZIndex = 20
             end
-        end,
-    })
-    patchElement(dd, "dropdown")
-    local controller = dd
-    function controller:GetValue()
-        if opts.multi then
-            local out = {}; for k,v in pairs(store) do if v then out[k]=true end end; return out
         end
-        return opts.get and opts.get() or dd.Value or "Any"
+        return instance
     end
-    function controller:SetValue(_, v)
-        if opts.multi then
-            local arr = {}; for k in pairs(store) do store[k]=nil end
-            if type(v)=="table" then for k,on in pairs(v) do if on==true then store[k]=true; arr[#arr+1]=k elseif type(k)=="number" and type(on)=="string" then store[on]=true; arr[#arr+1]=on end end end
-            pcall(function() dd:Select(arr) end)
-        else
-            if opts.set then pcall(opts.set, v) end
-            pcall(function() dd:Select(v) end)
-        end
+
+    function proxy:Resize()
+        return true
     end
-    function controller:SetItems(_, newItems, preserve)
-        pcall(function() dd:Refresh(newItems or {}) end)
-        if not preserve and not opts.multi and opts.set then pcall(opts.set, nil) end
-    end
-    controller.Dropdown = dd
-    controller.Overlay = {Open=function() end, Repaint=function() end, SetItems=function() end}
-    return controller
+
+    return proxy
 end
+
+local function makeTab(title, icon)
+    local rawTab = WindWindow:Tab({
+        Title = tostring(title),
+        Icon = icon,
+    })
+    return rawTab
+end
+
+function WindWindow:AddTab(title, icon)
+    return makeTab(title, icon)
+end
+
+function WindWindow:AddGroupbox(info)
+    info = info or {}
+    return makeSection(self, info.Name or "Section")
+end
+
+function WindWindow:AddDialog(id, info)
+    info = info or {}
+    local buttons = {}
+    local footer = info.FooterButtons or {}
+    for _, key in ipairs({"Cancel", "Confirm"}) do
+        local def = footer[key]
+        if type(def) == "table" then
+            buttons[#buttons + 1] = {
+                Title = tostring(def.Title or key),
+                Variant = def.Variant == "Destructive" and "Primary"
+                    or (def.Variant == "Ghost" and "Secondary" or def.Variant),
+                Callback = function()
+                    if type(def.Callback) == "function" then
+                        pcall(def.Callback, nil)
+                    end
+                end,
+            }
+        end
+    end
+    local dialog = WindWindow:Dialog({
+        Title = tostring(info.Title or id or "Confirm"),
+        Content = tostring(info.Description or ""),
+        Buttons = buttons,
+    })
+    return dialog
+end
+
+function WindWindow:Toggle(state)
+    pcall(function()
+        if self.SetVisibility then
+            self:SetVisibility(state)
+        elseif self.Toggle then
+            self:Toggle(state)
+        end
+    end)
+end
+
+-- Compatibility fields used only by old non-UI runtime helpers.
+Library.Toggled = true
+Library.WindowAnimationInfo = { Time = 0.2 }
+Library.__WindWindow = WindWindow
 
     getgenv().__CloverHubSAE_Unload = function()
     if getgenv().__CHSAE_VelocityStop then pcall(getgenv().__CHSAE_VelocityStop, "unload") end
@@ -521,6 +565,8 @@ end
     getgenv().__CHSAE_CanonicalLoaded = nil
     getgenv().__CloverHubSAE_Unload = nil
     getgenv().__VoidHubSAE_Unload = nil
+end
+
 -- [[ INSTANT MANUAL EGG PICKUP ]] --
 -- Auto-Steal invokes EggState directly, but a player pressing/tapping the native
 -- CarryAreaEgg prompt normally holds for 0.25 or 1.2 seconds. Keep manual pickup
@@ -596,56 +642,1429 @@ do
     end
 end
 
--- WindUI-compatible named config storage. The Clover snapshot bridge below
--- supplies the actual settings payload; this object only replaces Obsidian's
--- SaveManager storage API.
-local repo = ""
-local function makeConfigManager()
-    local manager = {Folder="CloverHub", SubFolder="StealAnEgg"}
-    local function dir() return "CloverHub/StealAnEgg" end
-    local function ensure()
-        pcall(function() if makefolder and not isfolder("CloverHub") then makefolder("CloverHub") end end)
-        pcall(function() if makefolder and not isfolder(dir()) then makefolder(dir()) end end)
+-- [[ COLLAPSIBLE GROUPBOX UTILITY ]] --
+local function MakeCollapsible(Groupbox, startsCollapsed)
+    if not Groupbox.ToggleCollapsed then return end
+
+    -- Put the full-width click target inside Obsidian's existing title frame.
+    -- It therefore covers the header without becoming another UIListLayout row.
+    local Header
+    for _, child in ipairs(Groupbox.Holder:GetChildren()) do
+        if child:IsA("Frame") and child ~= Groupbox.Container and child.LayoutOrder == 0 then
+            Header = child
+            break
+        end
     end
-    function manager:SetLibrary(_) end
-    function manager:IgnoreThemeSettings() end
-    function manager:SetFolder(v) self.Folder=v end
-    function manager:SetSubFolder(v) self.SubFolder=v end
-    function manager:SetIgnoreIndexes(_) end
-    function manager:RefreshConfigList()
-        ensure(); local out={}
-        if listfiles then for _,f in ipairs(listfiles(dir()) or {}) do local n=tostring(f):match("([^/\\]+)%.json$"); if n then out[#out+1]=n end end end
-        table.sort(out); return out
+    if Header and not Header:FindFirstChild("FullHeaderCollapseButton") then
+        local bounceScale = Header:FindFirstChild("GroupboxHeaderBounce")
+        if not bounceScale then
+            bounceScale = Instance.new("UIScale")
+            bounceScale.Name = "GroupboxHeaderBounce"
+            bounceScale.Scale = 1
+            bounceScale.Parent = Header
+        end
+        local bounceTween
+        local clickBtn = Instance.new("TextButton")
+        clickBtn.Name = "FullHeaderCollapseButton"
+        clickBtn.BackgroundTransparency = 1
+        clickBtn.Size = UDim2.fromScale(1, 1)
+        clickBtn.Text = ""
+        clickBtn.AutoButtonColor = false
+        clickBtn.ZIndex = Header.ZIndex + 10
+        clickBtn.Parent = Header
+        clickBtn.MouseButton1Click:Connect(function()
+            Groupbox:ToggleCollapsed()
+            if bounceTween then pcall(function() bounceTween:Cancel() end) end
+            bounceScale.Scale = 0.985
+            bounceTween = TweenService:Create(
+                bounceScale,
+                TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                { Scale = 1 }
+            )
+            bounceTween:Play()
+        end)
     end
-    function manager:SaveJSON()
-        local ok,data=pcall(function() return HttpService:JSONEncode({cloverSettings=configSnapshot(false),cloverSettingsRevision=Settings.ConfigRevision}) end)
-        return ok and data or "", ok, ok and nil or data
+
+    if startsCollapsed then
+        Groupbox:SetCollapsed(true)
     end
-    function manager:LoadJSON(_) return true end
-    function manager:Save(name)
-        ensure(); local data,ok,err=self:SaveJSON(name); if not ok then return false,err end
-        local wok,werr=pcall(writefile,dir().."/"..tostring(name)..".json",data); return wok,wok and nil or werr
-    end
-    function manager:Load(name)
-        ensure(); local path=dir().."/"..tostring(name)..".json"; if not isfile or not isfile(path) then return false,"not found" end
-        local ok,data=pcall(readfile,path); if not ok then return false,data end; return self:LoadJSON(data)
-    end
-    function manager:Delete(name)
-        local path=dir().."/"..tostring(name)..".json"; if delfile and isfile and isfile(path) then pcall(delfile,path) end; return true
-    end
-    function manager:SaveAutoloadConfig(name)
-        ensure(); local ok=pcall(writefile,dir().."/autoload.txt",tostring(name or "")); return ok
-    end
-    function manager:DeleteAutoLoadConfig()
-        local path=dir().."/autoload.txt"; if delfile and isfile and isfile(path) then pcall(delfile,path) end; return true
-    end
-    function manager:GetAutoloadConfig()
-        local path=dir().."/autoload.txt"; if isfile and isfile(path) then local ok,v=pcall(readfile,path); if ok and v~="" then return v end end
-    end
-    function manager:LoadAutoloadConfig() local n=self:GetAutoloadConfig(); if n then return self:Load(n) end; return false end
-    return manager
 end
-Library.__SaveManager = makeConfigManager()
+
+-- ════════════════════════════════════════════
+-- [[ CH UI KIT — the CloverHub styling standard (GAG2/TradingWorld) ]] --
+-- ════════════════════════════════════════════
+
+local function StyleGroupboxPanel(groupbox)
+    local PANEL_BG = Library.Scheme.MainColor
+    local STROKE   = Library.Scheme.OutlineColor
+    local INSET    = 6
+    local DIVIDER_H = 1
+    local NATIVE_PAD_Y = 14 -- Obsidian Container has 7px top + 7px bottom
+
+    local Holder    = groupbox.Holder
+    local Container = groupbox.Container
+    local List      = Container:FindFirstChildOfClass("UIListLayout")
+    local HolderList = Holder:FindFirstChildOfClass("UIListLayout")
+
+    -- UIListLayout otherwise left-aligns a child made narrower by INSET.
+    if HolderList then
+        HolderList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    end
+
+    Container.BackgroundColor3    = PANEL_BG
+    Container.BackgroundTransparency = 0
+    Container.BorderSizePixel     = 0
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = Container
+
+    local Header, titleLine
+    for _, c in ipairs(Holder:GetChildren()) do
+        if c:IsA("Frame") and c.LayoutOrder == 1 and c.Size.Y.Offset <= 2 then
+            titleLine = c
+        elseif c:IsA("Frame") and c ~= Container and c.LayoutOrder == 0 then
+            Header = c
+        end
+    end
+
+    -- Preserve Obsidian's native header and divider. A dedicated transparent
+    -- row adds only the requested space between the divider and content panel.
+    local marginSpacer = Holder:FindFirstChild("GroupboxContentTopMargin")
+    if not marginSpacer then
+        marginSpacer = Instance.new("Frame")
+        marginSpacer.Name = "GroupboxContentTopMargin"
+        marginSpacer.BackgroundTransparency = 1
+        marginSpacer.LayoutOrder = 2
+        marginSpacer.Size = UDim2.new(1, 0, 0, INSET)
+        marginSpacer.Parent = Holder
+    end
+    Container.LayoutOrder = 3
+
+    groupbox.Resize = function(self, ...)
+        local scale = Library.DPIScale or 1
+        if scale <= 0 then scale = 1 end
+        local headerH = Header and math.max(34, Header.AbsoluteSize.Y / scale) or 34
+        local contentH = List.AbsoluteContentSize.Y / scale
+        local containerH = contentH + NATIVE_PAD_Y
+        Container.Size = UDim2.new(1, -INSET * 2, 0, containerH)
+        if titleLine then titleLine.Visible = not self.Collapsed end
+        if self.Collapsed then
+            Holder.Size = UDim2.new(1, 0, 0, headerH)
+            return
+        end
+        Holder.Size = UDim2.new(1, 0, 0, headerH + DIVIDER_H + INSET + containerH + INSET)
+    end
+    groupbox:Resize()
+end
+
+-- ── TARGET OVERLAY (fullscreen searchable multi-select panel) ──
+-- All dropdown bindings route through one shared lazy picker.
+local MakeTargetOverlay
+do
+
+-- One picker serves every filter dropdown. The previous implementation created
+-- twenty complete hidden overlays and every option row during startup (over
+-- 3,200 invisible GUI descendants on the measured client). This shell is built
+-- once; option rows exist only while a picker is open and are destroyed on close.
+local SharedTargetOverlay
+local function getSharedTargetOverlay()
+    if SharedTargetOverlay then return SharedTargetOverlay end
+
+    local SCHEME_BG     = Library.Scheme.BackgroundColor
+    local SCHEME_PANEL  = Library.Scheme.MainColor
+    local SCHEME_STROKE = Library.Scheme.OutlineColor
+    local SCHEME_TEXT   = Library.Scheme.FontColor
+    local SCHEME_ACCENT = Library.Scheme.AccentColor
+    local SUB_TEXT      = Library:GetBetterColor(SCHEME_TEXT, -90)
+    local ROW_NORMAL    = SCHEME_PANEL
+    local ROW_HOVER     = Library:GetBetterColor(SCHEME_PANEL, 9)
+    local ROW_SELECTED  = Library:GetBetterColor(SCHEME_PANEL, 18)
+
+    local parentGui = Library.ScreenGui
+    if not parentGui then
+        local ok, gui = pcall(function() return gethui and gethui() end)
+        if ok then parentGui = gui end
+    end
+    if not parentGui then pcall(function() parentGui = game:GetService("CoreGui") end) end
+    if not parentGui then parentGui = LocalPlayer:WaitForChild("PlayerGui") end
+
+    local root = Instance.new("Frame")
+    root.Name = "CloverHubSharedPicker"
+    root.Size = UDim2.fromScale(1, 1)
+    root.BackgroundColor3 = Color3.new(0, 0, 0)
+    root.BackgroundTransparency = 0.45
+    root.BorderSizePixel = 0
+    root.ZIndex = 9000
+    root.Visible = false
+    root.Parent = parentGui
+
+    local rootBtn = Instance.new("TextButton")
+    rootBtn.BackgroundTransparency = 1
+    rootBtn.Size = UDim2.fromScale(1, 1)
+    rootBtn.Text = ""
+    rootBtn.ZIndex = 9000
+    rootBtn.Parent = root
+
+    local panel = Instance.new("Frame")
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
+    panel.Position = UDim2.fromScale(0.5, 0.5)
+    panel.Size = UDim2.fromOffset(560, 460)
+    panel.BackgroundColor3 = SCHEME_BG
+    panel.BorderSizePixel = 0
+    panel.ZIndex = 9001
+    panel.Active = true
+    panel.Parent = root
+    local panelCorner = Instance.new("UICorner")
+    panelCorner.CornerRadius = UDim.new(0, 12)
+    panelCorner.Parent = panel
+    local panelStroke = Instance.new("UIStroke")
+    panelStroke.Color = SCHEME_STROKE
+    panelStroke.Thickness = 1
+    panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    panelStroke.Parent = panel
+
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 56)
+    titleBar.BackgroundTransparency = 1
+    titleBar.ZIndex = 9002
+    titleBar.Active = true
+    titleBar.Parent = panel
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Position = UDim2.fromOffset(20, 14)
+    titleLabel.Size = UDim2.new(1, -160, 0, 30)
+    titleLabel.FontFace = Library.Scheme.Font
+    titleLabel.TextSize = 22
+    titleLabel.TextColor3 = SCHEME_TEXT
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.ZIndex = 9003
+    titleLabel.Parent = titleBar
+
+    local doneButton = Instance.new("TextButton")
+    doneButton.AnchorPoint = Vector2.new(1, 0)
+    doneButton.Position = UDim2.new(1, -16, 0, 12)
+    doneButton.Size = UDim2.fromOffset(110, 34)
+    doneButton.BackgroundColor3 = SCHEME_ACCENT
+    doneButton.Text = "Done"
+    doneButton.FontFace = Library.Scheme.Font
+    doneButton.TextSize = 15
+    doneButton.TextColor3 = SCHEME_TEXT
+    doneButton.AutoButtonColor = true
+    doneButton.ZIndex = 9003
+    doneButton.Parent = titleBar
+    local doneCorner = Instance.new("UICorner")
+    doneCorner.CornerRadius = UDim.new(0, 8)
+    doneCorner.Parent = doneButton
+    pcall(function() Library:MakeDraggable(panel, titleBar, true, false) end)
+
+    local card = Instance.new("Frame")
+    card.Position = UDim2.fromOffset(16, 60)
+    card.Size = UDim2.new(1, -32, 1, -76)
+    card.BackgroundColor3 = SCHEME_PANEL
+    card.BorderSizePixel = 0
+    card.ZIndex = 9001
+    card.Parent = panel
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 10)
+    cardCorner.Parent = card
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = SCHEME_STROKE
+    cardStroke.Thickness = 1
+    cardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    cardStroke.Parent = card
+
+    local search = Instance.new("TextBox")
+    search.Position = UDim2.fromOffset(14, 14)
+    search.Size = UDim2.new(1, -28, 0, 40)
+    search.BackgroundColor3 = SCHEME_BG
+    search.PlaceholderText = "Search items..."
+    search.PlaceholderColor3 = SUB_TEXT
+    search.FontFace = Library.Scheme.Font
+    search.TextSize = 16
+    search.TextColor3 = SCHEME_TEXT
+    search.TextXAlignment = Enum.TextXAlignment.Left
+    search.ClearTextOnFocus = false
+    search.ZIndex = 9002
+    search.Parent = card
+    local searchCorner = Instance.new("UICorner")
+    searchCorner.CornerRadius = UDim.new(0, 8)
+    searchCorner.Parent = search
+    local searchPadding = Instance.new("UIPadding")
+    searchPadding.PaddingLeft = UDim.new(0, 14)
+    searchPadding.Parent = search
+    local searchStroke = Instance.new("UIStroke")
+    searchStroke.Color = SCHEME_STROKE
+    searchStroke.Thickness = 1
+    searchStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    searchStroke.Parent = search
+
+    local function miniButton(text, xOffset)
+        local button = Instance.new("TextButton")
+        button.AnchorPoint = Vector2.new(1, 0)
+        button.Position = UDim2.new(1, xOffset, 0, 62)
+        button.Size = UDim2.fromOffset(54, 24)
+        button.BackgroundColor3 = SCHEME_BG
+        button.Text = text
+        button.FontFace = Library.Scheme.Font
+        button.TextSize = 13
+        button.TextColor3 = SCHEME_TEXT
+        button.ZIndex = 9003
+        button.Parent = card
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = button
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = SCHEME_STROKE
+        stroke.Thickness = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = button
+        return button
+    end
+    local noneButton = miniButton("None", -14)
+    local allButton = miniButton("All", -74)
+
+    local list = Instance.new("ScrollingFrame")
+    list.Position = UDim2.fromOffset(14, 94)
+    list.Size = UDim2.new(1, -28, 1, -108)
+    list.BackgroundColor3 = SCHEME_BG
+    list.BorderSizePixel = 0
+    list.ScrollBarThickness = 5
+    list.ScrollBarImageColor3 = SCHEME_STROKE
+    list.CanvasSize = UDim2.new()
+    list.ScrollingDirection = Enum.ScrollingDirection.Y
+    list.ZIndex = 9002
+    list.Parent = card
+    pcall(function() list.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y end)
+    local listCorner = Instance.new("UICorner")
+    listCorner.CornerRadius = UDim.new(0, 8)
+    listCorner.Parent = list
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = list
+    local listPadding = Instance.new("UIPadding")
+    listPadding.PaddingLeft = UDim.new(0, 8)
+    listPadding.PaddingRight = UDim.new(0, 8)
+    listPadding.PaddingTop = UDim.new(0, 8)
+    listPadding.PaddingBottom = UDim.new(0, 8)
+    listPadding.Parent = list
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 16)
+    end)
+
+    local active
+    local rows = {}
+    local painters = {}
+    local function clearRows()
+        for _, row in pairs(rows) do row:Destroy() end
+        table.clear(rows)
+        table.clear(painters)
+        list.CanvasPosition = Vector2.zero
+    end
+
+    local function makeRow(name)
+        local context = active
+        local row = Instance.new("TextButton")
+        row.Size = UDim2.new(1, 0, 0, 40)
+        row.AutoButtonColor = false
+        row.Text = ""
+        row.ZIndex = 9003
+        row.Parent = list
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = row
+        local stroke = Instance.new("UIStroke")
+        stroke.Transparency = 0.65
+        stroke.Thickness = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = row
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Position = UDim2.fromOffset(14, 0)
+        label.Size = UDim2.new(1, -22, 1, 0)
+        label.RichText = true
+        label.Text = (context.DisplayMap and context.DisplayMap[name]) or name
+        label.FontFace = Library.Scheme.Font
+        label.TextSize = 15
+        label.TextColor3 = SCHEME_TEXT
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 9004
+        label.Parent = row
+
+        local hovering = false
+        local function paint()
+            local selected = context.Store[name] == true
+            row.BackgroundColor3 = selected and ROW_SELECTED or (hovering and ROW_HOVER or ROW_NORMAL)
+            stroke.Color = (selected or hovering) and SCHEME_ACCENT or SCHEME_STROKE
+            stroke.Transparency = selected and 0.05 or (hovering and 0.4 or 0.65)
+            stroke.Thickness = selected and 1.4 or 1
+        end
+        row.MouseEnter:Connect(function() hovering = true; paint() end)
+        row.MouseLeave:Connect(function() hovering = false; paint() end)
+        row.MouseButton1Click:Connect(function()
+            if active ~= context then return end
+            if context.Single then
+                for key in pairs(context.Store) do context.Store[key] = nil end
+                context.Store[name] = true
+                for _, painter in pairs(painters) do painter() end
+                if context.OnToggle then pcall(context.OnToggle, name, true) end
+            else
+                context.Store[name] = not context.Store[name]
+                paint()
+                if context.OnToggle then pcall(context.OnToggle, name, context.Store[name]) end
+            end
+        end)
+        rows[name] = row
+        painters[name] = paint
+        paint()
+    end
+
+    local function rebuild()
+        clearRows()
+        if not active then return end
+        for _, name in ipairs(active.Items) do makeRow(name) end
+    end
+
+    local function close()
+        if not active then root.Visible = false return end
+        local closing = active
+        active = nil
+        root.Visible = false
+        clearRows()
+        if closing.OnDone then pcall(closing.OnDone) end
+    end
+    doneButton.MouseButton1Click:Connect(close)
+    rootBtn.MouseButton1Click:Connect(close)
+
+    noneButton.MouseButton1Click:Connect(function()
+        if not active or active.Single then return end
+        for _, name in ipairs(active.Items) do active.Store[name] = false end
+        for _, painter in pairs(painters) do painter() end
+        if active.OnToggle then pcall(active.OnToggle) end
+    end)
+    allButton.MouseButton1Click:Connect(function()
+        if not active or active.Single then return end
+        for _, name in ipairs(active.Items) do active.Store[name] = true end
+        for _, painter in pairs(painters) do painter() end
+        if active.OnToggle then pcall(active.OnToggle) end
+    end)
+    search:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = string.lower(search.Text)
+        for name, row in pairs(rows) do
+            row.Visible = query == "" or string.find(string.lower(name), query, 1, true) ~= nil
+        end
+    end)
+
+    SharedTargetOverlay = {
+        Open = function(_, context)
+            if active and active ~= context and active.OnDone then pcall(active.OnDone) end
+            active = context
+            titleLabel.Text = "🎯 " .. tostring(context.Title)
+            noneButton.Visible = not context.Single
+            allButton.Visible = not context.Single
+            search.Text = ""
+            rebuild()
+            root.Visible = true
+        end,
+        Close = close,
+        Rebuild = function(_, context)
+            if active == context then rebuild() end
+        end,
+        Repaint = function(_, context)
+            if active == context then
+                for _, painter in pairs(painters) do painter() end
+            end
+        end,
+        Root = root,
+    }
+    return SharedTargetOverlay
+end
+
+MakeTargetOverlay = function(cfg)
+    local context = {
+        Title = cfg.Title or "Select",
+        Items = cfg.Items or {},
+        Store = cfg.Store or {},
+        DisplayMap = cfg.DisplayMap,
+        OnDone = cfg.OnDone,
+        OnToggle = cfg.OnToggle,
+        Single = cfg.Single == true,
+    }
+    return {
+        Open = function() getSharedTargetOverlay():Open(context) end,
+        SetItems = function(items, displayMap)
+            context.Items = items or {}
+            if displayMap ~= nil then context.DisplayMap = displayMap end
+            getSharedTargetOverlay():Rebuild(context)
+        end,
+        Repaint = function() getSharedTargetOverlay():Repaint(context) end,
+    }
+end
+end -- shared picker lexical scope (does not consume later top-level registers)
+
+-- ── Universal dropdown→overlay binder ──
+local function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
+    opts = opts or {}
+    local multi = opts.multi
+
+    local store = opts.store
+    if not multi then
+        store = {}
+        local cur = opts.get and opts.get()
+        if cur and table.find(items, cur) then store[cur] = true end
+    end
+
+    local function summary()
+        if multi then
+            local picked = {}
+            for _, n in ipairs(items) do if store[n] then picked[#picked + 1] = n end end
+            if #picked == 0 then return "---" end
+            if #picked == #items then return "All" end
+            -- Long multi-value summaries used to run underneath Obsidian's
+            -- dropdown arrow. Keep one exact value useful; summarize the rest.
+            if #picked == 1 then return picked[1] end
+            return #picked .. " selected"
+        else
+            for _, n in ipairs(items) do if store[n] then return n end end
+            return "---"
+        end
+    end
+
+    local dd = groupbox:AddDropdown(dropdownIdx, {
+        Text    = opts.text,
+        Values  = { "---", "All" },
+        Default = "---",
+        Tooltip = opts.tooltip or ("Open " .. title .. "."),
+    })
+
+    local arrowRef
+    local function styleValueText()
+        local holder = dd.Holder
+        if not holder then return end
+        local val = summary()
+        for _, e in ipairs(holder:GetDescendants()) do
+            if (e:IsA("TextLabel") or e:IsA("TextButton")) and e.Name ~= "CloverHubOverlayCatcher" then
+                pcall(function()
+                    e.TextXAlignment = Enum.TextXAlignment.Left
+                    e.TextYAlignment = Enum.TextYAlignment.Center
+                    if not e.TextScaled and e.TextSize < 15 then e.TextSize = 15 end
+                    if e.Text == val then
+                        if e.Parent and e.Parent:IsA("GuiObject") then
+                            -- Reserve a fixed right gutter for the chevron and
+                            -- clip the value before it can overlap the icon.
+                            e.Size = UDim2.new(1, -34, 1, 0)
+                            e.ClipsDescendants = true
+                        end
+                        local p = e:FindFirstChildOfClass("UIPadding")
+                        if not p then p = Instance.new("UIPadding"); p.Parent = e end
+                        p.PaddingLeft = UDim.new(0, 2)
+                        p.PaddingRight = UDim.new(0, 4)
+                        p.PaddingBottom = UDim.new(0, 3)
+                    end
+                end)
+            end
+        end
+    end
+    local function refreshLabel()
+        local s = summary()
+        pcall(function() dd:SetValues({ s }); dd:SetValue(s) end)
+        styleValueText()
+    end
+    local function setArrowOpen(open)
+        if not arrowRef then return end
+        pcall(function()
+            TweenService:Create(arrowRef, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
+                { Rotation = open and 180 or 0 }):Play()
+        end)
+    end
+
+    local overlay = MakeTargetOverlay({
+        Title  = title,
+        Items  = items,
+        Store  = store,
+        Single = not multi,
+        DisplayMap = opts.displayMap,
+        OnDone = function() setArrowOpen(false) end,
+        OnToggle = function(name)
+            if not multi and name then
+                if opts.set then opts.set(name) end
+            end
+            refreshLabel()
+            if opts.onChange then pcall(opts.onChange) end
+        end,
+    })
+
+    refreshLabel()
+
+    local controller = {
+        Dropdown = dd,
+        Overlay  = overlay,
+        Multi    = multi,
+        GetValue = function()
+            if multi then
+                local out = {}
+                for n in pairs(store) do if store[n] then out[n] = true end end
+                return out
+            else
+                for _, n in ipairs(items) do if store[n] then return n end end
+                return "Any"
+            end
+        end,
+        SetValue = function(_, v)
+            for k in pairs(store) do store[k] = nil end
+            local selectedValue
+            if multi then
+                if type(v) == "table" then
+                    for key, on in pairs(v) do
+                        if on == true then
+                            store[key] = true
+                        elseif type(key) == "number" and type(on) == "string" then
+                            store[on] = true
+                        end
+                    end
+                end
+            else
+                if type(opts.configValueToItem) == "function" then
+                    local ok, mapped = pcall(opts.configValueToItem, v)
+                    if ok then v = mapped end
+                end
+                if type(v) == "string" and v ~= "" and table.find(items, v) then
+                    store[v] = true
+                    selectedValue = v
+                end
+                if opts.set then pcall(opts.set, selectedValue) end
+            end
+            refreshLabel()
+            pcall(function() overlay.Repaint() end)
+        end,
+        SetItems = function(_, newItems, preserveValue)
+            if type(newItems) ~= "table" then return end
+            local previous
+            if not multi then
+                for _, name in ipairs(items) do
+                    if store[name] then previous = name; break end
+                end
+            end
+            items = newItems
+            for name in pairs(store) do
+                if not table.find(items, name) then store[name] = nil end
+            end
+            if not multi and preserveValue and previous and table.find(items, previous) then
+                store[previous] = true
+                if opts.set then pcall(opts.set, previous) end
+            elseif not multi and opts.set then
+                pcall(opts.set, nil)
+            end
+            pcall(function() overlay.SetItems(items, opts.displayMap) end)
+            refreshLabel()
+        end,
+    }
+    if type(opts.configKey) == "string" then
+        local registry = getgenv().__CHSAE_ConfigControllers
+        if type(registry) == "table" then registry[opts.configKey] = controller end
+    end
+
+    task.defer(function()
+        local holder = dd.Holder
+        if not holder then return end
+        local displayBtn = holder:FindFirstChildWhichIsA("TextButton", true)
+        local anchorTo = displayBtn or holder
+
+        local cover = Instance.new("TextButton")
+        cover.Name = "CloverHubOverlayCatcher"
+        cover.BackgroundTransparency = 1
+        cover.Text = ""
+        cover.Size = UDim2.fromScale(1, 1)
+        cover.Position = UDim2.fromScale(0, 0)
+        cover.ZIndex = (anchorTo.ZIndex or 1) + 50
+        cover.Active = true
+        cover.AutoButtonColor = false
+        cover.Parent = anchorTo
+
+        refreshLabel()
+
+        arrowRef = holder:FindFirstChildWhichIsA("ImageLabel", true)
+                or holder:FindFirstChildWhichIsA("ImageButton", true)
+
+        local conn = cover.MouseButton1Click:Connect(function()
+            pcall(function() if dd.Menu and dd.Menu.Close then dd.Menu:Close() end end)
+            if opts.onOpen then pcall(opts.onOpen) end
+            setArrowOpen(true)
+            overlay.Open()
+        end)
+        Library:GiveSignal(conn)
+    end)
+
+    return controller
+end
+
+-- ── Carded button column ──
+local function MakeButtonPanel(groupbox, panelId, buttons)
+    local BTN_BG    = Color3.fromRGB(32, 32, 32)
+    local BTN_HOVER = Color3.fromRGB(42, 42, 42)
+    local BTN_TEXT  = Library.Scheme.FontColor
+    local STROKE    = Library.Scheme.OutlineColor
+
+    local BTN_H  = 30
+    local GAP    = 4
+    local totalH = (#buttons * BTN_H) + ((#buttons - 1) * GAP)
+
+    local panel = Instance.new("Frame")
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel  = 0
+    panel.Size             = UDim2.new(1, 0, 0, totalH)
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection       = Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder           = Enum.SortOrder.LayoutOrder
+    layout.Padding             = UDim.new(0, GAP)
+    layout.Parent              = panel
+
+    for i, def in ipairs(buttons) do
+        local btn = Instance.new("TextButton")
+        btn.Text             = def[1]
+        btn.Font             = Enum.Font.GothamSemibold
+        btn.TextSize         = 13
+        btn.TextColor3       = BTN_TEXT
+        btn.BackgroundColor3 = BTN_BG
+        btn.BorderSizePixel  = 0
+        btn.Size             = UDim2.new(1, 0, 0, BTN_H)
+        btn.LayoutOrder      = i
+        btn.AutoButtonColor  = false
+
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 6)
+        c.Parent = btn
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color           = STROKE
+        stroke.Thickness       = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent          = btn
+
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = BTN_HOVER
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = BTN_BG
+        end)
+        btn.MouseButton1Click:Connect(def[2])
+        btn.Parent = panel
+    end
+
+    groupbox:AddUIPassthrough(panelId, {
+        Instance = panel,
+        Height   = totalH,
+    })
+
+    return panel
+end
+
+-- [[ CH LIST KIT ]] --
+local CHK = {}
+
+-- Construction only: feature workers must never depend on this tab being opened.
+-- Observe the actual canvas because Obsidian's click signal captures Tab.Show
+-- when AddTab runs; replacing Tab.Show later misses mouse/touch navigation.
+function CHK.DeferTabBuild(tab, build, cleanup)
+    if tab.__DeferredBuild then return tab.__DeferredBuild end
+    local state = { phase = "waiting", attempts = 0 }
+    tab.__DeferredBuild = state
+    local canvas = tab.Canvas
+    local connections = {}
+    local function disconnect()
+        for _, connection in ipairs(connections) do connection:Disconnect() end
+        table.clear(connections)
+    end
+    local function alive()
+        return sessionAlive() and not tab.Destroyed
+            and (not canvas or canvas.Parent ~= nil)
+    end
+    local function visible()
+        return not canvas or canvas.Visible
+    end
+    local function requestBuild()
+        if state.phase ~= "waiting" and state.phase ~= "failed" then return end
+        if not alive() then state.phase = "cancelled"; disconnect(); return end
+        if not visible() then return end
+        state.phase = "queued"
+        task.defer(function()
+            if not alive() then state.phase = "cancelled"; disconnect(); return end
+            if not visible() then state.phase = "waiting"; return end
+            state.phase = "building"
+            state.attempts = state.attempts + 1
+            -- A fresh worker owns this identity scope, including any text-size
+            -- yields during construction. Never elevate the UI event's caller.
+            local originalIdentity
+            if type(getthreadidentity) == "function" and type(setthreadidentity) == "function" then
+                local ok, identity = pcall(getthreadidentity)
+                if ok and type(identity) == "number" then
+                    originalIdentity = identity
+                    pcall(setthreadidentity, 8)
+                end
+            end
+            local ok, message = pcall(build, alive)
+            if not alive() then ok, message = false, "session ended during construction" end
+            if ok then
+                state.phase = "ready"
+                disconnect()
+            else
+                if cleanup then pcall(cleanup) end
+                state.phase = alive() and "failed" or "cancelled"
+                if state.phase == "cancelled" then
+                    disconnect()
+                else
+                    warn("[CloverHub] Deferred " .. tostring(tab.Name) .. " UI: " .. tostring(message))
+                    pcall(function()
+                        Library:Notify("Could not build " .. tostring(tab.Name) .. ". Reopen the tab to retry.", 5)
+                    end)
+                end
+            end
+            if originalIdentity ~= nil then pcall(setthreadidentity, originalIdentity) end
+        end)
+    end
+    if canvas then
+        connections[#connections + 1] = canvas:GetPropertyChangedSignal("Visible"):Connect(requestBuild)
+        connections[#connections + 1] = canvas.Destroying:Connect(function()
+            state.phase = "cancelled"
+            disconnect()
+        end)
+        for _, connection in ipairs(connections) do
+            tab.Connections[#tab.Connections + 1] = connection
+            local runtimeConns = getgenv().__CHSAE_RuntimeConns
+            if type(runtimeConns) == "table" then runtimeConns[#runtimeConns + 1] = connection end
+        end
+    end
+    -- Already-visible tabs and older libraries without a canvas still work.
+    requestBuild()
+    return state
+end
+
+CHK.mergeSets = {}
+function CHK.Merge(groupbox, buildFn)
+    local container = groupbox.Container
+    local before = {}
+    for _, child in ipairs(container:GetChildren()) do
+        before[child] = true
+    end
+
+    buildFn()
+
+    -- Obsidian now parents AddLabel's TextLabel directly to the groupbox
+    -- container.  The old merge pass put an opaque card *inside* that label;
+    -- with the library's Sibling ZIndex mode, the child card painted over its
+    -- parent's text.  Give status rows a real ancestor card instead, keeping the
+    -- native label instances intact so Label:SetText/Destroy still work.
+    local set = {}
+    for _, child in ipairs(container:GetChildren()) do
+        if child:IsA("GuiObject") and not before[child] then
+            set[#set + 1] = child
+        end
+    end
+    if #set == 0 then return nil end
+
+    local card = Instance.new("Frame")
+    card.Name = "CloverStatusCard"
+    card:SetAttribute("CloverHubStatusCard", true)
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    card.BorderSizePixel = 0
+    card.LayoutOrder = -1000
+    card.Size = UDim2.new(1, 0, 0, 0)
+    card.ZIndex = 2
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = card
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Library.Scheme.OutlineColor
+    stroke.Thickness = 1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = card
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = card
+    local padding = Instance.new("UIPadding")
+    padding.PaddingBottom = UDim.new(0, 3)
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 3)
+    padding.Parent = card
+
+    for index, member in ipairs(set) do
+        member.LayoutOrder = index
+        member.Parent = card
+        member.ZIndex = math.max(member.ZIndex, card.ZIndex + 1)
+        if member:IsA("TextLabel") then
+            member.AutomaticSize = Enum.AutomaticSize.Y
+            member.Size = UDim2.new(1, 0, 0, math.max(18, member.Size.Y.Offset))
+            member.TextTruncate = Enum.TextTruncate.None
+            member.TextWrapped = true
+        end
+    end
+
+    card.Parent = container
+    -- Key Status rewrites its text every second, and AutomaticSize regrows the
+    -- card each time. Measuring the groupbox once left it at the height the card
+    -- had while still empty, so the countdown spilled past the panel. Track the
+    -- card instead of sampling it.
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        if card.Parent and groupbox.Resize then pcall(function() groupbox:Resize() end) end
+    end)
+    task.defer(function()
+        -- AutomaticSize has not settled on the first deferred frame.
+        for _ = 1, 3 do task.wait() end
+        if card.Parent and groupbox.Resize then pcall(function() groupbox:Resize() end) end
+    end)
+    return card
+end
+
+-- Compact CloverHub slider: a card, clear value, full-width accent track, and a
+-- larger invisible drag target. This replaces Obsidian's default slider visual.
+function CHK.Slider(groupbox, id, info)
+    local minimum = tonumber(info.Min) or 0
+    local maximum = math.max(minimum + 1, tonumber(info.Max) or 100)
+    local rounding = math.max(0, math.floor(tonumber(info.Rounding) or 0))
+    local suffix = tostring(info.Suffix or "")
+    local value = math.clamp(tonumber(info.Default) or minimum, minimum, maximum)
+    local callback
+    local inputService = game:GetService("UserInputService")
+
+    local card = Instance.new("Frame")
+    card.Name = "CloverSlider_" .. tostring(id)
+    card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    card.BorderSizePixel = 0
+    card.Size = UDim2.new(1, 0, 0, 54)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6); corner.Parent = card
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Library.Scheme.OutlineColor; stroke.Thickness = 1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; stroke.Parent = card
+
+    local title = Instance.new("TextLabel")
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(10, 5)
+    title.Size = UDim2.new(0.55, -10, 0, 22)
+    title.FontFace = Library.Scheme.Font
+    title.Text = tostring(info.Text or id)
+    title.TextSize = 13
+    title.TextColor3 = Library.Scheme.FontColor
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = card
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.AnchorPoint = Vector2.new(1, 0)
+    valueLabel.Position = UDim2.new(1, -10, 0, 5)
+    valueLabel.Size = UDim2.new(0.45, 0, 0, 22)
+    valueLabel.FontFace = Library.Scheme.Font
+    valueLabel.TextSize = 13
+    valueLabel.TextColor3 = Library.Scheme.AccentColor
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = card
+
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Position = UDim2.new(0, 10, 0, 35)
+    track.Size = UDim2.new(1, -20, 0, 6)
+    track.BackgroundColor3 = Library:GetBetterColor(Library.Scheme.MainColor, 18)
+    track.BorderSizePixel = 0
+    track.Parent = card
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0); trackCorner.Parent = track
+
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.BackgroundColor3 = Library.Scheme.AccentColor
+    fill.BorderSizePixel = 0
+    fill.Size = UDim2.fromScale(0, 1)
+    fill.Parent = track
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0); fillCorner.Parent = fill
+
+    local knob = Instance.new("Frame")
+    knob.Name = "Knob"
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.fromScale(0, 0.5)
+    knob.Size = UDim2.fromOffset(14, 14)
+    knob.BackgroundColor3 = Library.Scheme.FontColor
+    knob.BorderSizePixel = 0
+    knob.ZIndex = track.ZIndex + 2
+    knob.Parent = track
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0); knobCorner.Parent = knob
+    local knobStroke = Instance.new("UIStroke")
+    knobStroke.Color = Library.Scheme.AccentColor; knobStroke.Thickness = 2; knobStroke.Parent = knob
+
+    local hit = Instance.new("TextButton")
+    hit.Name = "DragTarget"
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.Position = UDim2.new(0, 4, 0, 27)
+    hit.Size = UDim2.new(1, -8, 0, 24)
+    hit.ZIndex = knob.ZIndex + 1
+    hit.Parent = card
+
+    local function render(fire)
+        local factor = 10 ^ rounding
+        value = math.floor(math.clamp(value, minimum, maximum) * factor + 0.5) / factor
+        local ratio = (value - minimum) / (maximum - minimum)
+        fill.Size = UDim2.fromScale(ratio, 1)
+        knob.Position = UDim2.fromScale(ratio, 0.5)
+        valueLabel.Text = (rounding == 0 and tostring(math.floor(value))
+            or string.format("%." .. rounding .. "f", value)) .. suffix
+        if fire and callback then pcall(callback, value) end
+    end
+    local function setFromX(x)
+        if track.AbsoluteSize.X <= 0 then return end
+        local ratio = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        value = minimum + (maximum - minimum) * ratio
+        render(true)
+    end
+
+    local dragging, touchInput = false, nil
+    Library:GiveSignal(hit.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging, touchInput = true, input.UserInputType == Enum.UserInputType.Touch and input or nil
+            setFromX(input.Position.X)
+        end
+    end))
+    Library:GiveSignal(inputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            setFromX(inputService:GetMouseLocation().X)
+        elseif touchInput and input == touchInput then
+            setFromX(input.Position.X)
+        end
+    end))
+    Library:GiveSignal(inputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input == touchInput then
+            dragging, touchInput = false, nil
+        end
+    end))
+
+    groupbox:AddUIPassthrough(id, { Instance = card, Height = 54 })
+    render(false)
+    task.defer(function() render(false) end)
+    return {
+        OnChanged = function(_, fn) callback = fn; return fn end,
+        -- `silent` updates the visible value without treating a programmatic
+        -- display sync as new user input. Auto Calibrate uses this so its live
+        -- effective speed can move the slider while the user's chosen speed
+        -- remains the recovery floor.
+        SetValue = function(_, newValue, silent)
+            value = tonumber(newValue) or value
+            render(silent ~= true)
+        end,
+        GetValue = function() return value end,
+        Holder = card,
+    }
+end
+
+-- Compact metric cards used by Home. Values update in place, so changing live
+-- stats never rebuilds the groupbox or produces wrapped orphan lines.
+function CHK.SetMetricValue(values, rawValues, colors, key, newValue, color)
+    key = tostring(key)
+    local label = values[key]
+    if not label then return false end
+    local display = tostring(newValue or "--")
+    local textChanged = rawValues[key] ~= display
+    local colorChanged = color ~= nil and colors[key] ~= color
+    if not textChanged and not colorChanged then return true end
+
+    -- Save signals resume at game identity (2), which cannot access our CoreGui
+    -- labels. Borrow UI identity only for these non-yielding writes, then restore
+    -- the caller. Never mark a value rendered until its property write succeeds.
+    local originalIdentity
+    if type(getthreadidentity) == "function" and type(setthreadidentity) == "function" then
+        local ok, identity = pcall(getthreadidentity)
+        if ok and type(identity) == "number" then
+            originalIdentity = identity
+            pcall(setthreadidentity, 8)
+        end
+    end
+    local ok, message = pcall(function()
+        if textChanged then
+            label.Text = "<b>" .. display .. "</b>"
+            rawValues[key] = display
+        end
+        if colorChanged then
+            label.TextColor3 = color
+            colors[key] = color
+        end
+    end)
+    if originalIdentity ~= nil then pcall(setthreadidentity, originalIdentity) end
+    return ok, message
+end
+
+-- Shared values stay current for Black Screen even while Home is hidden.
+-- Only presentation is suspended; gameplay/data producers retain their cadence.
+function CHK.BindMetricView(panel, values)
+    local desired, desiredColors, rendered, renderedColors, dirty = {}, {}, {}, {}, {}
+    local ancestors, visibilityConnections, lifetimeConnections = {}, {}, {}
+    local queued, stopped, rebind, visible = false, false, true, nil
+    local view = { Holder = panel }
+    local function disconnectAll(connections)
+        for _, connection in ipairs(connections) do connection:Disconnect() end
+        table.clear(connections)
+    end
+    function view:Disconnect()
+        if stopped then return end
+        stopped = true
+        disconnectAll(visibilityConnections)
+        disconnectAll(lifetimeConnections)
+        table.clear(ancestors)
+    end
+    local requestFlush
+    local function refresh()
+        if rebind then
+            disconnectAll(visibilityConnections)
+            table.clear(ancestors)
+            local node = panel
+            while node do
+                local property = node:IsA("GuiObject") and "Visible"
+                    or (node:IsA("LayerCollector") and "Enabled" or nil)
+                if property then
+                    ancestors[#ancestors + 1] = { node = node, property = property }
+                    visibilityConnections[#visibilityConnections + 1] =
+                        node:GetPropertyChangedSignal(property):Connect(function()
+                            visible = nil
+                            requestFlush()
+                        end)
+                end
+                node = node.Parent
+            end
+            rebind = false
+        end
+        local attached = false
+        visible = true
+        for _, ancestor in ipairs(ancestors) do
+            if ancestor.property == "Enabled" and ancestor.node.Parent ~= nil then attached = true end
+            if not ancestor.node[ancestor.property] then visible = false end
+        end
+        visible = visible and attached
+        if not visible then return end
+        for key in pairs(dirty) do
+            if CHK.SetMetricValue(values, rendered, renderedColors, key, desired[key], desiredColors[key]) then
+                dirty[key] = nil
+            end
+        end
+    end
+    requestFlush = function()
+        if stopped or queued then return end
+        queued = true
+        task.defer(function()
+            queued = false
+            if stopped then return end
+            if not sessionAlive() then view:Disconnect(); return end
+            -- Visibility reads also need CoreGui access. Keep this entire
+            -- non-yielding flush on an isolated, identity-restored worker.
+            local originalIdentity
+            if type(getthreadidentity) == "function" and type(setthreadidentity) == "function" then
+                local ok, identity = pcall(getthreadidentity)
+                if ok and type(identity) == "number" then
+                    originalIdentity = identity
+                    pcall(setthreadidentity, 8)
+                end
+            end
+            local ok = pcall(refresh)
+            if not ok then visible = nil end -- retry on the next value/event, never a busy loop
+            if originalIdentity ~= nil then pcall(setthreadidentity, originalIdentity) end
+        end)
+    end
+    function view:Set(key, newValue, color)
+        key = tostring(key)
+        if stopped or not values[key] then return false end
+        local display = tostring(newValue or "--")
+        if desired[key] ~= display or (color ~= nil and desiredColors[key] ~= color) then
+            desired[key] = display
+            if color ~= nil then desiredColors[key] = color end
+            dirty[key] = true
+        end
+        if dirty[key] and visible ~= false then requestFlush() end
+        return true -- accepted into the model, not an acknowledgment of a GUI write
+    end
+    function view:Get(key) return desired[tostring(key)] or "--" end
+    lifetimeConnections[#lifetimeConnections + 1] = panel.AncestryChanged:Connect(function()
+        rebind, visible = true, nil
+        requestFlush()
+    end)
+    lifetimeConnections[#lifetimeConnections + 1] = panel.Destroying:Connect(function() view:Disconnect() end)
+    -- One cleanup owner per view; reparenting replaces its private subscriptions
+    -- without growing the session's registry on every pop-out/reparent.
+    local runtimeConns = getgenv().__CHSAE_RuntimeConns or {}
+    getgenv().__CHSAE_RuntimeConns = runtimeConns
+    runtimeConns[#runtimeConns + 1] = view
+    requestFlush()
+    return view
+end
+
+function CHK.Metrics(groupbox, id, definitions, columns)
+    columns = math.max(1, math.floor(tonumber(columns) or 2))
+    local gap, cellHeight = 4, 42
+    local rows = math.max(1, math.ceil(#definitions / columns))
+    local totalHeight = rows * cellHeight + (rows - 1) * gap
+    local values = {}
+
+    local panel = Instance.new("Frame")
+    panel.Name = "CloverMetrics_" .. tostring(id)
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel = 0
+    panel.Size = UDim2.new(1, 0, 0, totalHeight)
+
+    local layout = Instance.new("UIGridLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.CellPadding = UDim2.fromOffset(gap, gap)
+    layout.CellSize = UDim2.new(1 / columns,
+        columns == 1 and 0 or -math.ceil(gap * (columns - 1) / columns), 0, cellHeight)
+    layout.Parent = panel
+
+    for index, definition in ipairs(definitions) do
+        local key = tostring(definition.key or index)
+        local accent = definition.color or Library.Scheme.AccentColor
+        local card = Instance.new("Frame")
+        card.Name = "Metric_" .. key
+        card.LayoutOrder = index
+        card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+        card.BorderSizePixel = 0
+        card.Parent = panel
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6); corner.Parent = card
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Library.Scheme.OutlineColor
+        stroke.Thickness = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = card
+
+        local strip = Instance.new("Frame")
+        strip.Name = "Accent"
+        strip.Position = UDim2.fromOffset(0, 8)
+        strip.Size = UDim2.new(0, 3, 1, -16)
+        strip.BackgroundColor3 = accent
+        strip.BorderSizePixel = 0
+        strip.Parent = card
+        local stripCorner = Instance.new("UICorner")
+        stripCorner.CornerRadius = UDim.new(1, 0); stripCorner.Parent = strip
+
+        local icon = Instance.new("TextLabel")
+        icon.BackgroundTransparency = 1
+        icon.Position = UDim2.fromOffset(8, 5)
+        icon.Size = UDim2.fromOffset(19, 32)
+        icon.FontFace = Library.Scheme.Font
+        icon.Text = tostring(definition.icon or "•")
+        icon.TextSize = 13
+        icon.TextColor3 = accent
+        icon.Parent = card
+
+        local title = Instance.new("TextLabel")
+        title.BackgroundTransparency = 1
+        title.Position = UDim2.fromOffset(29, 4)
+        title.Size = UDim2.new(1, -35, 0, 15)
+        title.FontFace = Library.Scheme.Font
+        title.Text = tostring(definition.title or key)
+        title.TextSize = 10
+        title.TextColor3 = Color3.fromRGB(155, 158, 168)
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = card
+
+        local value = Instance.new("TextLabel")
+        value.BackgroundTransparency = 1
+        value.Position = UDim2.fromOffset(29, 18)
+        value.Size = UDim2.new(1, -35, 0, 19)
+        value.FontFace = Library.Scheme.Font
+        value.RichText = true
+        value.Text = "<b>--</b>"
+        value.TextSize = 12
+        value.TextColor3 = definition.valueColor or Library.Scheme.FontColor
+        value.TextXAlignment = Enum.TextXAlignment.Left
+        value.TextTruncate = Enum.TextTruncate.AtEnd
+        value.Parent = card
+        values[key] = value
+    end
+
+    groupbox:AddUIPassthrough(id, { Instance = panel, Height = totalHeight })
+    return CHK.BindMetricView(panel, values)
+end
+
+-- Single large notice card using the same background, outline and accent-strip
+-- language as the Home metric cards. It also works inside native Dialogs,
+-- because Obsidian Dialogs inherit the standard Groupbox element methods.
+function CHK.Notice(groupbox, id, info)
+    info = info or {}
+    local height = math.max(68, tonumber(info.height) or 78)
+    local accent = info.accent or Library.Scheme.AccentColor
+    local z = tonumber(info.zIndex) or 2
+
+    local panel = Instance.new("Frame")
+    panel.Name = "CloverNotice_" .. tostring(id)
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel = 0
+    panel.Size = UDim2.new(1, 0, 0, height)
+    panel.ZIndex = z
+
+    local card = Instance.new("Frame")
+    card.Name = "NoticeCard"
+    card.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    card.BorderSizePixel = 0
+    card.Size = UDim2.fromScale(1, 1)
+    card.ZIndex = z
+    card.Parent = panel
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = card
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Library.Scheme.OutlineColor
+    stroke.Thickness = 1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = card
+
+    local strip = Instance.new("Frame")
+    strip.Name = "Accent"
+    strip.Position = UDim2.fromOffset(0, 9)
+    strip.Size = UDim2.new(0, 3, 1, -18)
+    strip.BackgroundColor3 = accent
+    strip.BorderSizePixel = 0
+    strip.ZIndex = z + 1
+    strip.Parent = card
+    local stripCorner = Instance.new("UICorner")
+    stripCorner.CornerRadius = UDim.new(1, 0)
+    stripCorner.Parent = strip
+
+    local title = Instance.new("TextLabel")
+    title.Name = "NoticeTitle"
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.fromOffset(14, 7)
+    title.Size = UDim2.new(1, -24, 0, 22)
+    title.FontFace = Library.Scheme.Font
+    title.RichText = true
+    title.Text = "<b>" .. tostring(info.title or "NOTICE") .. "</b>"
+    title.TextSize = tonumber(info.titleSize) or 16
+    title.TextColor3 = info.titleColor or accent
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextYAlignment = Enum.TextYAlignment.Center
+    title.ZIndex = z + 1
+    title.Parent = card
+
+    local body = Instance.new("TextLabel")
+    body.Name = "NoticeBody"
+    body.BackgroundTransparency = 1
+    body.Position = UDim2.fromOffset(14, 30)
+    body.Size = UDim2.new(1, -24, 1, -36)
+    body.FontFace = Library.Scheme.Font
+    body.RichText = true
+    body.Text = tostring(info.text or "")
+    body.TextSize = tonumber(info.textSize) or 14
+    body.TextColor3 = info.textColor or Library.Scheme.FontColor
+    body.TextWrapped = true
+    body.TextXAlignment = Enum.TextXAlignment.Left
+    body.TextYAlignment = Enum.TextYAlignment.Top
+    body.ZIndex = z + 1
+    body.Parent = card
+
+    groupbox:AddUIPassthrough(id, { Instance = panel, Height = height })
+    return { Holder = panel, Card = card, Title = title, Body = body }
+end
+
+-- Compact count/value summary for irreversible seller dialogs. Exact UIDs and
+-- filter state remain in the private snapshot/fingerprint; the UI intentionally
+-- avoids a noisy per-item list.
+function CHK.SalePreview(groupbox, id, info)
+    info = info or {}
+    local height = math.max(42, tonumber(info.height) or 46)
+    local z = tonumber(info.zIndex) or 9003
+    local accent = info.accent or Color3.fromRGB(248, 113, 113)
+
+    local panel = Instance.new("Frame")
+    panel.Name = "CloverSalePreview_" .. tostring(id)
+    panel.BackgroundTransparency = 1
+    panel.BorderSizePixel = 0
+    panel.Size = UDim2.new(1, 0, 0, height)
+    panel.ZIndex = z
+
+    local summaryCard = Instance.new("Frame")
+    summaryCard.Name = "SummaryCard"
+    summaryCard.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    summaryCard.BorderSizePixel = 0
+    summaryCard.Size = UDim2.fromScale(1, 1)
+    summaryCard.ZIndex = z
+    summaryCard.Parent = panel
+    local summaryCorner = Instance.new("UICorner")
+    summaryCorner.CornerRadius = UDim.new(0, 6)
+    summaryCorner.Parent = summaryCard
+    local summaryStroke = Instance.new("UIStroke")
+    summaryStroke.Color = Library.Scheme.OutlineColor
+    summaryStroke.Thickness = 1
+    summaryStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    summaryStroke.Parent = summaryCard
+
+    local summaryStrip = Instance.new("Frame")
+    summaryStrip.Position = UDim2.fromOffset(0, 7)
+    summaryStrip.Size = UDim2.new(0, 3, 1, -14)
+    summaryStrip.BackgroundColor3 = accent
+    summaryStrip.BorderSizePixel = 0
+    summaryStrip.ZIndex = z + 1
+    summaryStrip.Parent = summaryCard
+    local stripCorner = Instance.new("UICorner")
+    stripCorner.CornerRadius = UDim.new(1, 0)
+    stripCorner.Parent = summaryStrip
+
+    local summaryTitle = Instance.new("TextLabel")
+    summaryTitle.BackgroundTransparency = 1
+    summaryTitle.Position = UDim2.fromOffset(14, 0)
+    summaryTitle.Size = UDim2.new(1, -24, 1, 0)
+    summaryTitle.FontFace = Library.Scheme.Font
+    summaryTitle.Text = "0 pets selected"
+    summaryTitle.TextSize = 14
+    summaryTitle.TextColor3 = Library.Scheme.FontColor
+    summaryTitle.TextXAlignment = Enum.TextXAlignment.Left
+    summaryTitle.TextYAlignment = Enum.TextYAlignment.Center
+    summaryTitle.ZIndex = z + 1
+    summaryTitle.Parent = summaryCard
+
+    local function render(snapshot)
+        snapshot = type(snapshot) == "table" and snapshot or {}
+        summaryTitle.Text = tostring(snapshot.Summary or "0 items selected")
+    end
+
+    groupbox:AddUIPassthrough(id, { Instance = panel, Height = height })
+    render(info.snapshot)
+    return {
+        Holder = panel,
+        SetSnapshot = function(_, snapshot) render(snapshot) end,
+    }
+end
+
+-- [[ SAFE NOTIFICATION SERVICE ]] --
+local _notificationQueue = {}
+local originalNotify = Library.Notify
+local notificationWorkerRunning = false
+
+local function SafeNotify(msg, duration)
+    table.insert(_notificationQueue, { msg = tostring(msg), duration = duration or 5 })
+    if notificationWorkerRunning then return end
+    notificationWorkerRunning = true
+    task.spawn(function()
+        while sessionAlive() and #_notificationQueue > 0 do
+            local item = table.remove(_notificationQueue, 1)
+            pcall(function()
+                originalNotify(Library, item.msg, item.duration)
+            end)
+            -- Yield once only when work exists; there is no permanent 10 Hz
+            -- notification poll while the queue is empty.
+            RunService.Heartbeat:Wait()
+        end
+        notificationWorkerRunning = false
+    end)
+end
+
+Library.Notify = function(self, msg, duration)
+    SafeNotify(msg, duration)
+end
 
 -- [[ 2. HELPERS ]] --
 -- Game-HUD-style number format: TRUNCATED to 1 decimal, ".0" stripped —
@@ -706,44 +2125,427 @@ local function getRarityData()
     return entries
 end
 
--- [[ 3. WINDUI WINDOW + TABS ]] --
-Window = WindUI:CreateWindow({Title="CloverHub", Author="Steal An Egg", Icon="solar:wind-bold", Theme="Dark", ToggleKey=Enum.KeyCode.LeftControl})
-Window:Tag({Title=RELEASE_VERSION .. " • Steal An Egg", Color="ElementBackground"})
-local function addTab(title, icon) return Window:Tab({Title=title, Icon=icon}) end
-local HomeTab=addTab("HOME","house")
-local EggTab=addTab("EGGS","egg")
-local ProgressionTab=addTab("PROGRESSION","trophy")
-local SellTab=addTab("SELL","store")
-Window.__FuseTab=addTab("FUSE","combine")
-Window.__ServerTab=addTab("SERVER","server")
-local EventTab=addTab("EVENT","sparkles")
-Window.__WebhookTab=addTab("WEBHOOK","send")
-Window.__AccountTab=addTab("ACCOUNT","user")
-local SettingsTab=addTab("SETTINGS","settings")
-local RiftBox
-Window.__ApplyMobileScrollFix=function() end
-Window.MainFrame=compatGui
-Window.AddDialog=function(self,id,spec)
-    spec=spec or {}; local dialog={Destroyed=false,Container=compatGui}; local buttons={}
-    for _,key in ipairs({"Cancel","Confirm"}) do local def=spec.FooterButtons and spec.FooterButtons[key]; if def then buttons[#buttons+1]={Title=def.Title or key,Variant=def.Variant=="Destructive" and "Primary" or (def.Variant or "Primary"),Callback=function() if def.Callback then def.Callback(dialog) end end} end end
-    function dialog:Dismiss() self.Destroyed=true end; function dialog:Resize() end
-    pcall(function() dialog.Native=self:Dialog({Title=spec.Title or tostring(id),Content=spec.Description or "",Buttons=buttons}) end)
-    return dialog
+-- [[ WINDUI HELPER OVERRIDES ]] --
+-- The original helper bodies above are intentionally left in the source for
+-- reference, but these replacements are the only versions used by the new UI.
+local function NativeNoopStyle(_)
+    return true
 end
-local function bindGroupboxMethods(tab)
-    function tab:AddLeftGroupbox(title) return makeSection(self,title) end
-    function tab:AddRightGroupbox(title) return makeSection(self,title) end
-    function tab:AddGroupbox(info) return makeSection(self,type(info)=="table" and info.Name or info) end
-end
-for _,tab in ipairs({HomeTab,EggTab,ProgressionTab,SellTab,Window.__FuseTab,Window.__ServerTab,EventTab,Window.__WebhookTab,Window.__AccountTab,SettingsTab}) do bindGroupboxMethods(tab) end
-Library.Toggled=true
+MakeCollapsible = NativeNoopStyle
+StyleGroupboxPanel = NativeNoopStyle
 
+function CHK.DeferTabBuild(tab, build, cleanup)
+    local state = { phase = "ready", attempts = 1 }
+    if type(build) == "function" then
+        local ok, err = pcall(build, function() return sessionAlive() end)
+        if not ok then
+            state.phase = "failed"
+            state.error = tostring(err)
+        end
+    end
+    if type(cleanup) == "function" then
+        state.cleanup = cleanup
+    end
+    return state
+end
+
+function CHK.Slider(groupbox, id, info)
+    info = info or {}
+    local element = groupbox.__section:Slider({
+        Title = tostring(info.Text or id),
+        Desc = info.Description or info.Desc,
+        Value = {
+            Min = tonumber(info.Min) or 0,
+            Max = tonumber(info.Max) or 100,
+            Default = tonumber(info.Default) or tonumber(info.Min) or 0,
+        },
+        Step = tonumber(info.Step) or 1,
+        Callback = info.Callback,
+    })
+    return element
+end
+
+function CHK.Metrics(groupbox, id, definitions, columns)
+    local state = {}
+    local lines = {}
+    for _, definition in ipairs(definitions or {}) do
+        local key = tostring(definition.key or #lines + 1)
+        lines[#lines + 1] = tostring(definition.title or key) .. ": --"
+        state[key] = "--"
+    end
+    local paragraph = groupbox.__section:Paragraph({
+        Title = tostring(id or "Metrics"),
+        Desc = table.concat(lines, "\n"),
+    })
+    local view = { Holder = paragraph }
+    function view:Set(key, value)
+        key = tostring(key)
+        state[key] = tostring(value)
+        local out = {}
+        for _, definition in ipairs(definitions or {}) do
+            local k = tostring(definition.key or #out + 1)
+            out[#out + 1] = tostring(definition.title or k) .. ": " .. tostring(state[k] or "--")
+        end
+        pcall(function() paragraph:SetDesc(table.concat(out, "\n")) end)
+        return true
+    end
+    function view:Get(key)
+        return state[tostring(key)] or "--"
+    end
+    function view:Disconnect() end
+    return view
+end
+
+function CHK.Notice(groupbox, id, info)
+    info = info or {}
+    local paragraph = groupbox.__section:Paragraph({
+        Title = tostring(info.title or info.Title or id or "Notice"),
+        Desc = tostring(info.text or info.desc or info.Description or ""),
+    })
+    return {
+        Holder = paragraph,
+        SetText = function(_, text)
+            pcall(function() paragraph:SetDesc(tostring(text or "")) end)
+        end,
+    }
+end
+
+function CHK.SalePreview(groupbox, id, info)
+    info = info or {}
+    local paragraph = groupbox.__section:Paragraph({
+        Title = tostring(info.title or info.Title or id or "Sale Preview"),
+        Desc = "",
+    })
+    local obj = { Holder = paragraph }
+    function obj:SetSnapshot(_, snapshot)
+        snapshot = type(snapshot) == "table" and snapshot or {}
+        local summary = snapshot.Summary or snapshot.Text or (tostring(snapshot.Count or 0) .. " items selected")
+        pcall(function() paragraph:SetDesc(tostring(summary)) end)
+    end
+    return obj
+end
+
+function MakeButtonPanel(groupbox, panelId, buttons)
+    local created = {}
+    for _, def in ipairs(buttons or {}) do
+        created[#created + 1] = groupbox.__section:Button({
+            Title = tostring(def[1] or "Button"),
+            Callback = type(def[2]) == "function" and def[2] or function() end,
+        })
+    end
+    return created
+end
+
+function BindDropdownOverlay(groupbox, dropdownIdx, title, items, opts)
+    opts = opts or {}
+    items = items or {}
+    local current
+    if not opts.multi and type(opts.get) == "function" then
+        pcall(function() current = opts.get() end)
+    end
+    if not opts.multi and not table.find(items, current) then
+        current = nil
+    end
+
+    local element = groupbox.__section:Dropdown({
+        Title = tostring(opts.text or title or dropdownIdx),
+        Values = items,
+        Value = current,
+        Multi = opts.multi == true,
+        AllowNone = true,
+        Callback = function(value)
+            if opts.multi then
+                local selected = {}
+                if type(value) == "table" then
+                    for _, v in ipairs(value) do
+                        if type(v) == "string" then selected[v] = true end
+                    end
+                    for k, v in pairs(value) do
+                        if type(k) == "string" and v == true then selected[k] = true end
+                    end
+                end
+                if opts.store then
+                    for k in pairs(opts.store) do opts.store[k] = nil end
+                    for k, v in pairs(selected) do if v then opts.store[k] = true end end
+                end
+            else
+                if opts.set then pcall(opts.set, value) end
+            end
+            if opts.onChange then pcall(opts.onChange, value) end
+        end,
+    })
+
+    local controller = {
+        Dropdown = element,
+        Overlay = { Open = function() end, SetItems = function() end, Repaint = function() end },
+        Multi = opts.multi == true,
+    }
+
+    function controller:GetValue()
+        if opts.multi then
+            local out = {}
+            if opts.store then
+                for k, v in pairs(opts.store) do if v then out[k] = true end end
+            end
+            return out
+        end
+        if type(opts.get) == "function" then
+            local ok, value = pcall(opts.get)
+            if ok then return value end
+        end
+        return current or "Any"
+    end
+
+    function controller:SetValue(_, value)
+        if opts.multi then
+            if opts.store then
+                for k in pairs(opts.store) do opts.store[k] = nil end
+                if type(value) == "table" then
+                    for k, v in pairs(value) do
+                        if type(k) == "string" and v == true then opts.store[k] = true end
+                        if type(v) == "string" then opts.store[v] = true end
+                    end
+                end
+            end
+            pcall(function() element:Set(value) end)
+        else
+            current = value
+            if opts.set then pcall(opts.set, value) end
+            pcall(function() element:Set(value) end)
+        end
+    end
+
+    function controller:SetItems(_, newItems, preserve)
+        if type(newItems) ~= "table" then return end
+        items = newItems
+        pcall(function() element:SetValues(newItems) end)
+        if preserve and current and table.find(items, current) then
+            pcall(function() element:Set(current) end)
+        end
+    end
+
+    if type(opts.configKey) == "string" then
+        local registry = getgenv().__CHSAE_ConfigControllers
+        if type(registry) == "table" then registry[opts.configKey] = controller end
+    end
+
+    return controller
+end
+
+function CHK.Merge(groupbox, buildFn)
+    if type(buildFn) == "function" then
+        return pcall(buildFn)
+    end
+end
+
+CHK.CardifyBox = NativeNoopStyle
+
+-- [[ 3. WINDOW + TABS ]] --
+local Window = WindWindow
+
+Window.__ApplyMobileScrollFix = function()
+    return true
+end
+
+local function applyResponsiveUIScale()
+    local camera = workspace.CurrentCamera
+    if not camera then return 1 end
+
+    local viewport = camera.ViewportSize
+    local scale = math.min(
+        1,
+        (viewport.X - WINDOW_MARGIN) / BASE_WINDOW_SIZE.X,
+        (viewport.Y - WINDOW_MARGIN) / BASE_WINDOW_SIZE.Y
+    )
+    scale = math.clamp(scale, 0.55, 1)
+    Library:SetDPIScale(scale * 100)
+
+    local mainFrame = Library.ScreenGui and Library.ScreenGui:FindFirstChild("Main")
+    if mainFrame and mainFrame:IsA("GuiObject") then
+        mainFrame.Position = UDim2.new(
+            0.5, -(BASE_WINDOW_SIZE.X * scale) / 2,
+            0.5, -(BASE_WINDOW_SIZE.Y * scale) / 2
+        )
+    end
+    return scale
+end
+applyResponsiveUIScale()
+
+local HomeTab     = Window:AddTab("HOME", "house")
+local EggTab      = Window:AddTab("EGGS", "egg")
+local ProgressionTab = Window:AddTab("PROGRESSION", "trophy")
+local SellTab     = Window:AddTab("SELL", "store")
+Window.__FuseTab = Window:AddTab("FUSE", "combine")
+Window.__ServerTab = Window:AddTab("SERVER", "server")
+local EventTab    = Window:AddTab("EVENT", "sparkles")
+Window.__WebhookTab = Window:AddTab("WEBHOOK", "send")
+Window.__AccountTab = Window:AddTab("ACCOUNT", "user")
+local SettingsTab = Window:AddTab("SETTINGS", "settings")
+local RiftBox
+
+-- Obsidian currently builds each tab as two nested, invisible-scrollbar
+-- ScrollingFrames. On touch devices, the non-scrolling groupbox frames can win
+-- the gesture before their scrollable tab side sees it. Keep the library's
+-- desktop layout, but make the actual tab sides explicit touch targets and
+-- disable only nested frames that have no scroll range of their own.
+Window.__ApplyMobileScrollFix = function(onlyTab)
+    local inputService = game:GetService("UserInputService")
+    if not (Library.IsMobile or inputService.TouchEnabled) then return end
+
+    for _, tab in ipairs(onlyTab and { onlyTab } or {
+        HomeTab, EggTab, ProgressionTab, SellTab, EventTab,
+        Window.__WebhookTab, Window.__AccountTab, SettingsTab,
+    }) do
+        for _, side in ipairs(tab.Sides or {}) do
+            pcall(function()
+                side.Active = true
+                side.ScrollingEnabled = true
+                side.ScrollingDirection = Enum.ScrollingDirection.Y
+                side.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+                -- Swiping drives the scroll; no visible bar is required.
+                side.ScrollBarThickness = 0
+                side.ScrollBarImageTransparency = 1
+                side.VerticalScrollBarInset = Enum.ScrollBarInset.None
+            end)
+
+            for _, nested in ipairs(side:GetDescendants()) do
+                if nested:IsA("ScrollingFrame")
+                    and nested.AbsoluteCanvasSize.Y <= nested.AbsoluteWindowSize.Y + 2 then
+                    nested.ScrollingEnabled = false
+                    nested.Active = false
+                end
+            end
+        end
+    end
+end
+
+-- HOME layout: Session + Live Stats stacked LEFT, Server top-RIGHT.
 local SessionBox = HomeTab:AddLeftGroupbox("⏱️ Session")
 
 -- [[ DROPDOWN / INPUT HEIGHT + CORNER PATCH + LAZY DROPDOWN LISTS ]] --
--- Removed from the Obsidian migration. WindUI creates and manages these
--- controls natively; the old patch accessed Obsidian internals and stopped
--- the script before the first tab could finish building.
+do
+    local EXTRA_HEIGHT  = 6
+    local CUSTOM_RADIUS = 8
+
+    local Funcs = getmetatable(SessionBox).__index
+
+    local function MakeDropdownLazy(Dropdown, startDirty)
+        local origBuild = Dropdown.BuildDropdownList
+        local menu = Dropdown.Menu
+        if not (origBuild and menu and menu.Open) then return end
+
+        local dirty = (startDirty == true)
+
+        Dropdown.BuildDropdownList = function(...)
+            if menu.Active then
+                dirty = false
+                return origBuild(...)
+            end
+            dirty = true
+        end
+
+        local origOpen = menu.Open
+        menu.Open = function(mself, ...)
+            if dirty then
+                dirty = false
+                origBuild()
+            end
+            return origOpen(mself, ...)
+        end
+    end
+
+    local OriginalAddDropdown = Funcs.AddDropdown
+    Funcs.AddDropdown = function(self, Idx, Info)
+        local stashedValues = nil
+        if type(Info) == "table" and type(Info.Values) == "table"
+            and #Info.Values > 40 and Info.Default == nil then
+            stashedValues = Info.Values
+            Info.Values = {}
+        end
+
+        local Dropdown = OriginalAddDropdown(self, Idx, Info)
+
+        MakeDropdownLazy(Dropdown, stashedValues ~= nil)
+        if stashedValues then
+            Dropdown.Values = stashedValues
+            Dropdown.DefaultValues = stashedValues
+        end
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local DisplayContainer = Holder:FindFirstChildWhichIsA("TextButton")
+            if DisplayContainer then
+                DisplayContainer.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+
+                local existingCorner = DisplayContainer:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = DisplayContainer
+                end
+
+                local DisplayButton = DisplayContainer:FindFirstChildWhichIsA("TextButton")
+                if DisplayButton then
+                    DisplayButton.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                end
+
+                DisplayContainer.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(DisplayContainer:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+            end
+        end
+
+        return Dropdown
+    end
+
+    local OriginalAddInput = Funcs.AddInput
+    Funcs.AddInput = function(self, Idx, Info)
+        local Input = OriginalAddInput(self, Idx, Info)
+
+        local Children = self.Container:GetChildren()
+        local Holder = Children[#Children]
+
+        if Holder and Holder:IsA("Frame") then
+            local hasLabel = Holder.Size.Y.Offset > 21
+            Holder.Size = UDim2.new(1, 0, 0, (hasLabel and 39 or 21) + EXTRA_HEIGHT)
+
+            local Box = Holder:FindFirstChildWhichIsA("TextBox")
+            if Box then
+                Box.Size = UDim2.new(1, 0, 0, 21 + EXTRA_HEIGHT)
+                Box.ClearTextOnFocus = false
+                Box.TextScaled = false
+                Box.TextSize = 13
+                Box.TextYAlignment = Enum.TextYAlignment.Center
+                for _, d in ipairs(Box:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("TextButton") then
+                        d.TextYAlignment = Enum.TextYAlignment.Center
+                    end
+                end
+
+                local existingCorner = Box:FindFirstChildOfClass("UICorner")
+                if existingCorner then
+                    existingCorner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                else
+                    local corner = Instance.new("UICorner")
+                    corner.CornerRadius = UDim.new(0, CUSTOM_RADIUS)
+                    corner.Parent = Box
+                end
+            end
+        end
+
+        return Input
+    end
+end
 
 -- [[ 4. SETTINGS STATE ]] --
 local Settings = {
@@ -8963,8 +10765,7 @@ do
         if not ok then RuntimeStatus.statusLabelCache[trailStatusLbl] = nil end
         return ok
     end)
-    -- WindUI sections do not expose the old Obsidian Container.Destroying signal.
-    -- The controller owns its status connection independently.
+    trailController:Own(TrailBox.Container.Destroying:Connect(function() statusConnection:Disconnect() end))
 end
 end -- scoped PROGRESSION helpers (exports only the controls needed by Auto-Steal)
 
@@ -14717,19 +16518,42 @@ RuntimeStatus.revealStationarySellerDialog = function(dialog, frame)
     end)
 end
 
-
 RuntimeStatus.openSellConfirmation = function(spec)
-    if type(spec) ~= "table" or type(spec.GetSnapshot) ~= "function" or type(spec.OnConfirm) ~= "function" then return false end
-    local ok, snap = pcall(spec.GetSnapshot)
-    if not ok or type(snap) ~= "table" then return false end
-    if type(spec.Validate) == "function" then
-        local vok, accepted, reason = pcall(spec.Validate, snap)
-        if not vok or accepted ~= true then if reason then Library:Notify(tostring(reason),4) end; return false end
+    spec = type(spec) == "table" and spec or {}
+    if not sessionAlive() or type(spec.GetSnapshot) ~= "function"
+        or type(spec.OnConfirm) ~= "function" then
+        return false
     end
-    task.spawn(function() pcall(spec.OnConfirm,snap) end)
+
+    local okSnapshot, snapshot = pcall(spec.GetSnapshot)
+    if not okSnapshot or type(snapshot) ~= "table" then
+        return false
+    end
+
+    if type(spec.Validate) == "function" then
+        local okValidate, accepted, reason = pcall(spec.Validate, snapshot)
+        if not okValidate or accepted ~= true then
+            if reason then Library:Notify(tostring(reason), 4) end
+            return false
+        end
+    end
+
+    -- WindUI does not use the old seller confirmation overlay here.
+    -- The existing validation remains, then the original OnConfirm action runs.
+    RuntimeStatus.activeSellerDialog = nil
+    task.spawn(function()
+        pcall(spec.OnConfirm, snapshot)
+    end)
     return true
 end
-RuntimeStatus.dismissSellConfirmation=function() RuntimeStatus.activeSellerDialog=nil end
+
+RuntimeStatus.dismissSellConfirmation = function()
+    local dialog = RuntimeStatus.activeSellerDialog
+    RuntimeStatus.activeSellerDialog = nil
+    if type(dialog) == "table" and dialog.Destroyed ~= true then
+        RuntimeStatus.hideAndDismissSellerDialog(dialog)
+    end
+end
 
 RuntimeStatus.petSalePreviewSnapshot = function(cap)
     local matches = matchingSellPets()
@@ -19981,9 +21805,12 @@ DevBox:AddLabel("ProtectedReleaseNotice", {
 task.defer(function()
     -- Named configs are non-critical for first paint. Load the optional addon
     -- after the main hub has been created so it cannot delay startup.
-    -- WindUI migration: use the local compatibility manager above; do not load
-    -- Obsidian's SaveManager addon.
-    local managerOk, loadedManager = false, nil
+    local managerOk, loadedManager = pcall(function()
+        return loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+    end)
+    if managerOk and type(loadedManager) == "table" then
+        Library.__SaveManager = loadedManager
+    end
     local manager = Library.__SaveManager
     if type(manager) == "table" then
         local configured, configBox = pcall(function()
@@ -20452,268 +22279,7 @@ end -- scoped SETTINGS helpers
 -- [[ UI STYLING PASS — the CloverHub look ]] --
 -- ════════════════════════════════════════════
 pcall(function()
-    local ALL_BOXES = {
-        SessionBox, StatsBox, ServerBox, Window.__FreeReleaseBox, -- HOME
-        TargetBox, AutoStealBox, AutoPlaceBox,    -- EGGS
-        PenBox, EquipBox, TreadmillBox, TrailBox, -- PROGRESSION
-        SellBox, EggSellBox,                      -- SELL
-        Window.__FuseBox,                        -- FUSE
-        Window.__ServerControlsBox, Window.__ServerResultsBox, -- SERVER
-        RiftBox, Window.__RiftBossBox, Window.__BossMasteryBox, Window.__RiftShopBox, -- EVENT
-        Window.__WebhookBox, Window.__WebhookAlertsBox, -- WEBHOOK
-        PlayerModBox, PerformanceBox, Window.__ESPBox, OverlayBox,
-        DevBox, Window.__ConfigBox, -- SETTINGS
-    }
-
-    for _, b in ipairs(ALL_BOXES) do pcall(StyleGroupboxPanel, b) end
-
-    local CARD_BG     = Color3.fromRGB(32, 32, 32)
-    local CARD_STROKE = Library.Scheme.OutlineColor
-    local GAP         = 4
-
-    local function isButtonPanel(el)
-        if not el:IsA("Frame") then return false end
-        local btns, hasBox, hasList = 0, false, false
-        for _, g in ipairs(el:GetDescendants()) do
-            if g:IsA("TextBox") then hasBox = true end
-            if g:IsA("UIListLayout") then hasList = true end
-            if g:IsA("TextButton") and g.BackgroundTransparency == 0 then btns = btns + 1 end
-        end
-        if hasBox then return false end
-        if btns >= 2 then return true end
-        if btns == 1 and hasList then return true end
-        return false
-    end
-
-    local function isDivider(el)
-        if not el:IsA("Frame") then return false end
-        for _, c in ipairs(el:GetDescendants()) do
-            if c:IsA("TextButton") or c:IsA("TextBox") then return false end
-            if c:IsA("TextLabel") and c.Text ~= "" then return false end
-            if c:IsA("UIListLayout") then return false end
-            if c:IsA("ImageLabel") or c:IsA("ImageButton") then return false end
-        end
-        return true
-    end
-
-    local function isDynamicList(el)
-        if not el:IsA("Frame") then return false end
-        for _, g in ipairs(el:GetDescendants()) do
-            if g:IsA("TextButton") and g.AutomaticSize == Enum.AutomaticSize.Y then return true end
-        end
-        return false
-    end
-
-    local mergedMember = {}
-    for _, set in ipairs(CHK.mergeSets) do
-        for _, m in ipairs(set) do mergedMember[m] = true end
-    end
-
-    local function cardifyBox(gb)
-        local container = gb and gb.Container
-        if not container then return end
-        local clist = container:FindFirstChildOfClass("UIListLayout")
-        if clist then clist.Padding = UDim.new(0, GAP) end
-
-        for _, el in ipairs(container:GetChildren()) do
-            if not el:IsA("GuiObject") then
-                -- skip layout objects
-            elseif el:GetAttribute("CloverHubStatusCard") == true then
-                -- CHK.Merge already owns this card's geometry, padding and
-                -- layering.  Generic cardification would shrink its horizontal
-                -- padding and recreate the status-layout regression.
-            elseif mergedMember[el] then
-                local mpad = el:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
-                mpad.PaddingLeft = UDim.new(0, 10); mpad.PaddingRight = UDim.new(0, 10); mpad.Parent = el
-                if el.ZIndex == 1 then el.ZIndex = 2 end
-                for _, tl in ipairs(el:GetDescendants()) do
-                    if tl:IsA("TextLabel") and not tl.TextWrapped then
-                        tl.TextTruncate = Enum.TextTruncate.AtEnd
-                    end
-                    if tl:IsA("GuiObject") and tl.ZIndex == 1 then tl.ZIndex = 2 end
-                end
-            elseif isDivider(el) then
-                el.Visible = false
-                el.Size = UDim2.new(el.Size.X.Scale, el.Size.X.Offset, 0, 0)
-            elseif isDynamicList(el) then
-                -- dynamic list — hands off
-            else
-                local panel = isButtonPanel(el)
-                el.BackgroundColor3       = CARD_BG
-                el.BackgroundTransparency = 0
-                if el:IsA("TextButton") then el.AutoButtonColor = false end
-                if not el:FindFirstChildOfClass("UICorner") then
-                    local ccc = Instance.new("UICorner"); ccc.CornerRadius = UDim.new(0, 6); ccc.Parent = el
-                end
-                if not el:FindFirstChildOfClass("UIStroke") then
-                    local s = Instance.new("UIStroke")
-                    s.Color = CARD_STROKE; s.Thickness = 1
-                    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Parent = el
-                end
-                local pad = el:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
-                pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10); pad.Parent = el
-
-                for _, tl in ipairs(el:GetDescendants()) do
-                    if tl:IsA("TextLabel") and not tl.TextWrapped then
-                        tl.TextTruncate = Enum.TextTruncate.AtEnd
-                    end
-                end
-
-                if el:IsA("TextButton") then
-                    if el.Size.Y.Offset < 30 then
-                        el.Size = UDim2.new(el.Size.X.Scale, el.Size.X.Offset, 0, 30)
-                    end
-                    for _, kid in ipairs(el:GetChildren()) do
-                        if kid:IsA("TextLabel") then
-                            kid.TextYAlignment = Enum.TextYAlignment.Center
-                        elseif kid:IsA("Frame") then
-                            kid.AnchorPoint = Vector2.new(kid.AnchorPoint.X, 0.5)
-                            kid.Position    = UDim2.new(kid.Position.X.Scale, kid.Position.X.Offset, 0.5, 0)
-                        end
-                    end
-                elseif el:IsA("Frame") then
-                    if panel then
-                        pad.PaddingLeft = UDim.new(0, 4); pad.PaddingRight = UDim.new(0, 4)
-                        pad.PaddingTop = UDim.new(0, 3); pad.PaddingBottom = UDim.new(0, 3)
-                        if el.AutomaticSize ~= Enum.AutomaticSize.Y
-                            and el.AutomaticSize ~= Enum.AutomaticSize.XY then
-                            el.Size = UDim2.new(el.Size.X.Scale, el.Size.X.Offset, 0, el.Size.Y.Offset + 6)
-                        end
-                        for _, g in ipairs(el:GetDescendants()) do
-                            if g:IsA("TextButton") and g.BackgroundTransparency == 0 then
-                                local gs = g:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
-                                gs.Color = CARD_STROKE; gs.Thickness = 1
-                                gs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; gs.Parent = g
-                            end
-                        end
-                    else
-                        pad.PaddingLeft = UDim.new(0, 4); pad.PaddingRight = UDim.new(0, 4)
-                        pad.PaddingTop = UDim.new(0, 3); pad.PaddingBottom = UDim.new(0, 3)
-                        if el.AutomaticSize ~= Enum.AutomaticSize.Y
-                            and el.AutomaticSize ~= Enum.AutomaticSize.XY then
-                            el.Size = UDim2.new(el.Size.X.Scale, el.Size.X.Offset, 0, el.Size.Y.Offset + 6)
-                        end
-                        for _, g in ipairs(el:GetDescendants()) do
-                            local box
-                            if (g:IsA("TextButton") or g:IsA("TextBox")) and g.BackgroundTransparency == 0 then
-                                box = g
-                            elseif g:IsA("TextBox") and g.BackgroundTransparency == 1
-                                and g.Parent and g.Parent:IsA("Frame")
-                                and g.Parent ~= el and g.Parent.BackgroundTransparency == 0 then
-                                box = g.Parent
-                            end
-                            if box then
-                                box.BackgroundColor3 = CARD_BG
-                                if not box:FindFirstChildOfClass("UIStroke") then
-                                    local bs = Instance.new("UIStroke")
-                                    bs.Color = CARD_STROKE; bs.Thickness = 1
-                                    bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; bs.Parent = box
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-
-        for _, set in ipairs(CHK.mergeSets) do
-            local first = set[1]
-            if first and first.Parent == container and not first:FindFirstChild("__vhMergeCard") then
-                local backdrop = Instance.new("Frame")
-                backdrop.Name = "__vhMergeCard"
-                backdrop.BackgroundColor3 = CARD_BG
-                backdrop.BorderSizePixel = 0
-                local bc = Instance.new("UICorner")
-                bc.CornerRadius = UDim.new(0, 6)
-                bc.Parent = backdrop
-                local bstroke = Instance.new("UIStroke")
-                bstroke.Color = CARD_STROKE
-                bstroke.Thickness = 1
-                bstroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-                bstroke.Parent = backdrop
-
-                local function span()
-                    pcall(function()
-                        local last = set[#set]
-                        local scale = Library.DPIScale or 1
-                        local h = ((last.AbsolutePosition.Y + last.AbsoluteSize.Y)
-                            - first.AbsolutePosition.Y) / scale
-                        local padObj = first:FindFirstChildOfClass("UIPadding")
-                        local pl = padObj and padObj.PaddingLeft.Offset or 0
-                        local pr = padObj and padObj.PaddingRight.Offset or 0
-                        local pt = padObj and padObj.PaddingTop.Offset or 0
-                        backdrop.Position = UDim2.new(0, -pl, 0, -pt)
-                        backdrop.Size = UDim2.new(1, pl + pr, 0, h)
-                    end)
-                end
-
-                backdrop.Parent = first
-                for _, m in ipairs(set) do
-                    m:GetPropertyChangedSignal("AbsoluteSize"):Connect(span)
-                    m:GetPropertyChangedSignal("AbsolutePosition"):Connect(span)
-                end
-                span()
-                task.spawn(function()
-                    local delays = { 1, 3, 8 }
-                    for _, d in ipairs(delays) do
-                        task.wait(d)
-                        span()
-                    end
-                end)
-            end
-        end
-
-        if clist then
-            clist:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                if gb.Resize then pcall(function() gb:Resize() end) end
-            end)
-        end
-        task.defer(function()
-            for _ = 1, 3 do task.wait() end
-            if gb.Resize then pcall(function() gb:Resize() end) end
-        end)
-    end
-
-    getgenv().__CHCardifyBox = cardifyBox
-    CHK.CardifyBox = function(_) end
-
-    for _, b in ipairs(ALL_BOXES) do pcall(cardifyBox, b) end
-
-    -- UI polish: cap corner radii + unclip input wrappers (Obsidian GUI only)
-    do
-        local function findObsidian()
-            local cands = {}
-            pcall(function() if gethui then cands[#cands + 1] = gethui() end end)
-            cands[#cands + 1] = game:GetService("CoreGui")
-            pcall(function() cands[#cands + 1] = LocalPlayer:FindFirstChild("PlayerGui") end)
-            for _, g in ipairs(cands) do
-                if g then local o = g:FindFirstChild("Obsidian", true); if o then return o end end
-            end
-        end
-        local obs = findObsidian()
-        if obs then
-            local MAX_RADIUS = 4
-            local function isInputField(x)
-                return x and (x:IsA("TextBox") or (x:IsA("GuiObject") and x:FindFirstChildWhichIsA("TextBox") ~= nil))
-            end
-            local function restyle(d)
-                if d:IsA("UICorner") then
-                    if not isInputField(d.Parent) and d.CornerRadius.Scale == 0 and d.CornerRadius.Offset > MAX_RADIUS then
-                        d.CornerRadius = UDim.new(0, MAX_RADIUS)
-                    end
-                elseif d:IsA("TextBox") then
-                    local wrap = d.Parent
-                    if wrap and wrap:IsA("GuiObject") and wrap.ClipsDescendants then
-                        wrap.ClipsDescendants = false
-                    end
-                end
-            end
-            for _, d in ipairs(obs:GetDescendants()) do pcall(restyle, d) end
-            obs.DescendantAdded:Connect(function(d) pcall(restyle, d) end)
-        end
-    end
-end)
-
+    -- Obsidian-only cardification removed for WindUI migration.
 -- [[ COLLAPSIBLE GROUPBOXES ]] --
 do
     local function spawnBox(gb, startCollapsed)
