@@ -33,7 +33,7 @@ local ThemeName = "Dark"
 local Window = WindUI:CreateWindow({
 	Title = " LUNA HUB ",
 	Author = " STEAL AN EGG ",
-	Icon = "solar:wind-bold",
+	Icon = "egg",
 	Theme = ThemeName,
 	--NewElements = true,
 	--Transparent = true,
@@ -80,7 +80,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------WINDOW TAB-------------------------------------------------------------------
 Window:Tag({
-	Title = " v1.0.0.2 ",
+	Title = " v1.0.0.3 ",
 	Color = "ElementBackground",
 })
 
@@ -105,12 +105,12 @@ local Tab3 = Window:Tab({
 
 local Tab4 = Window:Tab({
 	Title = "Pets",
-	Icon = "pet",
+	Icon = "pets",
 })
 
 local Tab5 = Window:Tab({
 	Title = "FUSE",
-	Icon = "controller",
+	Icon = "sword",
 })
 
 local Tab6 = Window:Tab({
@@ -120,7 +120,7 @@ local Tab6 = Window:Tab({
 
 local Tab7 = Window:Tab({
 	Title = "WEBHOOK",
-	Icon = "message",
+	Icon = "link",
 })
 
 local Tab8 = Window:Tab({
