@@ -1,14 +1,15 @@
 
 --[[
     LUNA HUB | ANIME DICE v1.0.02
+
     Features:
     - Draggable GUI
     - Minimize / Restore
-    - Auto Claim Daily Rewards
+    - Auto Claim Daily Reward
     - Auto Roll Dice
     - Auto Collect Money
     - Auto Equip Best
-    - Auto Rebirth
+    - Auto Rebirth with money check
     - Auto Claim Offline Reward
 ]]
 
@@ -133,7 +134,7 @@ Layout.Parent = Content
 
 
 --==================================================
--- TOGGLE CREATOR
+-- TOGGLES
 --==================================================
 
 local Toggles = {}
@@ -207,7 +208,7 @@ end
 
 
 --==================================================
--- DAILY REWARD
+-- AUTO CLAIM DAILY
 --==================================================
 
 CreateToggle("AUTO CLAIM DAILY REWARD", function(enabled)
@@ -314,6 +315,113 @@ end)
 
 
 --==================================================
+-- MONEY / REBIRTH COST DETECTOR
+--==================================================
+
+local MoneyNames = {
+    "Money",
+    "Coins",
+    "Cash",
+    "Currency",
+    "Gold",
+    "Balance",
+    "Dollars",
+    "MoneyValue",
+    "CoinsValue"
+}
+
+local RebirthCostNames = {
+    "RebirthCost",
+    "RebirthPrice",
+    "RebirthRequirement",
+    "RequiredMoney",
+    "RequiredCoins",
+    "Cost",
+    "Price"
+}
+
+
+local function FindNumberByNames(names)
+
+    -- Check leaderstats first
+    local leaderstats = Player:FindFirstChild("leaderstats")
+
+    if leaderstats then
+
+        for _, name in ipairs(names) do
+
+            local object = leaderstats:FindFirstChild(name, true)
+
+            if object and (
+                object:IsA("IntValue")
+                or object:IsA("NumberValue")
+            ) then
+
+                return object.Value
+            end
+
+        end
+
+    end
+
+
+    -- Check Player
+    for _, name in ipairs(names) do
+
+        local object = Player:FindFirstChild(name, true)
+
+        if object and (
+            object:IsA("IntValue")
+            or object:IsA("NumberValue")
+        ) then
+
+            return object.Value
+        end
+
+    end
+
+
+    -- Check PlayerGui
+    local PlayerGui = Player:FindFirstChild("PlayerGui")
+
+    if PlayerGui then
+
+        for _, name in ipairs(names) do
+
+            local object = PlayerGui:FindFirstChild(name, true)
+
+            if object and (
+                object:IsA("IntValue")
+                or object:IsA("NumberValue")
+            ) then
+
+                return object.Value
+            end
+
+        end
+
+    end
+
+
+    return nil
+end
+
+
+local function GetMoney()
+
+    return FindNumberByNames(MoneyNames)
+
+end
+
+
+local function GetRebirthCost()
+
+    return FindNumberByNames(RebirthCostNames)
+
+end
+
+
+--==================================================
 -- AUTO REBIRTH
 --==================================================
 
@@ -325,10 +433,25 @@ CreateToggle("AUTO REBIRTH", function(enabled)
 
             while Toggles["AUTO REBIRTH"] do
 
-                pcall(function()
-                    Rebirth:FireServer()
-                end)
+                local CurrentMoney = GetMoney()
+                local RequiredMoney = GetRebirthCost()
 
+                -- Only rebirth when BOTH values were found
+                -- and the player has enough money.
+                if CurrentMoney ~= nil and RequiredMoney ~= nil then
+
+                    if CurrentMoney >= RequiredMoney then
+
+                        pcall(function()
+                            Rebirth:FireServer()
+                        end)
+
+                    end
+
+                end
+
+                -- Check again after 1 second.
+                -- If money is insufficient, nothing is fired.
                 task.wait(1)
 
             end
@@ -400,8 +523,10 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 
     if Dragging and
-        (input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch) then
+        (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
 
         local Delta = input.Position - DragStart
 
