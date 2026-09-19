@@ -9,7 +9,7 @@
     - Auto Roll Dice
     - Auto Collect Money
     - Auto Equip Best
-    - Auto Rebirth with money check
+    - Auto Rebirth (Cash check)
     - Auto Claim Offline Reward
 ]]
 
@@ -53,6 +53,7 @@ ScreenGui.Name = "LunaHubAnimeDice"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
+
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, 430, 0, 390)
@@ -80,8 +81,9 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = TitleBar
 
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -55, 1, 0)
+Title.Size = UDim2.new(1, -60, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "LUNA HUB | ANIME DICE v1.0.02"
@@ -127,6 +129,7 @@ Content.CanvasSize = UDim2.new(0, 0, 0, 0)
 Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Content.Parent = Main
 
+
 local Layout = Instance.new("UIListLayout")
 Layout.Padding = UDim.new(0, 8)
 Layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -134,12 +137,12 @@ Layout.Parent = Content
 
 
 --==================================================
--- TOGGLES
+-- TOGGLE SYSTEM
 --==================================================
 
 local Toggles = {}
 
-local function CreateToggle(name, callback)
+local function CreateToggle(Name, Callback)
 
     local Button = Instance.new("TextButton")
 
@@ -150,20 +153,23 @@ local function CreateToggle(name, callback)
     Button.AutoButtonColor = false
     Button.Parent = Content
 
+
     local Corner = Instance.new("UICorner")
     Corner.CornerRadius = UDim.new(0, 8)
     Corner.Parent = Button
 
+
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -75, 1, 0)
+    Label.Size = UDim2.new(1, -80, 1, 0)
     Label.Position = UDim2.new(0, 15, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = name
+    Label.Text = Name
     Label.TextColor3 = Color3.fromRGB(235, 235, 240)
     Label.TextSize = 15
     Label.Font = Enum.Font.GothamMedium
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = Button
+
 
     local State = Instance.new("TextLabel")
     State.Size = UDim2.new(0, 55, 0, 28)
@@ -175,35 +181,45 @@ local function CreateToggle(name, callback)
     State.Font = Enum.Font.GothamBold
     State.Parent = Button
 
+
     local StateCorner = Instance.new("UICorner")
     StateCorner.CornerRadius = UDim.new(0, 7)
     StateCorner.Parent = State
 
+
     local Enabled = false
 
-    Toggles[name] = false
+    Toggles[Name] = false
 
-    local function SetState(value)
 
-        Enabled = value
-        Toggles[name] = value
+    local function SetState(Value)
+
+        Enabled = Value
+        Toggles[Name] = Value
 
         if Enabled then
+
             State.Text = "ON"
             State.BackgroundColor3 = Color3.fromRGB(80, 180, 100)
+
         else
+
             State.Text = "OFF"
             State.BackgroundColor3 = Color3.fromRGB(65, 65, 75)
+
         end
 
-        callback(Enabled)
+        Callback(Enabled)
+
     end
 
+
     Button.MouseButton1Click:Connect(function()
+
         SetState(not Enabled)
+
     end)
 
-    return Button
 end
 
 
@@ -211,14 +227,18 @@ end
 -- AUTO CLAIM DAILY
 --==================================================
 
-CreateToggle("AUTO CLAIM DAILY REWARD", function(enabled)
+CreateToggle("AUTO CLAIM DAILY REWARD", function(Enabled)
 
-    if enabled then
+    if Enabled then
+
         task.spawn(function()
+
             pcall(function()
                 DailyClaim:FireServer()
             end)
+
         end)
+
     end
 
 end)
@@ -228,9 +248,9 @@ end)
 -- AUTO ROLL DICE
 --==================================================
 
-CreateToggle("AUTO ROLL DICE", function(enabled)
+CreateToggle("AUTO ROLL DICE", function(Enabled)
 
-    if enabled then
+    if Enabled then
 
         task.spawn(function()
 
@@ -255,25 +275,26 @@ end)
 -- AUTO COLLECT MONEY
 --==================================================
 
-CreateToggle("AUTO COLLECT MONEY", function(enabled)
+CreateToggle("AUTO COLLECT MONEY", function(Enabled)
 
-    if enabled then
+    if Enabled then
 
         task.spawn(function()
 
             while Toggles["AUTO COLLECT MONEY"] do
 
-                for slot = 1, 10 do
+                for Slot = 1, 10 do
 
                     if not Toggles["AUTO COLLECT MONEY"] then
                         break
                     end
 
                     pcall(function()
-                        CollectBalance:FireServer(slot)
+                        CollectBalance:FireServer(Slot)
                     end)
 
                     task.wait(0.1)
+
                 end
 
                 task.wait(0.5)
@@ -291,9 +312,9 @@ end)
 -- AUTO EQUIP BEST
 --==================================================
 
-CreateToggle("AUTO EQUIP BEST", function(enabled)
+CreateToggle("AUTO EQUIP BEST", function(Enabled)
 
-    if enabled then
+    if Enabled then
 
         task.spawn(function()
 
@@ -315,87 +336,89 @@ end)
 
 
 --==================================================
--- MONEY / REBIRTH COST DETECTOR
+-- FIND CASH
 --==================================================
 
-local MoneyNames = {
-    "Money",
-    "Coins",
-    "Cash",
-    "Currency",
-    "Gold",
-    "Balance",
-    "Dollars",
-    "MoneyValue",
-    "CoinsValue"
-}
+local function GetCash()
+
+    local Leaderstats = Player:FindFirstChild("leaderstats")
+
+    if Leaderstats then
+
+        local Cash = Leaderstats:FindFirstChild("Cash", true)
+
+        if Cash and (
+            Cash:IsA("IntValue")
+            or Cash:IsA("NumberValue")
+        ) then
+
+            return Cash.Value
+
+        end
+
+    end
+
+
+    local Cash = Player:FindFirstChild("Cash", true)
+
+    if Cash and (
+        Cash:IsA("IntValue")
+        or Cash:IsA("NumberValue")
+    ) then
+
+        return Cash.Value
+
+    end
+
+
+    return nil
+
+end
+
+
+--==================================================
+-- FIND REBIRTH COST
+--==================================================
 
 local RebirthCostNames = {
     "RebirthCost",
     "RebirthPrice",
     "RebirthRequirement",
     "RequiredMoney",
+    "RequiredCash",
     "RequiredCoins",
     "Cost",
     "Price"
 }
 
 
-local function FindNumberByNames(names)
+local function GetRebirthCost()
 
-    -- Check leaderstats first
-    local leaderstats = Player:FindFirstChild("leaderstats")
-
-    if leaderstats then
-
-        for _, name in ipairs(names) do
-
-            local object = leaderstats:FindFirstChild(name, true)
-
-            if object and (
-                object:IsA("IntValue")
-                or object:IsA("NumberValue")
-            ) then
-
-                return object.Value
-            end
-
-        end
-
-    end
+    local Containers = {
+        Player,
+        Player:FindFirstChild("leaderstats"),
+        Player:FindFirstChild("Data"),
+        Player:FindFirstChild("Stats")
+    }
 
 
-    -- Check Player
-    for _, name in ipairs(names) do
+    for _, Container in ipairs(Containers) do
 
-        local object = Player:FindFirstChild(name, true)
+        if Container then
 
-        if object and (
-            object:IsA("IntValue")
-            or object:IsA("NumberValue")
-        ) then
+            for _, Name in ipairs(RebirthCostNames) do
 
-            return object.Value
-        end
+                local Value = Container:FindFirstChild(Name, true)
 
-    end
+                if Value and (
+                    Value:IsA("IntValue")
+                    or Value:IsA("NumberValue")
+                ) then
 
+                    return Value.Value
 
-    -- Check PlayerGui
-    local PlayerGui = Player:FindFirstChild("PlayerGui")
+                end
 
-    if PlayerGui then
-
-        for _, name in ipairs(names) do
-
-            local object = PlayerGui:FindFirstChild(name, true)
-
-            if object and (
-                object:IsA("IntValue")
-                or object:IsA("NumberValue")
-            ) then
-
-                return object.Value
             end
 
         end
@@ -404,19 +427,6 @@ local function FindNumberByNames(names)
 
 
     return nil
-end
-
-
-local function GetMoney()
-
-    return FindNumberByNames(MoneyNames)
-
-end
-
-
-local function GetRebirthCost()
-
-    return FindNumberByNames(RebirthCostNames)
 
 end
 
@@ -425,22 +435,22 @@ end
 -- AUTO REBIRTH
 --==================================================
 
-CreateToggle("AUTO REBIRTH", function(enabled)
+CreateToggle("AUTO REBIRTH", function(Enabled)
 
-    if enabled then
+    if Enabled then
 
         task.spawn(function()
 
             while Toggles["AUTO REBIRTH"] do
 
-                local CurrentMoney = GetMoney()
-                local RequiredMoney = GetRebirthCost()
+                local Cash = GetCash()
+                local RebirthCost = GetRebirthCost()
 
-                -- Only rebirth when BOTH values were found
-                -- and the player has enough money.
-                if CurrentMoney ~= nil and RequiredMoney ~= nil then
+                -- DO NOT FIRE if the values cannot be detected.
+                if Cash ~= nil and RebirthCost ~= nil then
 
-                    if CurrentMoney >= RequiredMoney then
+                    -- Only rebirth when Cash is enough.
+                    if Cash >= RebirthCost then
 
                         pcall(function()
                             Rebirth:FireServer()
@@ -450,8 +460,7 @@ CreateToggle("AUTO REBIRTH", function(enabled)
 
                 end
 
-                -- Check again after 1 second.
-                -- If money is insufficient, nothing is fired.
+                -- Keep checking until enough Cash.
                 task.wait(1)
 
             end
@@ -467,9 +476,9 @@ end)
 -- AUTO CLAIM OFFLINE REWARD
 --==================================================
 
-CreateToggle("AUTO CLAIM OFFLINE REWARD", function(enabled)
+CreateToggle("AUTO CLAIM OFFLINE REWARD", function(Enabled)
 
-    if enabled then
+    if Enabled then
 
         task.spawn(function()
 
@@ -498,19 +507,24 @@ local Dragging = false
 local DragStart
 local StartPosition
 
-TitleBar.InputBegan:Connect(function(input)
 
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+TitleBar.InputBegan:Connect(function(Input)
+
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+        or Input.UserInputType == Enum.UserInputType.Touch then
 
         Dragging = true
-        DragStart = input.Position
+
+        DragStart = Input.Position
         StartPosition = Main.Position
 
-        input.Changed:Connect(function()
 
-            if input.UserInputState == Enum.UserInputState.End then
+        Input.Changed:Connect(function()
+
+            if Input.UserInputState == Enum.UserInputState.End then
+
                 Dragging = false
+
             end
 
         end)
@@ -520,15 +534,14 @@ TitleBar.InputBegan:Connect(function(input)
 end)
 
 
-UserInputService.InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(Input)
 
-    if Dragging and
-        (
-            input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch
-        ) then
+    if Dragging and (
+        Input.UserInputType == Enum.UserInputType.MouseMovement
+        or Input.UserInputType == Enum.UserInputType.Touch
+    ) then
 
-        local Delta = input.Position - DragStart
+        local Delta = Input.Position - DragStart
 
         Main.Position = UDim2.new(
             StartPosition.X.Scale,
@@ -555,13 +568,27 @@ Minimize.MouseButton1Click:Connect(function()
     if Minimized then
 
         Content.Visible = false
-        Main.Size = UDim2.new(0, 430, 0, 45)
+
+        Main.Size = UDim2.new(
+            0,
+            430,
+            0,
+            45
+        )
+
         Minimize.Text = "+"
 
     else
 
         Content.Visible = true
-        Main.Size = UDim2.new(0, 430, 0, 390)
+
+        Main.Size = UDim2.new(
+            0,
+            430,
+            0,
+            390
+        )
+
         Minimize.Text = "-"
 
     end
