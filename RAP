@@ -1,3 +1,8 @@
+--[[
+    WindUI Example 2
+    Egg Collector migrated to WindUI
+]]
+
 --// SERVICES
 
 local cloneref = (cloneref or clonereference or function(instance)
@@ -34,7 +39,7 @@ do
 			WindUI =
 				loadstring(
 					game:HttpGet(
-						"https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/main.lua"
+						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
 					)
 				)()
 		end
@@ -45,8 +50,13 @@ end
 
 local ThemeName = "Dark"
 
--- DEFAULT 300
-local TweenSpeed = 300
+local SelectedEgg = "Brown Egg"
+
+-- ON BY DEFAULT
+local AutoPickup = true
+
+-- DEFAULT 400
+local TweenSpeed = 400
 
 local CurrentTween = nil
 
@@ -61,31 +71,23 @@ local RenderedEggs =
 --// EGG LIST
 
 local EggNames = {
-	"Cherub Egg",
-	"Blackhole Egg",
-	"Solaris Egg",
-	"Aurora Egg",
-	"Galaxy Egg",
-	"Asteroid Egg",
-	"Crystal Egg",
-	"Diamond Egg",
-	"Dominus Egg",
+	"Brown Egg",
+	"White Egg",
 	"Flaming Egg",
-	"Sinister Egg",
-	"Skull Egg",
-	"Soul Egg",
-	"Glass Egg",
-	"Golden Egg",
-    "Flower Egg",
-	"Ice Egg",
-	"Mushroom Egg",
-	"Slime Egg",
+	"Galaxy Egg",
 	"Cracked Egg",
 	"Easter Egg",
-	"Leaf Egg",
 	"Stone Egg",
-	"Brown Egg",
-	"White Egg"
+	"Mushroom Egg",
+	"Skull Egg",
+	"Aurora Egg",
+	"Dominus Egg",
+	"Glass Egg",
+	"Ice Egg",
+	"Slime Egg",
+	"Solaris Egg",
+	"Golden Egg",
+	"Sister Egg"
 }
 
 --==================================================
@@ -93,21 +95,16 @@ local EggNames = {
 --==================================================
 
 local Window = WindUI:CreateWindow({
-	Title = "  Luna Hub  ",
-	Author = "  Ride A Pet  ",
-	Icon = "dog",
+	Title = "WindUI Library",
+	Author = "by .ftgs",
+	Icon = "solar:wind-bold",
 	Theme = ThemeName,
 
 	ToggleKey = Enum.KeyCode.F,
--- FIX: keep an Open button available on PC and Mobile 
-OpenButton = { Enabled = true, OnlyMobile = false, 
-  }, 
 })
 
-
-
 Window:Tag({
-	Title = " v.1.0.2.3",
+	Title = "Egg Collector",
 	Color = "ElementBackground",
 })
 
@@ -115,69 +112,42 @@ Window:Tag({
 -- MAIN
 --==================================================
 
-local Tab1 = Window:Tab({
-	Title = "HOME",
+Window:Tab({
+	Title = "Main",
 	Icon = "warehouse",
 })
 
-local Tab2 = Window:Tab({
-	Title = "FARM",
-	Icon = "egg",
-})
-
-
-local Tab3 = Window:Tab({
-	Title = "Store",
-	Icon = "cart",
-})
-
-local Tab4 = Window:Tab({
-	Title = "Visual",
-	Icon = "eye",
-})
-
-local Tab5 = Window:Tab({
-	Title = "Info",
-	Icon = "badge-info",
+Window:Section({
+	Title = "Egg Collector",
 })
 
 --==================================================
--- TAB 1
+-- EXPLOITS TAB
 --==================================================
 
-Tab1:Paragraph({
-	Title = "Join our Discord Community",
-	Desc = "",
-	Buttons = {
-		{
-			Title = "Discord",
-			Callback = function()
-				local DiscordLink = "discord.gg/Ev8k5RAU3"
-				
-				if setclipboard then
-					setclipboard(DiscordLink)
-					print("Discord link copied")
-				end
-			end,
-		},
-	},
+local Tab1 = Window:Tab({
+	Title = "Exploits",
+	Icon = "terminal",
 })
 
-
 --==================================================
--- TAB 2
+-- EGG COLLECTOR SECTION
 --==================================================
 
-local FarmSection = Tab2:Section({
-	Title = "FARM",
+local EggSection = Tab1:Section({
+	Title = "Egg Collector",
 	Icon = "egg",
 	Box = true,
 	BoxBorder = true,
 })
 
-FarmSection:Dropdown({
+--==================================================
+-- EGG DROPDOWN
+--==================================================
+
+EggSection:Dropdown({
 	Title = "Select Egg",
-	Desc = "Choose which egg to gett",
+	Desc = "Choose which egg Auto Pickup should collect",
 	Values = EggNames,
 	Value = SelectedEgg,
 
@@ -188,8 +158,12 @@ FarmSection:Dropdown({
 	end,
 })
 
-FarmSection:Toggle({
-	Title = "Auto Farm Eggs",
+--==================================================
+-- AUTO PICKUP
+--==================================================
+
+EggSection:Toggle({
+	Title = "Auto Pickup",
 	Desc = "Tween to the selected egg, pick it up, then tween back to your plot",
 
 	Value = true,
@@ -212,7 +186,11 @@ FarmSection:Toggle({
 	end,
 })
 
-FarmSection:Slider({
+--==================================================
+-- TWEEN SPEED
+--==================================================
+
+EggSection:Slider({
 	Title = "Tween Speed",
 	Desc = "Controls how fast the character tweens",
 
@@ -229,7 +207,11 @@ FarmSection:Slider({
 	end,
 })
 
-FarmSection:Paragraph({
+--==================================================
+-- INFO
+--==================================================
+
+EggSection:Paragraph({
 	Title = "Current Settings",
 	Desc = "Egg: "
 		.. SelectedEgg
@@ -238,22 +220,79 @@ FarmSection:Paragraph({
 })
 
 --==================================================
--- TAB 3
+-- OTHER TABS
 --==================================================
 
+Window:Tab({
+	Title = "Aimbot",
+	Icon = "locate-fixed",
+})
 
-
-
+Window:Tab({
+	Title = "ESP",
+	Icon = "eye",
+})
 
 --==================================================
--- TAB 4
+-- INFO TAB
 --==================================================
 
+local InfoTab = Window:Tab({
+	Title = "Info",
+	Icon = "badge-info",
+})
 
+InfoTab:Paragraph({
+	Title = "Egg Collector",
+	Desc = "Automatic egg collection using tween movement. The character tweens to the egg, picks it up, then tweens back to the player's plot.",
+	Buttons = {
+		{
+			Title = "GitHub",
+			Callback = function()
+				print("GitHub Button Clicked")
+			end,
+		},
 
---==================================================
--- TAB 5
---==================================================
+		{
+			Title = "Documentation",
+			Variant = "Secondary",
+
+			Callback = function()
+				print("Documentation Button Clicked")
+			end,
+		},
+	},
+})
+
+local HStack1 = InfoTab:HStack()
+
+local VStackLeft = HStack1:VStack()
+local VStackRight = HStack1:VStack()
+
+VStackLeft:Button({
+	Title = "Reload UI",
+	Justify = "Center",
+	Icon = "refresh-ccw",
+	IconAlign = "Left",
+	Color = Color3.fromHex("#F44732"),
+
+	Callback = function()
+		print("Reloading UI...")
+	end,
+})
+
+VStackRight:Button({
+	Title = "Rejoin Place",
+	Justify = "Center",
+	Icon = "log-out",
+	IconAlign = "Left",
+	Color = Color3.fromHex("#f4b332"),
+
+	Callback = function()
+		print("Rejoining place...")
+	end,
+})
+
 --==================================================
 -- EMPTY TAB
 --==================================================
@@ -1010,3 +1049,4 @@ task.spawn(function()
 		task.wait(0.03)
 	end
 end)
+
