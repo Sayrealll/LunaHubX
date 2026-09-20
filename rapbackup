@@ -45,10 +45,11 @@ end
 
 local ThemeName = "Dark"
 
-local SelectedEgg = "Cherub Egg"
+-- GINAWANG TABLE PARA SA MULTI-SELECT (WALANG NAKA-SELECT BY DEFAULT)
+local SelectedEggs = {}
 
--- ON BY DEFAULT
-local AutoPickup = true
+-- OFF BY DEFAULT
+local AutoPickup = false
 
 -- DEFAULT 400
 local TweenSpeed = 400
@@ -63,9 +64,7 @@ local MAX_SPEED = 1000
 local RenderedEggs =
 	workspace:WaitForChild("RenderedEggs")
 
---// EGG LIST
-
---// EGG LIST
+--// EGG LIST (Naka-order mula PINAKAMATAAS/Rarest hanggang PINAKAMABABA)
 
 local EggNames = {
 	"Cherub Egg",
@@ -83,7 +82,7 @@ local EggNames = {
 	"Soul Egg",
 	"Glass Egg",
 	"Golden Egg",
-    "Flower Egg",
+	"Flower Egg",
 	"Ice Egg",
 	"Mushroom Egg",
 	"Slime Egg",
@@ -94,6 +93,12 @@ local EggNames = {
 	"Brown Egg",
 	"White Egg"
 }
+
+-- Mapping ng Priority (Mababa ang Index = Mas Mataas ang Priority)
+local EggPriority = {}
+for Index, Name in ipairs(EggNames) do
+	EggPriority[Name] = Index
+end
 
 
 --==================================================
@@ -107,8 +112,8 @@ local Window = WindUI:CreateWindow({
 	Theme = ThemeName,
 
 	ToggleKey = Enum.KeyCode.F,
-OpenButton = { Enabled = true, OnlyMobile = false, 
-}, })
+	OpenButton = { Enabled = true, OnlyMobile = false }, 
+})
 
 
 Window:Tag({
@@ -152,7 +157,7 @@ local Tab5 = Window:Tab({
 
 Tab1:Paragraph({
 	Title = "    Discord  ",
-	Desc = "  Join our Discord Community",
+	Desc = " Join our Discord Community",
 	Buttons = {
 		{
 			Title = "Discord",
@@ -170,7 +175,7 @@ Tab1:Paragraph({
 
 
 --==================================================
---TAB 2
+-- TAB 2
 --==================================================
 
 local EggSection = Tab2:Section({
@@ -180,25 +185,26 @@ local EggSection = Tab2:Section({
 	BoxBorder = true,
 })
 
-EggSection:Dropdown({
+-- MULTI-SELECT DROPDOWN AT WALANG DEFAULT VALUE
+local SelectedEggsDropdown = EggSection:Dropdown({
 	Title = "Select Egg",
-	Desc = "Choose which egg to auto farm",
+	Desc = "Choose which eggs to auto farm (Multi-Select)",
 	Values = EggNames,
-	Value = SelectedEgg,
+	Multi = true,
+	Value = {},
 
 	Callback = function(value)
-
-		SelectedEgg = value
-
+		SelectedEggs = value
 	end,
 })
 
 
+-- AUTO FARM TOGGLE (Naka-OFF by default)
 EggSection:Toggle({
 	Title = "Auto Farm",
-	Desc = "Auotmatic to get the egg and go to your plot",
+	Desc = "Automatic to get the egg and go to your plot",
 
-	Value = true,
+	Value = false,
 
 	Callback = function(value)
 
@@ -233,30 +239,6 @@ EggSection:Slider({
 		TweenSpeed = math.floor(value)
 
 	end,
-})
-
-EggSection:Paragraph({
-	Title = "Current Settings",
-	Desc = "Egg: "
-		.. SelectedEgg
-		.. " | Speed: "
-		.. tostring(TweenSpeed),
-})
-
-
-
---==================================================
--- EMPTY TAB
---==================================================
-
-Window:Tab({
-	Title = "Custom empty page tab",
-
-	CustomEmptyPage = {
-		Icon = "lucide:smile",
-		Title = "This is a cool empty tab",
-		Desc = "I like it. its so great tab with cool 'custom empty page'",
-	},
 })
 
 --==================================================
@@ -329,20 +311,41 @@ local function GetEggPart(Egg)
 end
 
 --==================================================
--- FIND SELECTED EGG
+-- FIND HIGHEST PRIORITY SELECTED EGG (PRIORITY LOGIC)
 --==================================================
 
 local function FindSelectedEgg()
+	local BestEgg = nil
+	local HighestPriority = math.huge -- Mas mababang number = Mas mataas na priority (1 = Cherub)
 
 	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
-
-		if Egg.Name == SelectedEgg then
-			return Egg
+		local Name = Egg.Name
+		
+		-- Titingnan kung ang Egg ay kasama sa napiling Multi-Select options
+		local IsSelected = false
+		if type(SelectedEggs) == "table" then
+			for _, SelectedName in ipairs(SelectedEggs) do
+				if SelectedName == Name then
+					IsSelected = true
+					break
+				end
+			end
+		elseif SelectedEggs == Name then
+			IsSelected = true
 		end
 
+		if IsSelected then
+			local Priority = EggPriority[Name] or 999
+			
+			-- Kung mas mataas ang priority (mas mababa ang priority index) kaysa sa kasalukuyang BestEgg
+			if Priority < HighestPriority then
+				HighestPriority = Priority
+				BestEgg = Egg
+			end
+		end
 	end
 
-	return nil
+	return BestEgg
 end
 
 --==================================================
@@ -430,16 +433,12 @@ local function TweenToEgg(Egg)
 			1
 		)
 
-	-- Already close enough
-
 	if Distance <= 1 then
 
 		HRP.CFrame = TargetCFrame
 
 		return true
 	end
-
-	-- Smooth straight tween
 
 	CurrentTween =
 		TweenService:Create(
@@ -485,8 +484,6 @@ local function TweenToEgg(Egg)
 			return false
 		end
 
-		-- Stop if egg disappears
-
 		if not Egg or not Egg.Parent then
 
 			CancelCurrentTween()
@@ -515,8 +512,6 @@ local function PickupEgg(Egg)
 		return false
 	end
 
-	-- Executor proximity prompt function
-
 	if typeof(fireproximityprompt)
 		== "function" then
 
@@ -533,8 +528,6 @@ local function PickupEgg(Egg)
 			return true
 		end
 	end
-
-	-- Normal prompt fallback
 
 	local Success =
 		pcall(function()
@@ -568,10 +561,6 @@ local function IsHoldingEgg(Egg)
 		return false
 	end
 
-	local EggName =
-		Egg and Egg.Name
-		or SelectedEgg
-
 	for _, Object in ipairs(
 		Character:GetDescendants()
 	) do
@@ -591,15 +580,10 @@ local function IsHoldingEgg(Egg)
 			return true
 		end
 
-		if EggName
-			and Object.Name == EggName then
-
+		if Egg and Object.Name == Egg.Name then
 			return true
 		end
 	end
-
-	-- Egg disappearing can mean pickup
-	-- has already been registered.
 
 	if Egg
 		and not Egg.Parent then
@@ -618,9 +602,6 @@ local function WaitForEggPickup(Egg)
 
 	local StartTime = tick()
 
-	-- Wait up to 1 second for the
-	-- game to register the pickup.
-
 	while AutoPickup
 		and (tick() - StartTime) < 1 do
 
@@ -630,9 +611,6 @@ local function WaitForEggPickup(Egg)
 
 		task.wait(0.03)
 	end
-
-	-- Fallback for games where the
-	-- carried egg isn't visible.
 
 	return AutoPickup
 end
@@ -662,15 +640,11 @@ local function FindPlotTarget()
 		)
 	}
 
-	-- Search common plot containers
-
 	for _, Container in ipairs(
 		PossibleContainers
 	) do
 
 		if Container then
-
-			-- Player name
 
 			local PlayerPlot =
 				Container:FindFirstChild(
@@ -689,8 +663,6 @@ local function FindPlotTarget()
 					return Part
 				end
 			end
-
-			-- UserId
 
 			local UserIdPlot =
 				Container:FindFirstChild(
@@ -711,8 +683,6 @@ local function FindPlotTarget()
 					return Part
 				end
 			end
-
-			-- Owner attributes
 
 			for _, Plot in ipairs(
 				Container:GetChildren()
@@ -751,8 +721,6 @@ local function FindPlotTarget()
 			end
 		end
 	end
-
-	-- Additional generic search
 
 	for _, Object in ipairs(
 		workspace:GetDescendants()
@@ -846,8 +814,6 @@ local function TweenToPlot()
 			1
 		)
 
-	-- Already at plot
-
 	if Distance <= 1 then
 
 		HRP.CFrame =
@@ -855,8 +821,6 @@ local function TweenToPlot()
 
 		return true
 	end
-
-	-- Smooth straight tween
 
 	CurrentTween =
 		TweenService:Create(
@@ -925,32 +889,17 @@ task.spawn(function()
 
 			if Egg then
 
-				--========================================
-				-- 1. TWEEN TO EGG
-				--========================================
-
 				local ReachedEgg =
 					TweenToEgg(Egg)
 
 				if ReachedEgg then
 
-					-- Give the character a moment
-					-- to enter pickup range.
-
 					task.wait(0.05)
-
-					--====================================
-					-- 2. PICKUP EGG
-					--====================================
 
 					local PickedUp =
 						PickupEgg(Egg)
 
 					if PickedUp then
-
-						--================================
-						-- 3. WAIT FOR PICKUP REGISTER
-						--================================
 
 						local PickupRegistered =
 							WaitForEggPickup(
@@ -959,14 +908,7 @@ task.spawn(function()
 
 						if PickupRegistered then
 
-							--============================
-							-- 4. TWEEN TO PLOT
-							--============================
-
 							TweenToPlot()
-
-							-- Short cooldown before
-							-- finding the next egg.
 
 							task.wait(0.2)
 
@@ -986,9 +928,6 @@ task.spawn(function()
 				end
 
 			else
-
-				-- Selected egg isn't currently
-				-- available.
 
 				task.wait(0.15)
 			end
