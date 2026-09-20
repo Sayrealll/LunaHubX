@@ -50,6 +50,12 @@ local SelectedEggs = {}
 
 -- OFF BY DEFAULT
 local AutoPickup = false
+local AutoClaimIndex = false
+local AutoUpgradeHatchLuck = false
+local AutoUpgradeHatchLuckMax = false
+local AutoRebirth = false
+
+
 
 -- DEFAULT 400
 local TweenSpeed = 400
@@ -240,6 +246,42 @@ EggSection:Slider({
 
 	end,
 })
+
+EggSection:Toggle({
+	Title = "Auto Upgrade Hatch Luck",
+	Desc = "Auto upgrade hatch luck by 1x",
+	Value = false,
+	Callback = function(value)
+		AutoUpgradeHatchLuck = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Upgrade Hatch Luck (Max)",
+	Desc = "Auto upgrade hatch luck by Max",
+	Value = false,
+	Callback = function(value)
+		AutoUpgradeHatchLuckMax = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Rebirth",
+	Value = false,
+	Callback = function(value)
+		AutoRebirth = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Claim Index Reward",
+	Value = false,
+	Callback = function(value)
+		AutoClaimIndex = value
+	end,
+})
+
+
 
 --==================================================
 -- CHARACTER
@@ -873,6 +915,131 @@ local function TweenToPlot()
 
 	return true
 end
+
+
+--==================================================
+-- AUTO CLAIM INDEX
+--==================================================
+local function ClaimIndexReward()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local ClaimRemote = GameRemotes and GameRemotes:FindFirstChild("ClaimIndexReward")
+
+		if ClaimRemote then
+			ClaimRemote:FireServer()
+		end
+	end)
+end
+
+
+--==================================================
+-- AUTO UPGRADE HATCH LUCK FUNCTION
+--==================================================
+
+local function UpgradeHatchLuck()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local PlotFolder = GameRemotes and GameRemotes:FindFirstChild("Plot")
+		local UpgradesRemote = PlotFolder and PlotFolder:FindFirstChild("Upgrades")
+
+		if UpgradesRemote then
+			-- Inilalagay ang Upgrade Name at Amount (1x)
+			local args = {
+				[1] = "Hatch Luck",
+				[2] = 1
+			}
+			UpgradesRemote:FireServer(unpack(args))
+		end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		if AutoUpgradeHatchLuck then
+			UpgradeHatchLuck()
+			task.wait(0.5) -- Delay na half second para iwas lag o remote spam
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+
+--==================================================
+-- AUTO UPGRADE HATCH LUCK MAX FUNCTION
+--==================================================
+
+local function UpgradeHatchLuckMax()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local PlotFolder = GameRemotes and GameRemotes:FindFirstChild("Plot")
+		local UpgradesRemote = PlotFolder and PlotFolder:FindFirstChild("Upgrades")
+
+		if UpgradesRemote then
+			local args = {
+				[1] = "Max"
+			}
+			UpgradesRemote:FireServer(unpack(args))
+		end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		if AutoUpgradeHatchLuckMax then
+			UpgradeHatchLuckMax()
+			task.wait(5) -- Delay na half second para iwas spam
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+
+
+--==================================================
+-- AUTO REBIRTH FUNCTION
+--==================================================
+
+local function DoRebirth()
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local RebirthRemote = GameRemotes and GameRemotes:FindFirstChild("Rebirth")
+
+		if RebirthRemote then
+			RebirthRemote:FireServer()
+		end
+	end)
+end
+
+
+--==================================================
+-- AUTO REBIRTH LOOP
+--==================================================
+
+task.spawn(function()
+	while true do
+		if AutoRebirth then
+			DoRebirth()
+			task.wait(5) -- Delay na 1 second para hindi ma-spam ang remote
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
 
 --==================================================
 -- AUTO PICKUP LOOP
