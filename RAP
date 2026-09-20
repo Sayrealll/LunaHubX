@@ -1,15 +1,3 @@
-
-
---[[*
-
-*    WindUI Example 2*
-
-*    Egg Collector migrated to WindUI*
-
-*]]*
-
---// SERVICES*
-
 local cloneref = (cloneref or clonereference or function(instance)
 
     return instance
