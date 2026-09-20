@@ -1,0 +1,1003 @@
+--// SERVICES
+
+local cloneref = (cloneref or clonereference or function(instance)
+	return instance
+end)
+
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local RunService = cloneref(game:GetService("RunService"))
+
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+
+--// PLAYER
+
+local Player = Players.LocalPlayer
+
+--// WINDUI
+
+local WindUI
+
+do
+	local ok, result = pcall(function()
+		return require("./src/Init")
+	end)
+
+	if ok then
+		WindUI = result
+	else
+		if RunService:IsStudio() or not writefile then
+			WindUI = require(
+				ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")
+			)
+		else
+			WindUI =
+				loadstring(
+					game:HttpGet(
+						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+					)
+				)()
+		end
+	end
+end
+
+--// SETTINGS
+
+local ThemeName = "Dark"
+
+local SelectedEgg = "Cherub Egg"
+
+-- ON BY DEFAULT
+local AutoPickup = true
+
+-- DEFAULT 400
+local TweenSpeed = 400
+
+local CurrentTween = nil
+
+local MIN_SPEED = 10
+local MAX_SPEED = 1000
+
+--// EGG CONTAINER
+
+local RenderedEggs =
+	workspace:WaitForChild("RenderedEggs")
+
+--// EGG LIST
+
+--// EGG LIST
+
+local EggNames = {
+	"Cherub Egg",
+	"Blackhole Egg",
+	"Solaris Egg",
+	"Aurora Egg",
+	"Galaxy Egg",
+	"Asteroid Egg",
+	"Crystal Egg",
+	"Diamond Egg",
+	"Dominus Egg",
+	"Flaming Egg",
+	"Sinister Egg",
+	"Skull Egg",
+	"Soul Egg",
+	"Glass Egg",
+	"Golden Egg",
+    "Flower Egg",
+	"Ice Egg",
+	"Mushroom Egg",
+	"Slime Egg",
+	"Cracked Egg",
+	"Easter Egg",
+	"Leaf Egg",
+	"Stone Egg",
+	"Brown Egg",
+	"White Egg"
+}
+
+
+--==================================================
+-- WINDOW
+--==================================================
+
+local Window = WindUI:CreateWindow({
+	Title = "LUNA HUB",
+	Author = "RIDE A PET",
+	Icon = "dog",
+	Theme = ThemeName,
+
+	ToggleKey = Enum.KeyCode.F,
+OpenButton = { Enabled = true, OnlyMobile = false, 
+}, })
+
+
+Window:Tag({
+	Title = "v.1.0.2.3",
+	Color = "ElementBackground",
+})
+
+--==================================================
+-- MAIN
+--==================================================
+
+local Tab1 = Window:Tab({
+	Title = "HOME",
+	Icon = "warehouse",
+})
+
+local Tab2 = Window:Tab({
+	Title = "FARM",
+	Icon = "egg",
+})
+
+
+local Tab3 = Window:Tab({
+	Title = "SHOP",
+	Icon = "shop",
+})
+
+local Tab4 = Window:Tab({
+	Title = "VISUAL",
+	Icon = "eye",
+})
+
+local Tab5 = Window:Tab({
+	Title = "INFO",
+	Icon = "badge-info",
+})
+
+--==================================================
+-- TAB 1
+--==================================================
+
+Tab1:Paragraph({
+	Title = "    Discord  ",
+	Desc = "  Join our Discord Community",
+	Buttons = {
+		{
+			Title = "Discord",
+			Callback = function()
+				local DiscordLink = "discord.gg/Ev8k5RAU3"
+				
+				if setclipboard then
+					setclipboard(DiscordLink)
+					print("Discord link copied")
+				end
+			end,
+		},
+	},
+})
+
+
+--==================================================
+--TAB 2
+--==================================================
+
+local EggSection = Tab2:Section({
+	Title = "Auto Farm",
+	Icon = "egg",
+	Box = true,
+	BoxBorder = true,
+})
+
+EggSection:Dropdown({
+	Title = "Select Egg",
+	Desc = "Choose which egg to auto farm",
+	Values = EggNames,
+	Value = SelectedEgg,
+
+	Callback = function(value)
+
+		SelectedEgg = value
+
+	end,
+})
+
+
+EggSection:Toggle({
+	Title = "Auto Farm",
+	Desc = "Auotmatic to get the egg and go to your plot",
+
+	Value = true,
+
+	Callback = function(value)
+
+		AutoPickup = value
+
+		if not AutoPickup then
+
+			if CurrentTween then
+
+				pcall(function()
+					CurrentTween:Cancel()
+				end)
+
+				CurrentTween = nil
+			end
+		end
+	end,
+})
+
+EggSection:Slider({
+	Title = "Tween Speed",
+	Desc = "Controls how fast the character tweens",
+
+	Value = {
+		Min = MIN_SPEED,
+		Max = MAX_SPEED,
+		Default = TweenSpeed,
+	},
+
+	Callback = function(value)
+
+		TweenSpeed = math.floor(value)
+
+	end,
+})
+
+EggSection:Paragraph({
+	Title = "Current Settings",
+	Desc = "Egg: "
+		.. SelectedEgg
+		.. " | Speed: "
+		.. tostring(TweenSpeed),
+})
+
+
+
+--==================================================
+-- EMPTY TAB
+--==================================================
+
+Window:Tab({
+	Title = "Custom empty page tab",
+
+	CustomEmptyPage = {
+		Icon = "lucide:smile",
+		Title = "This is a cool empty tab",
+		Desc = "I like it. its so great tab with cool 'custom empty page'",
+	},
+})
+
+--==================================================
+-- CHARACTER
+--==================================================
+
+local function GetCharacter()
+
+	local Character = Player.Character
+
+	if not Character then
+		return nil
+	end
+
+	local Humanoid =
+		Character:FindFirstChildOfClass("Humanoid")
+
+	local HRP =
+		Character:FindFirstChild("HumanoidRootPart")
+
+	if not Humanoid or not HRP then
+		return nil
+	end
+
+	return Character
+end
+
+--==================================================
+-- FIND EGG PART
+--==================================================
+
+local function GetEggPart(Egg)
+
+	if not Egg then
+		return nil
+	end
+
+	if Egg:IsA("BasePart") then
+		return Egg
+	end
+
+	if Egg:IsA("Model") then
+
+		if Egg.PrimaryPart then
+			return Egg.PrimaryPart
+		end
+
+		local Pickup =
+			Egg:FindFirstChild("Pickup", true)
+
+		if Pickup
+			and Pickup:IsA("ProximityPrompt") then
+
+			local Parent = Pickup.Parent
+
+			if Parent
+				and Parent:IsA("BasePart") then
+
+				return Parent
+			end
+		end
+
+		return Egg:FindFirstChildWhichIsA(
+			"BasePart",
+			true
+		)
+	end
+
+	return nil
+end
+
+--==================================================
+-- FIND SELECTED EGG
+--==================================================
+
+local function FindSelectedEgg()
+
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+
+		if Egg.Name == SelectedEgg then
+			return Egg
+		end
+
+	end
+
+	return nil
+end
+
+--==================================================
+-- FIND PICKUP PROMPT
+--==================================================
+
+local function FindPickup(Egg)
+
+	if not Egg then
+		return nil
+	end
+
+	for _, Descendant in ipairs(
+		Egg:GetDescendants()
+	) do
+
+		if Descendant:IsA("ProximityPrompt") then
+
+			if Descendant.Name == "Pickup" then
+				return Descendant
+			end
+
+		end
+	end
+
+	return nil
+end
+
+--==================================================
+-- CANCEL CURRENT TWEEN
+--==================================================
+
+local function CancelCurrentTween()
+
+	if CurrentTween then
+
+		pcall(function()
+			CurrentTween:Cancel()
+		end)
+
+		CurrentTween = nil
+	end
+end
+
+--==================================================
+-- TWEEN TO EGG
+--==================================================
+
+local function TweenToEgg(Egg)
+
+	local Character = GetCharacter()
+
+	if not Character then
+		return false
+	end
+
+	local HRP =
+		Character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not HRP then
+		return false
+	end
+
+	local EggPart =
+		GetEggPart(Egg)
+
+	if not EggPart then
+		return false
+	end
+
+	CancelCurrentTween()
+
+	local TargetCFrame =
+		EggPart.CFrame
+		* CFrame.new(0, 2.5, 0)
+
+	local Distance =
+		(HRP.Position - TargetCFrame.Position).Magnitude
+
+	local Duration =
+		Distance / math.max(
+			TweenSpeed,
+			1
+		)
+
+	-- Already close enough
+
+	if Distance <= 1 then
+
+		HRP.CFrame = TargetCFrame
+
+		return true
+	end
+
+	-- Smooth straight tween
+
+	CurrentTween =
+		TweenService:Create(
+
+			HRP,
+
+			TweenInfo.new(
+				Duration,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				CFrame = TargetCFrame
+			}
+		)
+
+	local Finished = false
+
+	local Connection
+
+	Connection =
+		CurrentTween.Completed:Connect(
+			function()
+
+				Finished = true
+
+				if Connection then
+					Connection:Disconnect()
+				end
+
+			end
+		)
+
+	CurrentTween:Play()
+
+	while not Finished do
+
+		if not AutoPickup then
+
+			CancelCurrentTween()
+
+			return false
+		end
+
+		-- Stop if egg disappears
+
+		if not Egg or not Egg.Parent then
+
+			CancelCurrentTween()
+
+			return false
+		end
+
+		task.wait()
+	end
+
+	CurrentTween = nil
+
+	return true
+end
+
+--==================================================
+-- PICKUP EGG
+--==================================================
+
+local function PickupEgg(Egg)
+
+	local Prompt =
+		FindPickup(Egg)
+
+	if not Prompt then
+		return false
+	end
+
+	-- Executor proximity prompt function
+
+	if typeof(fireproximityprompt)
+		== "function" then
+
+		local Success =
+			pcall(function()
+
+				fireproximityprompt(
+					Prompt
+				)
+
+			end)
+
+		if Success then
+			return true
+		end
+	end
+
+	-- Normal prompt fallback
+
+	local Success =
+		pcall(function()
+
+			Prompt:InputHoldBegin()
+
+			task.wait(
+				math.max(
+					Prompt.HoldDuration,
+					0.05
+				)
+			)
+
+			Prompt:InputHoldEnd()
+
+		end)
+
+	return Success
+end
+
+--==================================================
+-- CHECK IF EGG IS BEING HELD
+--==================================================
+
+local function IsHoldingEgg(Egg)
+
+	local Character =
+		GetCharacter()
+
+	if not Character then
+		return false
+	end
+
+	local EggName =
+		Egg and Egg.Name
+		or SelectedEgg
+
+	for _, Object in ipairs(
+		Character:GetDescendants()
+	) do
+
+		local ObjectName =
+			string.lower(
+				Object.Name
+			)
+
+		if string.find(
+			ObjectName,
+			"egg",
+			1,
+			true
+		) then
+
+			return true
+		end
+
+		if EggName
+			and Object.Name == EggName then
+
+			return true
+		end
+	end
+
+	-- Egg disappearing can mean pickup
+	-- has already been registered.
+
+	if Egg
+		and not Egg.Parent then
+
+		return true
+	end
+
+	return false
+end
+
+--==================================================
+-- WAIT FOR PICKUP
+--==================================================
+
+local function WaitForEggPickup(Egg)
+
+	local StartTime = tick()
+
+	-- Wait up to 1 second for the
+	-- game to register the pickup.
+
+	while AutoPickup
+		and (tick() - StartTime) < 1 do
+
+		if IsHoldingEgg(Egg) then
+			return true
+		end
+
+		task.wait(0.03)
+	end
+
+	-- Fallback for games where the
+	-- carried egg isn't visible.
+
+	return AutoPickup
+end
+
+--==================================================
+-- FIND PLAYER PLOT
+--==================================================
+
+local function FindPlotTarget()
+
+	local PossibleContainers = {
+
+		workspace:FindFirstChild(
+			"Plots"
+		),
+
+		workspace:FindFirstChild(
+			"Plot"
+		),
+
+		workspace:FindFirstChild(
+			"PlayerPlots"
+		),
+
+		workspace:FindFirstChild(
+			"PlotsFolder"
+		)
+	}
+
+	-- Search common plot containers
+
+	for _, Container in ipairs(
+		PossibleContainers
+	) do
+
+		if Container then
+
+			-- Player name
+
+			local PlayerPlot =
+				Container:FindFirstChild(
+					Player.Name
+				)
+
+			if PlayerPlot then
+
+				local Part =
+					PlayerPlot:FindFirstChildWhichIsA(
+						"BasePart",
+						true
+					)
+
+				if Part then
+					return Part
+				end
+			end
+
+			-- UserId
+
+			local UserIdPlot =
+				Container:FindFirstChild(
+					tostring(
+						Player.UserId
+					)
+				)
+
+			if UserIdPlot then
+
+				local Part =
+					UserIdPlot:FindFirstChildWhichIsA(
+						"BasePart",
+						true
+					)
+
+				if Part then
+					return Part
+				end
+			end
+
+			-- Owner attributes
+
+			for _, Plot in ipairs(
+				Container:GetChildren()
+			) do
+
+				local Owner =
+					Plot:GetAttribute(
+						"Owner"
+					)
+
+				local OwnerUserId =
+					Plot:GetAttribute(
+						"OwnerUserId"
+					)
+
+				if Owner == Player.Name
+					or Owner == Player.UserId
+					or OwnerUserId
+						== Player.UserId
+					or OwnerUserId
+						== tostring(
+							Player.UserId
+						)
+				then
+
+					local Part =
+						Plot:FindFirstChildWhichIsA(
+							"BasePart",
+							true
+						)
+
+					if Part then
+						return Part
+					end
+				end
+			end
+		end
+	end
+
+	-- Additional generic search
+
+	for _, Object in ipairs(
+		workspace:GetDescendants()
+	) do
+
+		if Object:IsA("BasePart") then
+
+			local Parent =
+				Object.Parent
+
+			if Parent then
+
+				local Owner =
+					Parent:GetAttribute(
+						"Owner"
+					)
+
+				local OwnerUserId =
+					Parent:GetAttribute(
+						"OwnerUserId"
+					)
+
+				if Owner == Player.Name
+					or Owner == Player.UserId
+					or OwnerUserId
+						== Player.UserId
+					or OwnerUserId
+						== tostring(
+							Player.UserId
+						)
+				then
+
+					return Object
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+--==================================================
+-- TWEEN TO PLOT
+--==================================================
+
+local function TweenToPlot()
+
+	local Character =
+		GetCharacter()
+
+	if not Character then
+		return false
+	end
+
+	local HRP =
+		Character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not HRP then
+		return false
+	end
+
+	local PlotPart =
+		FindPlotTarget()
+
+	if not PlotPart then
+
+		warn(
+			"Plot target not found. Not using TeleportToPlot remote."
+		)
+
+		return false
+	end
+
+	CancelCurrentTween()
+
+	local TargetCFrame =
+		PlotPart.CFrame
+		* CFrame.new(0, 3, 0)
+
+	local Distance =
+		(
+			HRP.Position
+			- TargetCFrame.Position
+		).Magnitude
+
+	local Duration =
+		Distance / math.max(
+			TweenSpeed,
+			1
+		)
+
+	-- Already at plot
+
+	if Distance <= 1 then
+
+		HRP.CFrame =
+			TargetCFrame
+
+		return true
+	end
+
+	-- Smooth straight tween
+
+	CurrentTween =
+		TweenService:Create(
+
+			HRP,
+
+			TweenInfo.new(
+				Duration,
+				Enum.EasingStyle.Linear,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				CFrame = TargetCFrame
+			}
+		)
+
+	local Finished = false
+
+	local Connection
+
+	Connection =
+		CurrentTween.Completed:Connect(
+			function()
+
+				Finished = true
+
+				if Connection then
+					Connection:Disconnect()
+				end
+
+			end
+		)
+
+	CurrentTween:Play()
+
+	while not Finished do
+
+		if not AutoPickup then
+
+			CancelCurrentTween()
+
+			return false
+		end
+
+		task.wait()
+	end
+
+	CurrentTween = nil
+
+	return true
+end
+
+--==================================================
+-- AUTO PICKUP LOOP
+--==================================================
+
+task.spawn(function()
+
+	while true do
+
+		if AutoPickup then
+
+			local Egg =
+				FindSelectedEgg()
+
+			if Egg then
+
+				--========================================
+				-- 1. TWEEN TO EGG
+				--========================================
+
+				local ReachedEgg =
+					TweenToEgg(Egg)
+
+				if ReachedEgg then
+
+					-- Give the character a moment
+					-- to enter pickup range.
+
+					task.wait(0.05)
+
+					--====================================
+					-- 2. PICKUP EGG
+					--====================================
+
+					local PickedUp =
+						PickupEgg(Egg)
+
+					if PickedUp then
+
+						--================================
+						-- 3. WAIT FOR PICKUP REGISTER
+						--================================
+
+						local PickupRegistered =
+							WaitForEggPickup(
+								Egg
+							)
+
+						if PickupRegistered then
+
+							--============================
+							-- 4. TWEEN TO PLOT
+							--============================
+
+							TweenToPlot()
+
+							-- Short cooldown before
+							-- finding the next egg.
+
+							task.wait(0.2)
+
+						else
+
+							task.wait(0.1)
+						end
+
+					else
+
+						task.wait(0.1)
+					end
+
+				else
+
+					task.wait(0.1)
+				end
+
+			else
+
+				-- Selected egg isn't currently
+				-- available.
+
+				task.wait(0.15)
+			end
+
+		else
+
+			task.wait(0.2)
+		end
+
+		task.wait(0.03)
+	end
+end)
