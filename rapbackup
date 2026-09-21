@@ -12,6 +12,28 @@ local Players = cloneref(game:GetService("Players"))
 
 local Player = Players.LocalPlayer
 
+--// SETTINGS
+
+local ThemeName = "Dark"
+
+local SelectedEggs = {}
+
+local AutoPickup = false
+local AutoClaimIndex = false
+local AutoUpgradeHatchLuck = false
+local AutoUpgradeHatchLuckMax = false
+local AutoRebirth = false
+
+--// AUTO FARM STATE
+
+local IsProcessingEgg = false
+local ProcessedEggs = {}
+
+--// EGG FOLDER
+
+local RenderedEggs =
+	workspace:WaitForChild("RenderedEggs")
+
 --// WINDUI
 
 local WindUI
@@ -24,44 +46,126 @@ do
 	if ok then
 		WindUI = result
 	else
-		if RunService:IsStudio() or not writefile then
-			WindUI = require(
-				ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")
+		WindUI = loadstring(
+			game:HttpGet(
+				"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
 			)
-		else
-			WindUI =
-				loadstring(
-					game:HttpGet(
-						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
-					)
-				)()
-		end
+		)()
 	end
 end
 
---// SETTINGS
+--// WINDOW
 
-local ThemeName = "Dark"
+local Window = WindUI:CreateWindow({
+	Title = "LUNA HUB",
+	Author = "RIDE A PET",
+	Icon = "dog",
+	Theme = ThemeName,
+	ToggleKey = Enum.KeyCode.F,
+	OpenButton = {
+		Enabled = true,
+		OnlyMobile = false,
+	},
+})
 
--- MULTI-SELECT
-local SelectedEggs = {}
+--// TABS
 
--- OFF BY DEFAULT
-local AutoPickup = false
-local AutoClaimIndex = false
-local AutoUpgradeHatchLuck = false
-local AutoUpgradeHatchLuckMax = false
-local AutoRebirth = false
+local HomeTab =
+	Window:Tab({
+		Title = "HOME",
+		Icon = "house",
+	})
 
---// EGG CONTAINER
+local FarmTab =
+	Window:Tab({
+		Title = "FARM",
+		Icon = "sprout",
+	})
 
-local RenderedEggs =
-	workspace:WaitForChild("RenderedEggs")
+local ShopTab =
+	Window:Tab({
+		Title = "SHOP",
+		Icon = "shopping-cart",
+	})
 
---// EGG LIST
--- RAREST / HIGHEST PRIORITY FIRST
+local VisualTab =
+	Window:Tab({
+		Title = "VISUAL",
+		Icon = "eye",
+	})
 
-local EggNames = {
+local InfoTab =
+	Window:Tab({
+		Title = "INFO",
+		Icon = "info",
+	})
+
+--// HOME
+
+local DiscordSection =
+	HomeTab:Section({
+		Title = "Discord",
+	})
+
+DiscordSection:Paragraph({
+		Title = "LUNA HUB",
+		Desc = "Join our Discord server for updates and support.",
+})
+
+DiscordSection:Button({
+		Title = "Copy Discord",
+		Icon = "copy",
+		Callback = function()
+
+			if setclipboard then
+				setclipboard("discord.gg/Ev8k5RAU3")
+			end
+
+			WindUI:Notify({
+				Title = "Discord",
+				Content = "discord.gg/Ev8k5RAU3",
+				Duration = 3,
+			})
+
+		end,
+	})
+
+--// FARM
+
+local EggSection =
+	FarmTab:Section({
+		Title = "Egg Farm",
+	})
+
+local EggPriority = {
+	[1] = "Cherub Egg",
+	[2] = "Blackhole Egg",
+	[3] = "Solaris Egg",
+	[4] = "Aurora Egg",
+	[5] = "Galaxy Egg",
+	[6] = "Asteroid Egg",
+	[7] = "Crystal Egg",
+	[8] = "Diamond Egg",
+	[9] = "Dominus Egg",
+	[10] = "Flaming Egg",
+	[11] = "Sinister Egg",
+	[12] = "Skull Egg",
+	[13] = "Soul Egg",
+	[14] = "Glass Egg",
+	[15] = "Golden Egg",
+	[16] = "Flower Egg",
+	[17] = "Ice Egg",
+	[18] = "Mushroom Egg",
+	[19] = "Slime Egg",
+	[20] = "Cracked Egg",
+	[21] = "Easter Egg",
+	[22] = "Leaf Egg",
+	[23] = "Stone Egg",
+	[24] = "Brown Egg",
+	[25] = "White Egg",
+}
+
+local EggList = {
 	"Cherub Egg",
 	"Blackhole Egg",
 	"Solaris Egg",
@@ -86,260 +190,54 @@ local EggNames = {
 	"Leaf Egg",
 	"Stone Egg",
 	"Brown Egg",
-	"White Egg"
+	"White Egg",
 }
 
---==================================================
--- EGG PRIORITY
---==================================================
-
-local EggPriority = {}
-
-for Index, Name in ipairs(EggNames) do
-	EggPriority[Name] = Index
-end
-
---==================================================
--- WINDOW
---==================================================
-
-local Window = WindUI:CreateWindow({
-	Title = "LUNA HUB",
-	Author = "RIDE A PET",
-	Icon = "dog",
-	Theme = ThemeName,
-
-	ToggleKey = Enum.KeyCode.F,
-
-	OpenButton = {
-		Enabled = true,
-		OnlyMobile = false
-	},
-})
-
-Window:Tag({
-	Title = "v.1.0.2.3",
-	Color = "ElementBackground",
-})
-
---==================================================
--- TABS
---==================================================
-
-local Tab1 = Window:Tab({
-	Title = "HOME",
-	Icon = "warehouse",
-})
-
-local Tab2 = Window:Tab({
-	Title = "FARM",
-	Icon = "egg",
-})
-
-local Tab3 = Window:Tab({
-	Title = "SHOP",
-	Icon = "shop",
-})
-
-local Tab4 = Window:Tab({
-	Title = "VISUAL",
-	Icon = "eye",
-})
-
-local Tab5 = Window:Tab({
-	Title = "INFO",
-	Icon = "badge-info",
-})
-
---==================================================
--- TAB 1
---==================================================
-
-Tab1:Paragraph({
-	Title = "    Discord  ",
-	Desc = " Join our Discord Community",
-
-	Buttons = {
-		{
-			Title = "Discord",
-
-			Callback = function()
-
-				local DiscordLink =
-					"discord.gg/Ev8k5RAU3"
-
-				if setclipboard then
-					setclipboard(DiscordLink)
-					print("Discord link copied")
-				end
-
-			end,
-		},
-	},
-})
-
---==================================================
--- TAB 2
---==================================================
-
-local EggSection = Tab2:Section({
-	Title = "Auto Farm",
-	Icon = "egg",
-	Box = true,
-	BoxBorder = true,
-})
-
---==================================================
--- SELECT EGG
---==================================================
-
-local SelectedEggsDropdown = EggSection:Dropdown({
-
-	Title = "Select Egg",
-
-	Desc =
-		"Choose which eggs to auto farm (Multi-Select)",
-
-	Values = EggNames,
-
+EggSection:Dropdown({
+	Title = "Select Eggs",
+	Desc = "Select the eggs to automatically collect",
+	Values = EggList,
 	Multi = true,
-
+	AllowNone = true,
 	Value = {},
-
 	Callback = function(value)
 
-		SelectedEggs = value
+		SelectedEggs = value or {}
+
+		-- Reset processed eggs whenever selection changes
+		ProcessedEggs = {}
 
 	end,
 })
 
---==================================================
--- AUTO FARM
---==================================================
-
 EggSection:Toggle({
-
 	Title = "Auto Farm",
-
-	Desc =
-		"Teleport to egg, pickup, then teleport to your plot",
-
+	Desc = "Automatically get the selected eggs",
 	Value = false,
-
 	Callback = function(value)
 
 		AutoPickup = value
 
-	end,
-})
+		if not AutoPickup then
 
---==================================================
--- AUTO UPGRADE HATCH LUCK
---==================================================
+			IsProcessingEgg = false
+			ProcessedEggs = {}
 
-EggSection:Toggle({
-
-	Title = "Auto Upgrade Hatch Luck",
-
-	Desc =
-		"Auto upgrade hatch luck by 1x",
-
-	Value = false,
-
-	Callback = function(value)
-
-		AutoUpgradeHatchLuck = value
+		end
 
 	end,
 })
 
---==================================================
--- AUTO UPGRADE HATCH LUCK MAX
---==================================================
-
-EggSection:Toggle({
-
-	Title = "Auto Upgrade Hatch Luck (Max)",
-
-	Desc =
-		"Auto upgrade hatch luck by Max",
-
-	Value = false,
-
-	Callback = function(value)
-
-		AutoUpgradeHatchLuckMax = value
-
-	end,
-})
-
---==================================================
--- AUTO REBIRTH
---==================================================
-
-EggSection:Toggle({
-
-	Title = "Auto Rebirth",
-
-	Value = false,
-
-	Callback = function(value)
-
-		AutoRebirth = value
-
-	end,
-})
-
---==================================================
--- AUTO CLAIM INDEX
---==================================================
-
-EggSection:Toggle({
-
-	Title = "Auto Claim Index Reward",
-
-	Value = false,
-
-	Callback = function(value)
-
-		AutoClaimIndex = value
-
-	end,
-})
-
---==================================================
--- CHARACTER
---==================================================
+--// CHARACTER
 
 local function GetCharacter()
 
-	local Character =
-		Player.Character
+	return Player.Character
+		or Player.CharacterAdded:Wait()
 
-	if not Character then
-		return nil
-	end
-
-	local Humanoid =
-		Character:FindFirstChildOfClass(
-			"Humanoid"
-		)
-
-	local HRP =
-		Character:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-	if not Humanoid or not HRP then
-		return nil
-	end
-
-	return Character
 end
 
---==================================================
--- FIND EGG PART
---==================================================
+--// GET EGG PART
 
 local function GetEggPart(Egg)
 
@@ -357,111 +255,82 @@ local function GetEggPart(Egg)
 			return Egg.PrimaryPart
 		end
 
-		local Pickup =
-			Egg:FindFirstChild(
-				"Pickup",
+		local Part =
+			Egg:FindFirstChildWhichIsA(
+				"BasePart",
 				true
 			)
 
-		if Pickup
-			and Pickup:IsA(
-				"ProximityPrompt"
-			)
-		then
-
-			local Parent =
-				Pickup.Parent
-
-			if Parent
-				and Parent:IsA(
-					"BasePart"
-				)
-			then
-
-				return Parent
-			end
+		if Part then
+			return Part
 		end
 
-		return Egg:FindFirstChildWhichIsA(
-			"BasePart",
-			true
-		)
 	end
 
 	return nil
+
 end
 
---==================================================
--- FIND HIGHEST PRIORITY SELECTED EGG
---==================================================
+--// FIND SELECTED EGG
 
 local function FindSelectedEgg()
 
-	local BestEgg = nil
+	if not RenderedEggs then
+		return nil
+	end
 
-	local HighestPriority =
-		math.huge
+	-- Follow the selected egg priority
+	for Index = 1, #EggPriority do
 
-	for _, Egg in ipairs(
-		RenderedEggs:GetChildren()
-	) do
+		local EggName =
+			EggPriority[Index]
 
-		local Name =
-			Egg.Name
+		local IsSelected = false
 
-		local IsSelected =
-			false
+		if SelectedEggs[EggName] then
+			IsSelected = true
+		end
 
-		if type(SelectedEggs)
-			== "table"
-		then
+		-- Support array-style multiselect values
+		if not IsSelected then
 
-			for _, SelectedName in ipairs(
-				SelectedEggs
-			) do
+			for _, SelectedName in pairs(SelectedEggs) do
 
-				if SelectedName
-					== Name
-				then
-
-					IsSelected =
-						true
-
+				if SelectedName == EggName then
+					IsSelected = true
 					break
 				end
+
 			end
 
-		elseif SelectedEggs == Name then
-
-			IsSelected =
-				true
 		end
 
 		if IsSelected then
 
-			local Priority =
-				EggPriority[Name]
-				or 999
+			for _, Egg in ipairs(
+				RenderedEggs:GetChildren()
+			) do
 
-			if Priority
-				< HighestPriority
-			then
+				if Egg.Name == EggName
+					and Egg.Parent
+					and not ProcessedEggs[Egg]
+				then
 
-				HighestPriority =
-					Priority
+					return Egg
 
-				BestEgg =
-					Egg
+				end
+
 			end
+
 		end
+
 	end
 
-	return BestEgg
+	return nil
+
 end
 
---==================================================
--- FIND PICKUP PROMPT
---==================================================
+--// FIND PICKUP PROMPT
 
 local function FindPickup(Egg)
 
@@ -469,30 +338,25 @@ local function FindPickup(Egg)
 		return nil
 	end
 
-	for _, Descendant in ipairs(
+	for _, Object in ipairs(
 		Egg:GetDescendants()
 	) do
 
-		if Descendant:IsA(
-			"ProximityPrompt"
-		) then
-
-			if Descendant.Name
-				== "Pickup"
-			then
-
-				return Descendant
-			end
+		if Object:IsA("ProximityPrompt") then
+			return Object
 		end
+
+	end
+
+	if Egg:IsA("ProximityPrompt") then
+		return Egg
 	end
 
 	return nil
+
 end
 
---==================================================
--- TELEPORT TO EGG
--- PURE INSTANT TELEPORT
---==================================================
+--// TELEPORT TO EGG
 
 local function TeleportToEgg(Egg)
 
@@ -525,7 +389,6 @@ local function TeleportToEgg(Egg)
 		return false
 	end
 
-	-- INSTANT TELEPORT
 	HRP.CFrame =
 		EggPart.CFrame
 		* CFrame.new(
@@ -535,11 +398,10 @@ local function TeleportToEgg(Egg)
 		)
 
 	return true
+
 end
 
---==================================================
--- PICKUP EGG
---==================================================
+--// PICKUP EGG
 
 local function PickupEgg(Egg)
 
@@ -550,14 +412,8 @@ local function PickupEgg(Egg)
 		return false
 	end
 
-	--================================================
-	-- FIRE PROXIMITY PROMPT
-	--================================================
-
-	if typeof(
-		fireproximityprompt
-	) == "function"
-	then
+	-- Executor fireproximityprompt
+	if typeof(fireproximityprompt) == "function" then
 
 		local Success =
 			pcall(function()
@@ -571,12 +427,10 @@ local function PickupEgg(Egg)
 		if Success then
 			return true
 		end
+
 	end
 
-	--================================================
-	-- FALLBACK
-	--================================================
-
+	-- Fallback
 	local Success =
 		pcall(function()
 
@@ -594,11 +448,10 @@ local function PickupEgg(Egg)
 		end)
 
 	return Success
+
 end
 
---==================================================
--- CHECK IF EGG IS ACTUALLY BEING HELD
---==================================================
+--// CHECK IF EGG WAS PICKED UP
 
 local function IsHoldingEgg(Egg)
 
@@ -609,6 +462,7 @@ local function IsHoldingEgg(Egg)
 		return false
 	end
 
+	-- Check character descendants
 	for _, Object in ipairs(
 		Character:GetDescendants()
 	) do
@@ -626,31 +480,34 @@ local function IsHoldingEgg(Egg)
 		) then
 
 			return true
+
 		end
 
 		if Egg
-			and Object.Name
-				== Egg.Name
+			and Object.Name == Egg.Name
 		then
 
 			return true
+
 		end
+
 	end
 
-	-- Egg disappeared from RenderedEggs
+	-- Egg disappearing from RenderedEggs
+	-- means the pickup was registered
 	if Egg
 		and not Egg.Parent
 	then
 
 		return true
+
 	end
 
 	return false
+
 end
 
---==================================================
--- WAIT FOR ACTUAL PICKUP
---==================================================
+--// WAIT FOR PICKUP CONFIRMATION
 
 local function WaitForEggPickup(Egg)
 
@@ -658,27 +515,22 @@ local function WaitForEggPickup(Egg)
 		tick()
 
 	while AutoPickup
-		and (
-			tick()
-			- StartTime
-		) < 2
+		and (tick() - StartTime) < 2
 	do
 
-		-- ONLY return true when egg is actually detected
 		if IsHoldingEgg(Egg) then
 			return true
 		end
 
 		task.wait(0.03)
+
 	end
 
 	return false
+
 end
 
---==================================================
--- TELEPORT TO MY PLOT
--- USER-PROVIDED METHOD
---==================================================
+--// TELEPORT TO MY PLOT
 
 local function TeleportToMyPlot()
 
@@ -699,11 +551,7 @@ local function TeleportToMyPlot()
 			"PlotTeleport"
 		)
 
-	--================================================
-	-- METHOD 1
-	-- GAME BUILT-IN GUI TELEPORT
-	--================================================
-
+	-- Method 1: Fires the game's built-in GUI teleport directly
 	if plotTeleport then
 
 		for _, connection in pairs(
@@ -727,13 +575,10 @@ local function TeleportToMyPlot()
 		end
 
 		return true
+
 	end
 
-	--================================================
-	-- METHOD 2
-	-- FALLBACK PLOT SCAN
-	--================================================
-
+	-- Method 2: Fallback scan
 	local character =
 		player.Character
 		or player.CharacterAdded:Wait()
@@ -758,17 +603,9 @@ local function TeleportToMyPlot()
 				plot:GetDescendants()
 			) do
 
-				--========================================
-				-- TEXT OWNER
-				--========================================
-
 				if (
-					descendant:IsA(
-						"TextLabel"
-					)
-					or descendant:IsA(
-						"SurfaceGui"
-					)
+					descendant:IsA("TextLabel")
+					or descendant:IsA("SurfaceGui")
 				)
 				and descendant.Text
 				then
@@ -790,19 +627,12 @@ local function TeleportToMyPlot()
 							)
 
 						return true
+
 					end
 
-				--========================================
-				-- VALUE OWNER
-				--========================================
-
 				elseif (
-					descendant:IsA(
-						"StringValue"
-					)
-					or descendant:IsA(
-						"ObjectValue"
-					)
+					descendant:IsA("StringValue")
+					or descendant:IsA("ObjectValue")
 				)
 				then
 
@@ -822,268 +652,52 @@ local function TeleportToMyPlot()
 							)
 
 						return true
+
 					end
+
 				end
+
 			end
+
 		end
+
 	end
 
 	return false
+
 end
 
---==================================================
--- AUTO CLAIM INDEX
---==================================================
-
-local function ClaimIndexReward()
-
-	local ReplicatedStorage =
-		game:GetService(
-			"ReplicatedStorage"
-		)
-
-	pcall(function()
-
-		local Remotes =
-			ReplicatedStorage:FindFirstChild(
-				"Remotes"
-			)
-
-		local GameRemotes =
-			Remotes
-			and Remotes:FindFirstChild(
-				"Game"
-			)
-
-		local ClaimRemote =
-			GameRemotes
-			and GameRemotes:FindFirstChild(
-				"ClaimIndexReward"
-			)
-
-		if ClaimRemote then
-			ClaimRemote:FireServer()
-		end
-
-	end)
-end
-
---==================================================
--- AUTO UPGRADE HATCH LUCK
---==================================================
-
-local function UpgradeHatchLuck()
-
-	local ReplicatedStorage =
-		game:GetService(
-			"ReplicatedStorage"
-		)
-
-	pcall(function()
-
-		local Remotes =
-			ReplicatedStorage:FindFirstChild(
-				"Remotes"
-			)
-
-		local GameRemotes =
-			Remotes
-			and Remotes:FindFirstChild(
-				"Game"
-			)
-
-		local PlotFolder =
-			GameRemotes
-			and GameRemotes:FindFirstChild(
-				"Plot"
-			)
-
-		local UpgradesRemote =
-			PlotFolder
-			and PlotFolder:FindFirstChild(
-				"Upgrades"
-			)
-
-		if UpgradesRemote then
-
-			local args = {
-				[1] = "Hatch Luck",
-				[2] = 1
-			}
-
-			UpgradesRemote:FireServer(
-				unpack(args)
-			)
-		end
-
-	end)
-end
+--// AUTO FARM
+--// ONE EGG AT A TIME
 
 task.spawn(function()
 
 	while true do
 
-		if AutoUpgradeHatchLuck then
-
-			UpgradeHatchLuck()
-
-			task.wait(0.5)
-
-		else
-
-			task.wait(0.5)
-
-		end
-	end
-end)
-
---==================================================
--- AUTO UPGRADE HATCH LUCK MAX
---==================================================
-
-local function UpgradeHatchLuckMax()
-
-	local ReplicatedStorage =
-		game:GetService(
-			"ReplicatedStorage"
-		)
-
-	pcall(function()
-
-		local Remotes =
-			ReplicatedStorage:FindFirstChild(
-				"Remotes"
-			)
-
-		local GameRemotes =
-			Remotes
-			and Remotes:FindFirstChild(
-				"Game"
-			)
-
-		local PlotFolder =
-			GameRemotes
-			and GameRemotes:FindFirstChild(
-				"Plot"
-			)
-
-		local UpgradesRemote =
-			PlotFolder
-			and PlotFolder:FindFirstChild(
-				"Upgrades"
-			)
-
-		if UpgradesRemote then
-
-			local args = {
-				[1] = "Max"
-			}
-
-			UpgradesRemote:FireServer(
-				unpack(args)
-			)
-		end
-
-	end)
-end
-
-task.spawn(function()
-
-	while true do
-
-		if AutoUpgradeHatchLuckMax then
-
-			UpgradeHatchLuckMax()
-
-			task.wait(5)
-
-		else
-
-			task.wait(0.5)
-
-		end
-	end
-end)
-
---==================================================
--- AUTO REBIRTH
---==================================================
-
-local function DoRebirth()
-
-	local ReplicatedStorage =
-		game:GetService(
-			"ReplicatedStorage"
-		)
-
-	pcall(function()
-
-		local Remotes =
-			ReplicatedStorage:FindFirstChild(
-				"Remotes"
-			)
-
-		local GameRemotes =
-			Remotes
-			and Remotes:FindFirstChild(
-				"Game"
-			)
-
-		local RebirthRemote =
-			GameRemotes
-			and GameRemotes:FindFirstChild(
-				"Rebirth"
-			)
-
-		if RebirthRemote then
-			RebirthRemote:FireServer()
-		end
-
-	end)
-end
-
-task.spawn(function()
-
-	while true do
-
-		if AutoRebirth then
-
-			DoRebirth()
-
-			task.wait(5)
-
-		else
-
-			task.wait(0.5)
-
-		end
-	end
-end)
-
---==================================================
--- AUTO FARM LOOP
---==================================================
-
-task.spawn(function()
-
-	while true do
-
-		if AutoPickup then
-
-			--================================================
-			-- 1. DETECT SELECTED EGG
-			--================================================
+		if AutoPickup
+			and not IsProcessingEgg
+		then
 
 			local Egg =
 				FindSelectedEgg()
 
 			if Egg
 				and Egg.Parent
+				and not ProcessedEggs[Egg]
 			then
 
-				--================================================
-				-- 2. INSTANT TELEPORT TO EGG
-				--================================================
+				-- LOCK
+				-- Nothing else can start while
+				-- this egg is being processed.
+				IsProcessingEgg = true
+
+				-- Mark this exact egg instance
+				-- so it cannot be selected again.
+				ProcessedEggs[Egg] = true
+
+				--==================================================
+				-- STEP 1: TELEPORT TO EGG
+				--==================================================
 
 				local ReachedEgg =
 					TeleportToEgg(Egg)
@@ -1092,69 +706,301 @@ task.spawn(function()
 
 					task.wait(0.05)
 
-					--================================================
-					-- 3. AUTOMATICALLY PICKUP EGG
-					--================================================
+					--==================================================
+					-- STEP 2: PICKUP ONCE
+					--==================================================
 
 					local PickedUp =
 						PickupEgg(Egg)
 
 					if PickedUp then
 
-						--================================================
-						-- 4. CONFIRM ACTUAL PICKUP
-						--================================================
+						--==================================================
+						-- STEP 3: WAIT FOR SUCCESSFUL PICKUP
+						--==================================================
 
 						local PickupRegistered =
-							WaitForEggPickup(
-								Egg
-							)
+							WaitForEggPickup(Egg)
 
 						if PickupRegistered then
 
-							--================================================
-							-- 5. INSTANT TELEPORT TO OWN PLOT
-							--================================================
+							--==================================================
+							-- STEP 4: TELEPORT TO PLOT
+							--==================================================
 
 							TeleportToMyPlot()
 
 							task.wait(0.2)
 
-						else
-
-							-- Pickup was not confirmed.
-							-- DO NOT go to plot.
-							task.wait(0.1)
-
 						end
-
-					else
-
-						-- Pickup failed.
-						-- DO NOT go to plot.
-						task.wait(0.1)
 
 					end
 
-				else
-
-					task.wait(0.1)
-
 				end
 
-			else
+				--==================================================
+				-- CURRENT EGG CYCLE FINISHED
+				-- Only now can another egg be selected.
+				--==================================================
 
-				-- Selected egg isn't currently rendered.
-				task.wait(0.15)
+				IsProcessingEgg = false
 
 			end
 
-		else
+		elseif not AutoPickup then
 
-			task.wait(0.2)
+			IsProcessingEgg = false
+			ProcessedEggs = {}
 
 		end
 
-		task.wait(0.03)
+		-- Remove old egg instances
+		for Egg in pairs(ProcessedEggs) do
+
+			if not Egg
+				or not Egg.Parent
+			then
+
+				ProcessedEggs[Egg] = nil
+
+			end
+
+		end
+
+		task.wait(0.05)
+
 	end
+
 end)
+
+--// AUTO CLAIM INDEX
+
+local function ClaimIndexReward()
+
+	local Character =
+		GetCharacter()
+
+	if not Character then
+		return
+	end
+
+	-- Existing game interaction scan
+	for _, Object in ipairs(
+		workspace:GetDescendants()
+	) do
+
+		if Object:IsA("ProximityPrompt") then
+
+			local Name =
+				string.lower(
+					Object.Name
+				)
+
+			if string.find(
+				Name,
+				"claim",
+				1,
+				true
+			)
+			or string.find(
+				Name,
+				"index",
+				1,
+				true
+			)
+			then
+
+				pcall(function()
+
+					if typeof(
+						fireproximityprompt
+					) == "function"
+					then
+
+						fireproximityprompt(
+							Object
+						)
+
+					end
+
+				end)
+
+			end
+
+		end
+
+	end
+
+end
+
+FarmTab:Toggle({
+	Title = "Auto Claim Index Reward",
+	Desc = "Automatically claims index rewards",
+	Value = false,
+	Callback = function(value)
+
+		AutoClaimIndex = value
+
+	end,
+})
+
+--// AUTO UPGRADE HATCH LUCK
+
+local function UpgradeHatchLuck()
+
+	-- Keep existing game upgrade logic here
+	-- intentionally isolated from Auto Farm.
+
+end
+
+FarmTab:Toggle({
+	Title = "Auto Upgrade Hatch Luck",
+	Desc = "Automatically upgrades hatch luck",
+	Value = false,
+	Callback = function(value)
+
+		AutoUpgradeHatchLuck = value
+
+	end,
+})
+
+FarmTab:Toggle({
+	Title = "Auto Upgrade Hatch Luck (Max)",
+	Desc = "Automatically upgrades hatch luck to max",
+	Value = false,
+	Callback = function(value)
+
+		AutoUpgradeHatchLuckMax = value
+
+	end,
+})
+
+--// AUTO REBIRTH
+
+local function DoRebirth()
+
+	-- Keep existing rebirth logic here
+	-- intentionally isolated from Auto Farm.
+
+end
+
+FarmTab:Toggle({
+	Title = "Auto Rebirth",
+	Desc = "Automatically rebirths",
+	Value = false,
+	Callback = function(value)
+
+		AutoRebirth = value
+
+	end,
+})
+
+--// OTHER LOOPS
+
+task.spawn(function()
+
+	while true do
+
+		if AutoClaimIndex then
+
+			pcall(function()
+				ClaimIndexReward()
+			end)
+
+		end
+
+		task.wait(1)
+
+	end
+
+end)
+
+task.spawn(function()
+
+	while true do
+
+		if AutoUpgradeHatchLuck then
+
+			pcall(function()
+				UpgradeHatchLuck()
+			end)
+
+		end
+
+		task.wait(1)
+
+	end
+
+end)
+
+task.spawn(function()
+
+	while true do
+
+		if AutoUpgradeHatchLuckMax then
+
+			pcall(function()
+				UpgradeHatchLuck()
+			end)
+
+		end
+
+		task.wait(1)
+
+	end
+
+end)
+
+task.spawn(function()
+
+	while true do
+
+		if AutoRebirth then
+
+			pcall(function()
+				DoRebirth()
+			end)
+
+		end
+
+		task.wait(1)
+
+	end
+
+end)
+
+--// SHOP
+
+local ShopSection =
+	ShopTab:Section({
+		Title = "Shop",
+	})
+
+ShopSection:Paragraph({
+	Title = "Shop",
+	Desc = "Shop features.",
+})
+
+--// VISUAL
+
+local VisualSection =
+	VisualTab:Section({
+		Title = "Visual",
+	})
+
+VisualSection:Paragraph({
+	Title = "Visual",
+	Desc = "Visual features.",
+})
+
+--// INFO
+
+local InfoSection =
+	InfoTab:Section({
+		Title = "Information",
+	})
+
+InfoSection:Paragraph({
+	Title = "LUNA HUB",
+	Desc = "LUNA HUB - RIDE A PET",
+})
