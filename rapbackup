@@ -109,7 +109,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.4",
+	Title = "v.1.0.2.3",
 	Color = "ElementBackground",
 })
 
@@ -368,6 +368,26 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
+-- TELEPORT TO STALL (workspace.Stalls.EggTracker)
+local function TeleportToStall()
+	local Character = GetCharacter()
+	if not Character then return false end
+
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	local StallTarget = workspace:FindFirstChild("Stalls") and workspace.Stalls:FindFirstChild("EggTracker")
+
+	if HRP and StallTarget then
+		if StallTarget:IsA("Model") then
+			HRP.CFrame = StallTarget:GetPivot() + Vector3.new(0, 3, 0)
+		elseif StallTarget:IsA("BasePart") then
+			HRP.CFrame = StallTarget.CFrame * CFrame.new(0, 3, 0)
+		end
+		return true
+	end
+
+	return false
+end
+
 -- TELEPORT TO PLOT CODE
 local function TeleportToPlot()
 	local player = game:GetService("Players").LocalPlayer
@@ -487,7 +507,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP (IN-ADJUST ANG MGA DELAY)
+-- AUTO FARM LOOP (WITH STALL TELEPORTATION)
 task.spawn(function()
 	while true do
 		if AutoPickup then
@@ -496,20 +516,26 @@ task.spawn(function()
 			if Egg then
 				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					-- 2. Wait 3 seconds bago ipickup
-					task.wait(5)
+					-- Delay
+					task.wait(3)
 
-					-- 3. Pickup Egg
+					-- 2. Pick up Egg
 					PickupEgg(Egg)
 
-					-- 4. Wait 3 seconds matapos ipickup bago mag TP to plot
-					task.wait(5)
+					-- Delay
+					task.wait(3)
 
-					-- 5. Teleport to Plot
+					-- 3. Teleport to Stall
+					TeleportToStall()
+
+					-- Delay
+					task.wait(3)
+
+					-- 4. Teleport to Plot
 					TeleportToPlot()
 
-					-- 6. Wait 7 seconds habang nasa plot bago kumuha ulit ng panibagong egg
-					task.wait(5)
+					-- Delay bago pumunta sa susunod na Egg
+					task.wait(7)
 				else
 					task.wait(0.1)
 				end
