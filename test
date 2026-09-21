@@ -368,16 +368,19 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
--- TELEPORT DIRECTLY UNDER THE EGG'S EXACT LOCATION INTO THE VOID
-local function TeleportToEggVoid(EggPos)
+-- TELEPORT AT EGG'S X & Z LOCATION WITH THE EXACT VOID Y HEIGHT (40271.2422)
+local function TeleportToEggVoid(EggPosition)
 	local Character = GetCharacter()
 	if not Character then return false end
 
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
-	if not HRP or not EggPos then return false end
+	if not HRP or not EggPosition then return false end
 
-	-- Mismong X at Z position ng Egg, pero ibababa ang Y nang -500 (Void)
-	HRP.CFrame = CFrame.new(EggPos.X, -500, EggPos.Z)
+	-- Exact Void Y Height (40296.2422 - 25 = 40271.2422)
+	local voidY = 40271.2422
+
+	-- Kunin ang X at Z ng Egg, tapos ibaba sa Y = 40271.2422
+	HRP.CFrame = CFrame.new(EggPosition.X, voidY, EggPosition.Z)
 	return true
 end
 
@@ -473,7 +476,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP (EXACT EGG VOID BYPASS LOGIC)
+-- AUTO FARM LOOP
 task.spawn(function()
 	while true do
 		if AutoPickup then
@@ -493,7 +496,7 @@ task.spawn(function()
 					-- Wait hanggang sa ma-pickup/mawala ang Egg
 					WaitForEggPickup(Egg, 3)
 
-					-- 2. Teleport sa VOID sa mismong X, Z position ng Egg
+					-- 2. Teleport sa X, Z ng Egg gamit ang Y height na 40271.2422
 					if EggPosition then
 						TeleportToEggVoid(EggPosition)
 					end
