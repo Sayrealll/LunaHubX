@@ -1,0 +1,802 @@
+--// SERVICES
+
+local cloneref = (cloneref or clonereference or function(instance)
+	return instance
+end)
+
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local RunService = cloneref(game:GetService("RunService"))
+local Players = cloneref(game:GetService("Players"))
+
+--// PLAYER
+
+local Player = Players.LocalPlayer
+
+--// WINDUI
+
+local WindUI
+
+do
+	local ok, result = pcall(function()
+		return require("./src/Init")
+	end)
+
+	if ok then
+		WindUI = result
+	else
+		if RunService:IsStudio() or not writefile then
+			WindUI = require(
+				ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")
+			)
+		else
+			WindUI =
+				loadstring(
+					game:HttpGet(
+						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+					)
+				)()
+		end
+	end
+end
+
+--// SETTINGS
+
+local ThemeName = "Dark"
+
+-- MULTI-SELECT TABLES
+local SelectedEggs = {}
+local SelectedESPEggs = {}
+local SelectedPlaceEgg = "Cherub Egg"
+
+-- TOGGLES
+local AutoPickup = false
+local AutoClaimIndex = false
+local AutoUpgradeHatchLuck = false
+local AutoUpgradeHatchLuckMax = false
+local AutoRebirth = false
+local ESPEnabled = false
+local AutoPlaceEgg = false
+
+--// EGG KEYS MAPPING (I-update mo nalang yung ibang EggKeys kung magkakaiba sila)
+local EggKeys = {
+	["Cherub Egg"] = "4e025904-0802-427d-822b-2661a6e7f010",
+	["Blackhole Egg"] = "",
+	["Solaris Egg"] = "",
+	["Aurora Egg"] = "",
+	["Galaxy Egg"] = "",
+	["Asteroid Egg"] = "",
+	["Crystal Egg"] = "",
+	["Diamond Egg"] = "",
+	["Dominus Egg"] = "",
+	["Flaming Egg"] = "",
+	["Sinister Egg"] = "",
+	["Skull Egg"] = "",
+	["Soul Egg"] = "",
+	["Glass Egg"] = "",
+	["Golden Egg"] = "",
+	["Flower Egg"] = "",
+	["Ice Egg"] = "",
+	["Mushroom Egg"] = "",
+	["Slime Egg"] = "",
+	["Cracked Egg"] = "",
+	["Easter Egg"] = "",
+	["Leaf Egg"] = "",
+	["Stone Egg"] = "",
+	["Brown Egg"] = "",
+	["White Egg"] = ""
+}
+
+--// EGG CONTAINER
+
+local RenderedEggs = workspace:WaitForChild("RenderedEggs")
+
+--// EGG LIST
+
+local EggNames = {
+	"Cherub Egg",
+	"Blackhole Egg",
+	"Solaris Egg",
+	"Aurora Egg",
+	"Galaxy Egg",
+	"Asteroid Egg",
+	"Crystal Egg",
+	"Diamond Egg",
+	"Dominus Egg",
+	"Flaming Egg",
+	"Sinister Egg",
+	"Skull Egg",
+	"Soul Egg",
+	"Glass Egg",
+	"Golden Egg",
+	"Flower Egg",
+	"Ice Egg",
+	"Mushroom Egg",
+	"Slime Egg",
+	"Cracked Egg",
+	"Easter Egg",
+	"Leaf Egg",
+	"Stone Egg",
+	"Brown Egg",
+	"White Egg"
+}
+
+-- Mapping ng Priority (para sa Auto Farm at Sorting)
+local EggPriority = {}
+for Index, Name in ipairs(EggNames) do
+	EggPriority[Name] = Index
+end
+
+
+--==================================================
+-- WINDOW
+--==================================================
+
+local Window = WindUI:CreateWindow({
+	Title = "LUNA HUB",
+	Author = "RIDE A PET",
+	Icon = "dog",
+	Theme = ThemeName,
+
+	ToggleKey = Enum.KeyCode.F,
+	OpenButton = { Enabled = true, OnlyMobile = false }, 
+})
+
+Window:Tag({
+	Title = "v.1.0.2.6",
+	Color = "ElementBackground",
+})
+
+--==================================================
+-- TABS
+--==================================================
+
+local Tab1 = Window:Tab({
+	Title = "HOME",
+	Icon = "warehouse",
+})
+
+local Tab2 = Window:Tab({
+	Title = "FARM",
+	Icon = "egg",
+})
+
+local Tab3 = Window:Tab({
+	Title = "SHOP",
+	Icon = "shopping-cart",
+})
+
+local Tab4 = Window:Tab({
+	Title = "VISUAL",
+	Icon = "eye",
+})
+
+local Tab5 = Window:Tab({
+	Title = "EGGS",
+	Icon = "list-ordered",
+})
+
+local Tab6 = Window:Tab({
+	Title = "INFO",
+	Icon = "badge-info",
+})
+
+--==================================================
+-- TAB 1 (HOME)
+--==================================================
+
+Tab1:Paragraph({
+	Title = "    Discord  ",
+	Desc = " Join our Discord Community",
+	Buttons = {
+		{
+			Title = "Discord",
+			Callback = function()
+				local DiscordLink = "discord.gg/Ev8k5RAU3"
+				
+				if setclipboard then
+					setclipboard(DiscordLink)
+					print("Discord link copied")
+				end
+			end,
+		},
+	},
+})
+
+--==================================================
+-- TAB 2 (FARM)
+--==================================================
+
+local PlaceEggSection = Tab2:Section({
+	Title = "Auto Place / Hatch Egg",
+	Icon = "package-plus",
+	Box = true,
+	BoxBorder = true,
+})
+
+PlaceEggSection:Dropdown({
+	Title = "Select Egg to Place",
+	Desc = "Choose which egg to auto place on your plot",
+	Values = EggNames,
+	Multi = false,
+	Value = "Cherub Egg",
+
+	Callback = function(value)
+		SelectedPlaceEgg = value
+	end,
+})
+
+PlaceEggSection:Toggle({
+	Title = "Auto Place Egg",
+	Desc = "Automatically places the selected egg on your plot",
+	Value = false,
+
+	Callback = function(value)
+		AutoPlaceEgg = value
+	end,
+})
+
+local EggSection = Tab2:Section({
+	Title = "Auto Farm",
+	Icon = "egg",
+	Box = true,
+	BoxBorder = true,
+})
+
+-- MULTI-SELECT DROPDOWN
+EggSection:Dropdown({
+	Title = "Select Egg",
+	Desc = "Choose which eggs to auto farm (Multi-Select)",
+	Values = EggNames,
+	Multi = true,
+	Value = {},
+
+	Callback = function(value)
+		SelectedEggs = value
+	end,
+})
+
+-- AUTO FARM TOGGLES
+EggSection:Toggle({
+	Title = "Auto Farm",
+	Desc = "Automatic to get the egg and go to your plot",
+	Value = false,
+
+	Callback = function(value)
+		AutoPickup = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Upgrade Hatch Luck",
+	Desc = "Auto upgrade hatch luck by 1x",
+	Value = false,
+	Callback = function(value)
+		AutoUpgradeHatchLuck = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Upgrade Hatch Luck (Max)",
+	Desc = "Auto upgrade hatch luck by Max",
+	Value = false,
+	Callback = function(value)
+		AutoUpgradeHatchLuckMax = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Rebirth",
+	Value = false,
+	Callback = function(value)
+		AutoRebirth = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Claim Index Reward",
+	Value = false,
+	Callback = function(value)
+		AutoClaimIndex = value
+	end,
+})
+
+--==================================================
+-- TAB 4 (VISUAL)
+--==================================================
+
+local VisualSection = Tab4:Section({
+	Title = "ESP Settings",
+	Icon = "eye",
+	Box = true,
+	BoxBorder = true,
+})
+
+VisualSection:Dropdown({
+	Title = "Select ESP Egg",
+	Desc = "Choose which eggs to display ESP",
+	Values = EggNames,
+	Multi = true,
+	Value = {},
+
+	Callback = function(value)
+		SelectedESPEggs = value
+	end,
+})
+
+VisualSection:Toggle({
+	Title = "Egg ESP",
+	Desc = "Enable ESP and Distance for selected eggs",
+	Value = false,
+
+	Callback = function(value)
+		ESPEnabled = value
+	end,
+})
+
+--==================================================
+-- TAB 5 (EGGS) - LIVE RENDERED EGGS LIST (SORTED)
+--==================================================
+
+local EggsSection = Tab5:Section({
+	Title = "Active Eggs",
+	Icon = "list",
+	Box = true,
+	BoxBorder = true,
+})
+
+local LiveEggParagraph = EggsSection:Paragraph({
+	Title = "Spawned Eggs (0)",
+	Desc = "Scanning workspace for rendered eggs...",
+})
+
+local function UpdateRenderedEggList()
+	local CountMap = {}
+	local TotalCount = 0
+
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+		local Name = Egg.Name
+		CountMap[Name] = (CountMap[Name] or 0) + 1
+		TotalCount = TotalCount + 1
+	end
+
+	if TotalCount == 0 then
+		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
+		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
+	else
+		-- Kunin ang mga nag-spawn na Egg names at i-sort ayon sa EggPriority (Cherub -> White)
+		local SpawnedEggNames = {}
+		for Name, _ in pairs(CountMap) do
+			table.insert(SpawnedEggNames, Name)
+		end
+
+		table.sort(SpawnedEggNames, function(a, b)
+			local priorityA = EggPriority[a] or 999
+			local priorityB = EggPriority[b] or 999
+			return priorityA < priorityB
+		end)
+
+		local DescriptionText = ""
+		for _, Name in ipairs(SpawnedEggNames) do
+			local Count = CountMap[Name]
+			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
+		end
+
+		LiveEggParagraph:SetTitle(string.format("Spawned Eggs (%d)", TotalCount))
+		LiveEggParagraph:SetDesc(DescriptionText)
+	end
+end
+
+-- Update list kapag nag-spawn o nawala ang Egg
+RenderedEggs.ChildAdded:Connect(function()
+	task.defer(UpdateRenderedEggList)
+end)
+
+RenderedEggs.ChildRemoved:Connect(function()
+	task.defer(UpdateRenderedEggList)
+end)
+
+-- Initial population
+task.spawn(function()
+	task.wait(1)
+	UpdateRenderedEggList()
+end)
+
+--==================================================
+-- CHARACTER & HELPER FUNCTIONS
+--==================================================
+
+local function GetCharacter()
+	local Character = Player.Character
+	if not Character then return nil end
+
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+
+	if not Humanoid or not HRP then return nil end
+	return Character
+end
+
+local function GetEggPart(Egg)
+	if not Egg then return nil end
+	if Egg:IsA("BasePart") then return Egg end
+
+	if Egg:IsA("Model") then
+		if Egg.PrimaryPart then
+			return Egg.PrimaryPart
+		end
+
+		local Pickup = Egg:FindFirstChild("Pickup", true)
+		if Pickup and Pickup:IsA("ProximityPrompt") then
+			local Parent = Pickup.Parent
+			if Parent and Parent:IsA("BasePart") then
+				return Parent
+			end
+		end
+
+		return Egg:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	return nil
+end
+
+local function FindSelectedEgg()
+	local BestEgg = nil
+	local HighestPriority = math.huge
+
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+		local Name = Egg.Name
+		
+		local IsSelected = false
+		if type(SelectedEggs) == "table" then
+			for _, SelectedName in ipairs(SelectedEggs) do
+				if SelectedName == Name then
+					IsSelected = true
+					break
+				end
+			end
+		elseif SelectedEggs == Name then
+			IsSelected = true
+		end
+
+		if IsSelected then
+			local Priority = EggPriority[Name] or 999
+			if Priority < HighestPriority then
+				HighestPriority = Priority
+				BestEgg = Egg
+			end
+		end
+	end
+
+	return BestEgg
+end
+
+-- ENHANCED PICKUP EGG FUNCTION
+local function PickupEgg(Egg)
+	if not Egg then return false end
+
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		if GameRemotes then
+			local PickupRemote = GameRemotes:FindFirstChild("PickupEgg") or GameRemotes:FindFirstChild("ClaimEgg") or GameRemotes:FindFirstChild("CollectEgg")
+			if PickupRemote then
+				PickupRemote:FireServer(Egg)
+			end
+		end
+	end)
+
+	for _, Descendant in ipairs(Egg:GetDescendants()) do
+		if Descendant:IsA("ProximityPrompt") then
+			if typeof(fireproximityprompt) == "function" then
+				pcall(function()
+					fireproximityprompt(Descendant)
+				end)
+			end
+
+			pcall(function()
+				Descendant:InputHoldBegin()
+				task.wait(0.05)
+				Descendant:InputHoldEnd()
+			end)
+		end
+	end
+
+	local Character = GetCharacter()
+	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+	local EggPart = GetEggPart(Egg)
+
+	if HRP and EggPart then
+		pcall(function()
+			firetouchinterest(HRP, EggPart, 0)
+			task.wait(0.05)
+			firetouchinterest(HRP, EggPart, 1)
+		end)
+	end
+
+	return true
+end
+
+--==================================================
+-- TELEPORT & VOID FUNCTIONS
+--==================================================
+
+local function TeleportToEgg(Egg)
+	local Character = GetCharacter()
+	if not Character then return false end
+
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	local EggPart = GetEggPart(Egg)
+
+	if not HRP or not EggPart then return false end
+
+	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
+	return true
+end
+
+local function TeleportToEggVoid(EggPosition)
+	local Character = GetCharacter()
+	if not Character then return false end
+
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	if not HRP or not EggPosition then return false end
+
+	local voidY = 39771.2422
+
+	HRP.CFrame = CFrame.new(EggPosition.X, voidY, EggPosition.Z)
+	return true
+end
+
+local function WaitForEggPickup(Egg, Timeout)
+	Timeout = Timeout or 5
+	local StartTime = os.clock()
+
+	while Egg and Egg.Parent == RenderedEggs do
+		if (os.clock() - StartTime) >= Timeout then
+			break
+		end
+		task.wait(0.1)
+	end
+end
+
+--==================================================
+-- ESP SYSTEM
+--==================================================
+
+local ActiveESP = {}
+
+local function RemoveESP(Egg)
+	if ActiveESP[Egg] then
+		if ActiveESP[Egg].Billboard then
+			ActiveESP[Egg].Billboard:Destroy()
+		end
+		ActiveESP[Egg] = nil
+	end
+end
+
+local function ClearAllESP()
+	for Egg, Data in pairs(ActiveESP) do
+		RemoveESP(Egg)
+	end
+end
+
+local function CreateESP(Egg)
+	if ActiveESP[Egg] then return end
+
+	local EggPart = GetEggPart(Egg)
+	if not EggPart then return end
+
+	local Billboard = Instance.new("BillboardGui")
+	Billboard.Name = "LunaEggESP"
+	Billboard.Adornee = EggPart
+	Billboard.Size = UDim2.new(0, 200, 0, 50)
+	Billboard.StudsOffset = Vector3.new(0, 3, 0)
+	Billboard.AlwaysOnTop = true
+	Billboard.Parent = EggPart
+
+	local TextLabel = Instance.new("TextLabel")
+	TextLabel.Size = UDim2.new(1, 0, 1, 0)
+	TextLabel.BackgroundTransparency = 1
+	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White Text
+	TextLabel.TextStrokeTransparency = 0
+	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	TextLabel.Font = Enum.Font.SourceSansBold
+	TextLabel.TextSize = 16
+	TextLabel.Text = Egg.Name .. "\n[0m]"
+	TextLabel.Parent = Billboard
+
+	ActiveESP[Egg] = {
+		Billboard = Billboard,
+		TextLabel = TextLabel,
+		Part = EggPart
+	}
+end
+
+-- ESP LOOP
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then
+		ClearAllESP()
+		return
+	end
+
+	local Character = GetCharacter()
+	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+
+	-- Clean up dead ESP
+	for Egg, Data in pairs(ActiveESP) do
+		if not Egg or not Egg.Parent or Egg.Parent ~= RenderedEggs then
+			RemoveESP(Egg)
+		end
+	end
+
+	-- Check rendered eggs
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+		local Name = Egg.Name
+		local IsSelected = false
+
+		if type(SelectedESPEggs) == "table" then
+			for _, SelectedName in ipairs(SelectedESPEggs) do
+				if SelectedName == Name then
+					IsSelected = true
+					break
+				end
+			end
+		elseif SelectedESPEggs == Name then
+			IsSelected = true
+		end
+
+		if IsSelected then
+			if not ActiveESP[Egg] then
+				CreateESP(Egg)
+			end
+
+			-- Update Distance Text
+			if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
+				local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
+				ActiveESP[Egg].TextLabel.Text = string.format("%s\n[%dm]", Name, Dist)
+			end
+		else
+			RemoveESP(Egg)
+		end
+	end
+end)
+
+--==================================================
+-- AUTOMATION LOOPS
+--==================================================
+
+-- AUTO PLACE EGG LOOP
+task.spawn(function()
+	while true do
+		if AutoPlaceEgg and SelectedPlaceEgg then
+			pcall(function()
+				local EggKey = EggKeys[SelectedPlaceEgg]
+				if EggKey and EggKey ~= "" then
+					local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+					local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+					local HatchEvent = GameRemotes and GameRemotes:FindFirstChild("Hatch")
+
+					if HatchEvent then
+						HatchEvent:FireServer({
+							EggKey = EggKey
+						})
+					end
+				end
+			end)
+			task.wait(1) -- Delay bago i-fire ulit ang remote
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+-- AUTO CLAIM INDEX
+local function ClaimIndexReward()
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local ClaimRemote = GameRemotes and GameRemotes:FindFirstChild("ClaimIndexReward")
+
+		if ClaimRemote then
+			ClaimRemote:FireServer()
+		end
+	end)
+end
+
+-- AUTO UPGRADE HATCH LUCK
+task.spawn(function()
+	while true do
+		if AutoUpgradeHatchLuck then
+			pcall(function()
+				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+				local PlotFolder = GameRemotes and GameRemotes:FindFirstChild("Plot")
+				local UpgradesRemote = PlotFolder and PlotFolder:FindFirstChild("Upgrades")
+
+				if UpgradesRemote then
+					UpgradesRemote:FireServer("Hatch Luck", 1)
+				end
+			end)
+			task.wait(0.5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+-- AUTO UPGRADE HATCH LUCK MAX
+task.spawn(function()
+	while true do
+		if AutoUpgradeHatchLuckMax then
+			pcall(function()
+				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+				local PlotFolder = GameRemotes and GameRemotes:FindFirstChild("Plot")
+				local UpgradesRemote = PlotFolder and PlotFolder:FindFirstChild("Upgrades")
+
+				if UpgradesRemote then
+					UpgradesRemote:FireServer("Max")
+				end
+			end)
+			task.wait(5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+-- AUTO REBIRTH LOOP
+task.spawn(function()
+	while true do
+		if AutoRebirth then
+			pcall(function()
+				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+				local RebirthRemote = GameRemotes and GameRemotes:FindFirstChild("Rebirth")
+
+				if RebirthRemote then
+					RebirthRemote:FireServer()
+				end
+			end)
+			task.wait(5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+-- AUTO FARM LOOP
+task.spawn(function()
+	while true do
+		if AutoPickup then
+			local Egg = FindSelectedEgg()
+
+			if Egg then
+				local EggPart = GetEggPart(Egg)
+				local EggPosition = EggPart and EggPart.Position
+
+				if TeleportToEgg(Egg) then
+					-- MAY 2 SECONDS DELAY BAGO PICKUP
+					task.wait(2)
+
+					PickupEgg(Egg)
+
+					WaitForEggPickup(Egg, 3)
+
+					if EggPosition then
+						TeleportToEggVoid(EggPosition)
+					end
+
+					task.wait(2)
+				else
+					task.wait(0.1)
+				end
+			else
+				task.wait(0.2)
+			end
+		else
+			task.wait(0.2)
+		end
+
+		task.wait(0.03)
+	end
+end)
