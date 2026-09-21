@@ -47,8 +47,12 @@ local ThemeName = "Dark"
 local SelectedEggs = {}
 local SelectedESPEggs = {}
 
+
+local SelectedPlaceEgg = ""
+
 -- TOGGLES
 local AutoPickup = false
+local AutoPlaceEgg = false
 local AutoClaimIndex = false
 local AutoUpgradeHatchLuck = false
 local AutoUpgradeHatchLuckMax = false
@@ -154,8 +158,8 @@ local Tab6 = Window:Tab({
 --==================================================
 
 Tab1:Paragraph({
-	Title = "    Discord  ",
-	Desc = " Join our Discord Community",
+	Title = "Discord    ",
+	Desc = "Join our Discord Community",
 	Buttons = {
 		{
 			Title = "Discord",
@@ -182,10 +186,9 @@ local EggSection = Tab2:Section({
 	BoxBorder = true,
 })
 
--- MULTI-SELECT DROPDOWN
 EggSection:Dropdown({
 	Title = "Select Egg",
-	Desc = "Choose which eggs to auto farm (Multi-Select)",
+	Desc = "Choose which eggs to auto farm",
 	Values = EggNames,
 	Multi = true,
 	Value = {},
@@ -195,14 +198,35 @@ EggSection:Dropdown({
 	end,
 })
 
--- AUTO FARM TOGGLES
 EggSection:Toggle({
 	Title = "Auto Farm",
-	Desc = "Automatic to get the egg and go to your plot",
+	Desc = "Automatic to get the egg and  proceed to your plot",
 	Value = false,
 
 	Callback = function(value)
 		AutoPickup = value
+	end,
+})
+
+EggSection:Dropdown({
+	Title = "Select egg to Auto Place",
+	Desc = "Choose which egg to place ( Go to your plot )",
+	Values = EggNames,
+	Multi = false,
+	Value = "",
+
+	Callback = function(value)
+		SelectedPlaceEgg = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Place Eggs",
+	Desc = "Automatically equip and place the selected eggs",
+	Value = false,
+
+	Callback = function(value)
+		AutoPlaceEgg = value
 	end,
 })
 
@@ -303,7 +327,6 @@ local function UpdateRenderedEggList()
 		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
 		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
 	else
-		-- Kunin ang mga nag-spawn na Egg names at i-sort ayon sa EggPriority (Cherub -> White)
 		local SpawnedEggNames = {}
 		for Name, _ in pairs(CountMap) do
 			table.insert(SpawnedEggNames, Name)
@@ -326,7 +349,6 @@ local function UpdateRenderedEggList()
 	end
 end
 
--- Update list kapag nag-spawn o nawala ang Egg
 RenderedEggs.ChildAdded:Connect(function()
 	task.defer(UpdateRenderedEggList)
 end)
@@ -335,7 +357,6 @@ RenderedEggs.ChildRemoved:Connect(function()
 	task.defer(UpdateRenderedEggList)
 end)
 
--- Initial population
 task.spawn(function()
 	task.wait(1)
 	UpdateRenderedEggList()
@@ -410,7 +431,6 @@ local function FindSelectedEgg()
 	return BestEgg
 end
 
--- ENHANCED PICKUP EGG FUNCTION
 local function PickupEgg(Egg)
 	if not Egg then return false end
 
@@ -457,7 +477,7 @@ local function PickupEgg(Egg)
 end
 
 --==================================================
--- TELEPORT & VOID FUNCTIONS
+-- TELEPORT 
 --==================================================
 
 local function TeleportToEgg(Egg)
@@ -536,7 +556,7 @@ local function CreateESP(Egg)
 	local TextLabel = Instance.new("TextLabel")
 	TextLabel.Size = UDim2.new(1, 0, 1, 0)
 	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White Text
+	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TextLabel.TextStrokeTransparency = 0
 	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	TextLabel.Font = Enum.Font.SourceSansBold
@@ -561,14 +581,12 @@ RunService.RenderStepped:Connect(function()
 	local Character = GetCharacter()
 	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
 
-	-- Clean up dead ESP
 	for Egg, Data in pairs(ActiveESP) do
 		if not Egg or not Egg.Parent or Egg.Parent ~= RenderedEggs then
 			RemoveESP(Egg)
 		end
 	end
 
-	-- Check rendered eggs
 	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
 		local Name = Egg.Name
 		local IsSelected = false
@@ -589,7 +607,6 @@ RunService.RenderStepped:Connect(function()
 				CreateESP(Egg)
 			end
 
-			-- Update Distance Text
 			if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
 				local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
 				ActiveESP[Egg].TextLabel.Text = string.format("%s\n[%dm]", Name, Dist)
@@ -604,13 +621,75 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
+-- AUTO PLACE EGG LOOP (WITH AUTO EQUIP TOOL)
+task.spawn(function()
+	while true do
+		if AutoPlaceEgg then
+			pcall(function()
+				-- Only attempt placing if an egg option has been selected
+				if SelectedPlaceEgg == "" or SelectedPlaceEgg == nil then
+					return
+				end
+
+				local Character = GetCharacter()
+				local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+				local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+				local Backpack = Player:FindFirstChild("Backpack")
+
+				if Character and Humanoid and HRP then
+					local HeldTool = Character:FindFirstChildOfClass("Tool")
+					local TargetEggTool = nil
+
+
+					if HeldTool and HeldTool.Name == SelectedPlaceEgg then
+						TargetEggTool = HeldTool
+					else
+
+						if Backpack then
+							TargetEggTool = Backpack:FindFirstChild(SelectedPlaceEgg)
+						end
+						
+
+						if TargetEggTool then
+							Humanoid:EquipTool(TargetEggTool)
+							task.wait(0.1)
+						end
+					end
+
+					if TargetEggTool or (HeldTool and HeldTool.Name == SelectedPlaceEgg) then
+						local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+						local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+						local EggPlacedRemote = GameRemotes and GameRemotes:FindFirstChild("EggPlaced")
+
+						if EggPlacedRemote then
+							local CurrentPos = HRP.Position
+							
+							local args = {
+								{
+									PlantPosition = Vector3.new(CurrentPos.X, CurrentPos.Y - 2, CurrentPos.Z),
+									Egg = SelectedPlaceEgg,
+									EggName = SelectedPlaceEgg
+								}
+							}
+							
+							EggPlacedRemote:FireServer(unpack(args))
+						end
+					end
+				end
+			end)
+			task.wait(0.3)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
 -- AUTO CLAIM INDEX
 local function ClaimIndexReward()
 	pcall(function()
 		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
 		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
 		local ClaimRemote = GameRemotes and GameRemotes:FindFirstChild("ClaimIndexReward")
-
 		if ClaimRemote then
 			ClaimRemote:FireServer()
 		end
@@ -672,7 +751,7 @@ task.spawn(function()
 					RebirthRemote:FireServer()
 				end
 			end)
-			task.wait(5)
+			task.wait(7)
 		else
 			task.wait(0.5)
 		end
@@ -690,8 +769,7 @@ task.spawn(function()
 				local EggPosition = EggPart and EggPart.Position
 
 				if TeleportToEgg(Egg) then
-					-- MAY 2 SECONDS DELAY BAGO PICKUP
-					task.wait(2)
+					task.wait(1)
 
 					PickupEgg(Egg)
 
