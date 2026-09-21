@@ -118,7 +118,7 @@ Window:Tag({
 
 local Tab1 = Window:Tab({
 	Title = "DISCORD",
-	Icon = "discord-stroke",
+	Icon = "warehouse",
 })
 
 local Tab2 = Window:Tab({
@@ -128,7 +128,7 @@ local Tab2 = Window:Tab({
 
 local Tab3 = Window:Tab({
 	Title = "SHOP",
-	Icon = "shopping-cart-add-stroke",
+	Icon = "shopping-cart",
 })
 
 local Tab4 = Window:Tab({
