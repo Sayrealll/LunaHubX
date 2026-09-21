@@ -352,71 +352,44 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
+-- EKSAKTONG TELEPORT TO PLOT CODE MO (WALANG BINAGO)
 local function TeleportToPlot()
-	local Character = GetCharacter()
-	if not Character then return false end
-	local rootPart = Character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return false end
+	local player = game:GetService("Players").LocalPlayer
+	local mainGui = player:WaitForChild("PlayerGui"):FindFirstChild("Main")
+	local plotTeleport = mainGui and mainGui:FindFirstChild("PlotTeleport")
 
-	-- METHOD 1: Direct UI Teleport Click Trigger
-	local mainGui = Player:WaitForChild("PlayerGui"):FindFirstChild("Main")
-	local plotTeleport = mainGui and mainGui:FindFirstChild("PlotTeleport", true)
-
+	-- Method 1: Fires the game's built-in GUI teleport directly
 	if plotTeleport and typeof(getconnections) == "function" then
-		local fired = false
 		for _, connection in pairs(getconnections(plotTeleport.MouseButton1Click)) do
 			connection:Fire()
-			fired = true
 		end
 		for _, connection in pairs(getconnections(plotTeleport.Activated)) do
 			connection:Fire()
-			fired = true
-		end
-		if fired then
-			task.wait(0.2)
-			return true
 		end
 	end
 
-	-- METHOD 2: Direct Workspace Plots Scan
-	local plots = workspace:FindFirstChild("Plots") or workspace:FindFirstChild("Plot") or workspace:FindFirstChild("PlayerPlots")
+	-- Method 2: Fallback scan in case the UI connection fails
+	local character = player.Character or player.CharacterAdded:Wait()
+	local rootPart = character:WaitForChild("HumanoidRootPart")
+	local plots = workspace:FindFirstChild("Plots")
+
 	if plots then
 		for _, plot in pairs(plots:GetChildren()) do
-			-- Check via Plot Attributes
-			local ownerAttr = plot:GetAttribute("Owner") or plot:GetAttribute("OwnerUserId")
-			if ownerAttr == Player.Name or ownerAttr == Player.UserId or tostring(ownerAttr) == tostring(Player.UserId) then
-				rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
-				return true
-			end
-
-			-- Check via Text/Value Descendants
 			for _, descendant in pairs(plot:GetDescendants()) do
 				if (descendant:IsA("TextLabel") or descendant:IsA("SurfaceGui")) and descendant.Text then
-					if descendant.Text:find(Player.Name) or descendant.Text:find(Player.DisplayName) then
+					if descendant.Text:find(player.Name) or descendant.Text:find(player.DisplayName) then
 						rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
-						return true
+						return
 					end
 				elseif (descendant:IsA("StringValue") or descendant:IsA("ObjectValue")) then
-					if tostring(descendant.Value):find(Player.Name) then
+					if tostring(descendant.Value):find(player.Name) then
 						rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
-						return true
+						return
 					end
 				end
 			end
 		end
 	end
-
-	-- METHOD 3: Fallback Remote Event Fire
-	pcall(function()
-		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
-		local PlotRemote = GameRemotes and (GameRemotes:FindFirstChild("TeleportToPlot") or GameRemotes:FindFirstChild("ResetToPlot"))
-		if PlotRemote then
-			PlotRemote:FireServer()
-		end
-	end)
-
-	return false
 end
 
 --==================================================
@@ -505,18 +478,18 @@ task.spawn(function()
 			local Egg = FindSelectedEgg()
 
 			if Egg then
-				-- Step 1: Instant Teleport to Egg
+				-- Step 1: Teleport to Egg Spot
 				if TeleportToEgg(Egg) then
-					task.wait(0.05)
+					task.wait(0.1)
 
-					-- Step 2: Get the Egg automatically
+					-- Step 2: Get Egg
 					PickupEgg(Egg)
-					task.wait(0.05)
+					task.wait(0.15)
 
-					-- Step 3: Teleport AGAD to Plot
+					-- Step 3: Teleport to Plot (Gagamitin ang mismong code mo)
 					TeleportToPlot()
 
-					-- Step 4: Wait 1.5 seconds before getting another egg
+					-- Step 4: Wait 1.5 seconds bago kumuha ng kasunod na egg
 					task.wait(1.5)
 				else
 					task.wait(0.1)
