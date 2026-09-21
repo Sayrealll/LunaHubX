@@ -43,8 +43,10 @@ end
 
 local ThemeName = "Dark"
 
+-- MULTI-SELECT
 local SelectedEggs = {}
 
+-- OFF BY DEFAULT
 local AutoPickup = false
 local AutoClaimIndex = false
 local AutoUpgradeHatchLuck = false
@@ -56,9 +58,8 @@ local AutoRebirth = false
 local RenderedEggs =
 	workspace:WaitForChild("RenderedEggs")
 
---==================================================
--- EGG LIST
---==================================================
+--// EGG LIST
+-- RAREST / HIGHEST PRIORITY FIRST
 
 local EggNames = {
 	"Cherub Egg",
@@ -151,7 +152,7 @@ local Tab5 = Window:Tab({
 })
 
 --==================================================
--- HOME
+-- TAB 1
 --==================================================
 
 Tab1:Paragraph({
@@ -178,7 +179,7 @@ Tab1:Paragraph({
 })
 
 --==================================================
--- FARM
+-- TAB 2
 --==================================================
 
 local EggSection = Tab2:Section({
@@ -221,7 +222,7 @@ EggSection:Toggle({
 	Title = "Auto Farm",
 
 	Desc =
-		"Teleport to selected egg, pick it up, then teleport to your plot",
+		"Teleport to egg, pickup, then teleport to your plot",
 
 	Value = false,
 
@@ -233,7 +234,7 @@ EggSection:Toggle({
 })
 
 --==================================================
--- OTHER TOGGLES
+-- AUTO UPGRADE HATCH LUCK
 --==================================================
 
 EggSection:Toggle({
@@ -252,6 +253,10 @@ EggSection:Toggle({
 	end,
 })
 
+--==================================================
+-- AUTO UPGRADE HATCH LUCK MAX
+--==================================================
+
 EggSection:Toggle({
 
 	Title = "Auto Upgrade Hatch Luck (Max)",
@@ -268,6 +273,10 @@ EggSection:Toggle({
 	end,
 })
 
+--==================================================
+-- AUTO REBIRTH
+--==================================================
+
 EggSection:Toggle({
 
 	Title = "Auto Rebirth",
@@ -280,6 +289,10 @@ EggSection:Toggle({
 
 	end,
 })
+
+--==================================================
+-- AUTO CLAIM INDEX
+--==================================================
 
 EggSection:Toggle({
 
@@ -379,7 +392,7 @@ local function GetEggPart(Egg)
 end
 
 --==================================================
--- FIND SELECTED / HIGHEST PRIORITY EGG
+-- FIND HIGHEST PRIORITY SELECTED EGG
 --==================================================
 
 local function FindSelectedEgg()
@@ -478,6 +491,7 @@ end
 
 --==================================================
 -- TELEPORT TO EGG
+-- PURE INSTANT TELEPORT
 --==================================================
 
 local function TeleportToEgg(Egg)
@@ -508,10 +522,10 @@ local function TeleportToEgg(Egg)
 	if not Egg
 		or not Egg.Parent
 	then
-
 		return false
 	end
 
+	-- INSTANT TELEPORT
 	HRP.CFrame =
 		EggPart.CFrame
 		* CFrame.new(
@@ -521,60 +535,6 @@ local function TeleportToEgg(Egg)
 		)
 
 	return true
-end
-
---==================================================
--- CHECK IF EGG IS BEING HELD
---==================================================
-
-local function IsHoldingEgg(Egg)
-
-	local Character =
-		GetCharacter()
-
-	if not Character then
-		return false
-	end
-
-	-- Check character descendants
-	for _, Object in ipairs(
-		Character:GetDescendants()
-	) do
-
-		local ObjectName =
-			string.lower(
-				Object.Name
-			)
-
-		if string.find(
-			ObjectName,
-			"egg",
-			1,
-			true
-		) then
-
-			return true
-		end
-
-		if Egg
-			and Object.Name
-				== Egg.Name
-		then
-
-			return true
-		end
-	end
-
-	-- If the original egg disappeared,
-	-- consider pickup successful.
-	if Egg
-		and not Egg.Parent
-	then
-
-		return true
-	end
-
-	return false
 end
 
 --==================================================
@@ -608,42 +568,88 @@ local function PickupEgg(Egg)
 
 			end)
 
-		if not Success then
-			return false
-		end
-
-	else
-
-		--================================================
-		-- FALLBACK
-		--================================================
-
-		local Success =
-			pcall(function()
-
-				Prompt:InputHoldBegin()
-
-				task.wait(
-					math.max(
-						Prompt.HoldDuration,
-						0.05
-					)
-				)
-
-				Prompt:InputHoldEnd()
-
-			end)
-
-		if not Success then
-			return false
+		if Success then
+			return true
 		end
 	end
 
-	return true
+	--================================================
+	-- FALLBACK
+	--================================================
+
+	local Success =
+		pcall(function()
+
+			Prompt:InputHoldBegin()
+
+			task.wait(
+				math.max(
+					Prompt.HoldDuration,
+					0.05
+				)
+			)
+
+			Prompt:InputHoldEnd()
+
+		end)
+
+	return Success
 end
 
 --==================================================
--- WAIT UNTIL EGG IS ACTUALLY PICKED UP
+-- CHECK IF EGG IS ACTUALLY BEING HELD
+--==================================================
+
+local function IsHoldingEgg(Egg)
+
+	local Character =
+		GetCharacter()
+
+	if not Character then
+		return false
+	end
+
+	for _, Object in ipairs(
+		Character:GetDescendants()
+	) do
+
+		local ObjectName =
+			string.lower(
+				Object.Name
+			)
+
+		if string.find(
+			ObjectName,
+			"egg",
+			1,
+			true
+		) then
+
+			return true
+		end
+
+		if Egg
+			and Object.Name
+				== Egg.Name
+		then
+
+			return true
+		end
+	end
+
+	-- Egg disappeared from RenderedEggs
+	if Egg
+		and not Egg.Parent
+	then
+
+		return true
+	end
+
+	return false
+end
+
+--==================================================
+-- WAIT FOR ACTUAL PICKUP
 --==================================================
 
 local function WaitForEggPickup(Egg)
@@ -651,7 +657,6 @@ local function WaitForEggPickup(Egg)
 	local StartTime =
 		tick()
 
-	-- Give the game enough time to register pickup
 	while AutoPickup
 		and (
 			tick()
@@ -659,9 +664,7 @@ local function WaitForEggPickup(Egg)
 		) < 2
 	do
 
-		-- IMPORTANT:
-		-- Do NOT teleport to plot until
-		-- the egg is actually detected as held.
+		-- ONLY return true when egg is actually detected
 		if IsHoldingEgg(Egg) then
 			return true
 		end
@@ -698,7 +701,7 @@ local function TeleportToMyPlot()
 
 	--================================================
 	-- METHOD 1
-	-- BUILT-IN PLOT TELEPORT
+	-- GAME BUILT-IN GUI TELEPORT
 	--================================================
 
 	if plotTeleport then
@@ -756,7 +759,7 @@ local function TeleportToMyPlot()
 			) do
 
 				--========================================
-				-- TEXT OWNER DETECTION
+				-- TEXT OWNER
 				--========================================
 
 				if (
@@ -790,7 +793,7 @@ local function TeleportToMyPlot()
 					end
 
 				--========================================
-				-- VALUE OWNER DETECTION
+				-- VALUE OWNER
 				--========================================
 
 				elseif (
@@ -834,31 +837,35 @@ end
 
 local function ClaimIndexReward()
 
-	local Remotes =
-		ReplicatedStorage:FindFirstChild(
-			"Remotes"
+	local ReplicatedStorage =
+		game:GetService(
+			"ReplicatedStorage"
 		)
 
-	local GameRemotes =
-		Remotes
-		and Remotes:FindFirstChild(
-			"Game"
-		)
+	pcall(function()
 
-	local ClaimRemote =
-		GameRemotes
-		and GameRemotes:FindFirstChild(
-			"ClaimIndexReward"
-		)
+		local Remotes =
+			ReplicatedStorage:FindFirstChild(
+				"Remotes"
+			)
 
-	if ClaimRemote then
+		local GameRemotes =
+			Remotes
+			and Remotes:FindFirstChild(
+				"Game"
+			)
 
-		pcall(function()
+		local ClaimRemote =
+			GameRemotes
+			and GameRemotes:FindFirstChild(
+				"ClaimIndexReward"
+			)
 
+		if ClaimRemote then
 			ClaimRemote:FireServer()
+		end
 
-		end)
-	end
+	end)
 end
 
 --==================================================
@@ -867,40 +874,49 @@ end
 
 local function UpgradeHatchLuck()
 
-	local Remotes =
-		ReplicatedStorage:FindFirstChild(
-			"Remotes"
+	local ReplicatedStorage =
+		game:GetService(
+			"ReplicatedStorage"
 		)
 
-	local GameRemotes =
-		Remotes
-		and Remotes:FindFirstChild(
-			"Game"
-		)
+	pcall(function()
 
-	local PlotFolder =
-		GameRemotes
-		and GameRemotes:FindFirstChild(
-			"Plot"
-		)
-
-	local UpgradesRemote =
-		PlotFolder
-		and PlotFolder:FindFirstChild(
-			"Upgrades"
-		)
-
-	if UpgradesRemote then
-
-		pcall(function()
-
-			UpgradesRemote:FireServer(
-				"Hatch Luck",
-				1
+		local Remotes =
+			ReplicatedStorage:FindFirstChild(
+				"Remotes"
 			)
 
-		end)
-	end
+		local GameRemotes =
+			Remotes
+			and Remotes:FindFirstChild(
+				"Game"
+			)
+
+		local PlotFolder =
+			GameRemotes
+			and GameRemotes:FindFirstChild(
+				"Plot"
+			)
+
+		local UpgradesRemote =
+			PlotFolder
+			and PlotFolder:FindFirstChild(
+				"Upgrades"
+			)
+
+		if UpgradesRemote then
+
+			local args = {
+				[1] = "Hatch Luck",
+				[2] = 1
+			}
+
+			UpgradesRemote:FireServer(
+				unpack(args)
+			)
+		end
+
+	end)
 end
 
 task.spawn(function()
@@ -927,39 +943,48 @@ end)
 
 local function UpgradeHatchLuckMax()
 
-	local Remotes =
-		ReplicatedStorage:FindFirstChild(
-			"Remotes"
+	local ReplicatedStorage =
+		game:GetService(
+			"ReplicatedStorage"
 		)
 
-	local GameRemotes =
-		Remotes
-		and Remotes:FindFirstChild(
-			"Game"
-		)
+	pcall(function()
 
-	local PlotFolder =
-		GameRemotes
-		and GameRemotes:FindFirstChild(
-			"Plot"
-		)
-
-	local UpgradesRemote =
-		PlotFolder
-		and PlotFolder:FindFirstChild(
-			"Upgrades"
-		)
-
-	if UpgradesRemote then
-
-		pcall(function()
-
-			UpgradesRemote:FireServer(
-				"Max"
+		local Remotes =
+			ReplicatedStorage:FindFirstChild(
+				"Remotes"
 			)
 
-		end)
-	end
+		local GameRemotes =
+			Remotes
+			and Remotes:FindFirstChild(
+				"Game"
+			)
+
+		local PlotFolder =
+			GameRemotes
+			and GameRemotes:FindFirstChild(
+				"Plot"
+			)
+
+		local UpgradesRemote =
+			PlotFolder
+			and PlotFolder:FindFirstChild(
+				"Upgrades"
+			)
+
+		if UpgradesRemote then
+
+			local args = {
+				[1] = "Max"
+			}
+
+			UpgradesRemote:FireServer(
+				unpack(args)
+			)
+		end
+
+	end)
 end
 
 task.spawn(function()
@@ -986,31 +1011,35 @@ end)
 
 local function DoRebirth()
 
-	local Remotes =
-		ReplicatedStorage:FindFirstChild(
-			"Remotes"
+	local ReplicatedStorage =
+		game:GetService(
+			"ReplicatedStorage"
 		)
 
-	local GameRemotes =
-		Remotes
-		and Remotes:FindFirstChild(
-			"Game"
-		)
+	pcall(function()
 
-	local RebirthRemote =
-		GameRemotes
-		and GameRemotes:FindFirstChild(
-			"Rebirth"
-		)
+		local Remotes =
+			ReplicatedStorage:FindFirstChild(
+				"Remotes"
+			)
 
-	if RebirthRemote then
+		local GameRemotes =
+			Remotes
+			and Remotes:FindFirstChild(
+				"Game"
+			)
 
-		pcall(function()
+		local RebirthRemote =
+			GameRemotes
+			and GameRemotes:FindFirstChild(
+				"Rebirth"
+			)
 
+		if RebirthRemote then
 			RebirthRemote:FireServer()
+		end
 
-		end)
-	end
+	end)
 end
 
 task.spawn(function()
@@ -1032,7 +1061,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- AUTO PICKUP / AUTO FARM
+-- AUTO FARM LOOP
 --==================================================
 
 task.spawn(function()
@@ -1042,8 +1071,7 @@ task.spawn(function()
 		if AutoPickup then
 
 			--================================================
-			-- STEP 1
-			-- FIND SELECTED EGG IN RENDERED EGGS
+			-- 1. DETECT SELECTED EGG
 			--================================================
 
 			local Egg =
@@ -1054,8 +1082,7 @@ task.spawn(function()
 			then
 
 				--================================================
-				-- STEP 2
-				-- TELEPORT DIRECTLY TO THE EGG
+				-- 2. INSTANT TELEPORT TO EGG
 				--================================================
 
 				local ReachedEgg =
@@ -1063,13 +1090,10 @@ task.spawn(function()
 
 				if ReachedEgg then
 
-					-- Small delay so the character
-					-- reaches the egg position.
 					task.wait(0.05)
 
 					--================================================
-					-- STEP 3
-					-- AUTOMATICALLY PICK UP THE EGG
+					-- 3. AUTOMATICALLY PICKUP EGG
 					--================================================
 
 					local PickedUp =
@@ -1078,30 +1102,28 @@ task.spawn(function()
 					if PickedUp then
 
 						--================================================
-						-- STEP 4
-						-- WAIT FOR ACTUAL SUCCESSFUL PICKUP
+						-- 4. CONFIRM ACTUAL PICKUP
 						--================================================
 
-						local SuccessfullyHolding =
-							WaitForEggPickup(Egg)
+						local PickupRegistered =
+							WaitForEggPickup(
+								Egg
+							)
 
-						--================================================
-						-- STEP 5
-						-- ONLY NOW TELEPORT TO OWN PLOT
-						--================================================
+						if PickupRegistered then
 
-						if SuccessfullyHolding then
+							--================================================
+							-- 5. INSTANT TELEPORT TO OWN PLOT
+							--================================================
 
 							TeleportToMyPlot()
 
-							-- Small delay before searching
-							-- for the next egg.
 							task.wait(0.2)
 
 						else
 
-							-- Egg was not confirmed as picked up.
-							-- DO NOT teleport to plot.
+							-- Pickup was not confirmed.
+							-- DO NOT go to plot.
 							task.wait(0.1)
 
 						end
@@ -1109,7 +1131,7 @@ task.spawn(function()
 					else
 
 						-- Pickup failed.
-						-- DO NOT teleport to plot.
+						-- DO NOT go to plot.
 						task.wait(0.1)
 
 					end
@@ -1122,11 +1144,9 @@ task.spawn(function()
 
 			else
 
-				--================================================
-				-- NO SELECTED EGG CURRENTLY RENDERED
-				--================================================
-
+				-- Selected egg isn't currently rendered.
 				task.wait(0.15)
+
 			end
 
 		else
