@@ -352,7 +352,7 @@ local function PickupEgg(Egg)
 end
 
 --==================================================
--- TELEPORT FUNCTIONS
+-- TELEPORT & VOID FUNCTIONS
 --==================================================
 
 local function TeleportToEgg(Egg)
@@ -368,24 +368,30 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
--- NEW TELEPORT TO PLOT (BAGONG CFRAME LOGIC)
-local function TeleportToPlot()
+-- TELEPORT DIRECTLY UNDER THE EGG'S EXACT LOCATION INTO THE VOID
+local function TeleportToEggVoid(EggPos)
 	local Character = GetCharacter()
 	if not Character then return false end
 
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
-	if not HRP then return false end
+	if not HRP or not EggPos then return false end
 
-	local originalCFrame = CFrame.new(
-		119.816711, 40321.2422, 771.75177,
-		0.453431189, 0, 0.891291261,
-		0, 1, 0,
-		-0.891291261, 0, 0.453431189
-	)
-	local targetCFrame = originalCFrame + Vector3.new(0, -25, 0)
-
-	HRP.CFrame = targetCFrame
+	-- Mismong X at Z position ng Egg, pero ibababa ang Y nang -500 (Void)
+	HRP.CFrame = CFrame.new(EggPos.X, -500, EggPos.Z)
 	return true
+end
+
+-- Function na nag-aantay hanggang ma-pickup o mawala ang Egg
+local function WaitForEggPickup(Egg, Timeout)
+	Timeout = Timeout or 5
+	local StartTime = os.clock()
+
+	while Egg and Egg.Parent == RenderedEggs do
+		if (os.clock() - StartTime) >= Timeout then
+			break
+		end
+		task.wait(0.1)
+	end
 end
 
 --==================================================
@@ -467,29 +473,33 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP
+-- AUTO FARM LOOP (EXACT EGG VOID BYPASS LOGIC)
 task.spawn(function()
 	while true do
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 
 			if Egg then
+				local EggPart = GetEggPart(Egg)
+				local EggPosition = EggPart and EggPart.Position
+
 				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					-- Delay 3 seconds
-					task.wait(3)
+					task.wait(0.3)
 
-					-- 2. Pick up Egg
+					-- Trigger Pickup
 					PickupEgg(Egg)
 
-					-- Delay 1.5 seconds
-					task.wait(1.5)
+					-- Wait hanggang sa ma-pickup/mawala ang Egg
+					WaitForEggPickup(Egg, 3)
 
-					-- 3. Teleport to Plot (New CFrame)
-					TeleportToPlot()
+					-- 2. Teleport sa VOID sa mismong X, Z position ng Egg
+					if EggPosition then
+						TeleportToEggVoid(EggPosition)
+					end
 
-					-- Delay 5 seconds (Repeat)
-					task.wait(5)
+					-- 3. Wait para sa auto-respawn / auto-tp pabalik sa plot
+					task.wait(4)
 				else
 					task.wait(0.1)
 				end
