@@ -368,7 +368,7 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
--- TELEPORT AT EGG'S X & Z LOCATION WITH THE NEW VOID Y HEIGHT (39771.2422)
+-- TELEPORT AT EGG'S X & Z LOCATION WITH THE VOID Y HEIGHT (39771.2422)
 local function TeleportToEggVoid(EggPosition)
 	local Character = GetCharacter()
 	if not Character then return false end
@@ -376,7 +376,7 @@ local function TeleportToEggVoid(EggPosition)
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	if not HRP or not EggPosition then return false end
 
-	-- Exact Void Y Height (40271.2422 - 500 = 39771.2422)
+	-- Exact Void Y Height
 	local voidY = 39771.2422
 
 	-- Kunin ang X at Z ng Egg, tapos ibaba sa Y = 39771.2422
@@ -488,7 +488,8 @@ task.spawn(function()
 
 				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					task.wait(0.3)
+					-- MAY 2 SECONDS DELAY BAGO PICKUP
+					task.wait(2)
 
 					-- Trigger Pickup
 					PickupEgg(Egg)
@@ -502,7 +503,7 @@ task.spawn(function()
 					end
 
 					-- 3. Wait para sa auto-respawn / auto-tp pabalik sa plot
-					task.wait(4)
+					task.wait(3)
 				else
 					task.wait(0.1)
 				end
