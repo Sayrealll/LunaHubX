@@ -89,7 +89,7 @@ local EggNames = {
 	"White Egg"
 }
 
--- Mapping ng Priority
+-- Mapping ng Priority (para sa Auto Farm at Sorting)
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
@@ -111,7 +111,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.5",
+	Title = "v.1.0.2.6",
 	Color = "ElementBackground",
 })
 
@@ -131,7 +131,7 @@ local Tab2 = Window:Tab({
 
 local Tab3 = Window:Tab({
 	Title = "SHOP",
-	Icon = "shop",
+	Icon = "shopping-cart",
 })
 
 local Tab4 = Window:Tab({
@@ -253,7 +253,7 @@ local VisualSection = Tab4:Section({
 
 VisualSection:Dropdown({
 	Title = "Select ESP Egg",
-	Desc = "Choose which eggs to display ESP (Multi-Select)",
+	Desc = "Choose which eggs to display ESP",
 	Values = EggNames,
 	Multi = true,
 	Value = {},
@@ -265,7 +265,7 @@ VisualSection:Dropdown({
 
 VisualSection:Toggle({
 	Title = "Egg ESP",
-	Desc = "Enable ESP and Distance meter for selected eggs",
+	Desc = "Enable ESP and Distance for selected eggs",
 	Value = false,
 
 	Callback = function(value)
@@ -274,11 +274,11 @@ VisualSection:Toggle({
 })
 
 --==================================================
--- TAB 5 (EGGS) - LIVE RENDERED EGGS LIST
+-- TAB 5 (EGGS) - LIVE RENDERED EGGS LIST (SORTED)
 --==================================================
 
 local EggsSection = Tab5:Section({
-	Title = "Active Rendered Eggs",
+	Title = "Active Eggs",
 	Icon = "list",
 	Box = true,
 	BoxBorder = true,
@@ -303,8 +303,21 @@ local function UpdateRenderedEggList()
 		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
 		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
 	else
+		-- Kunin ang mga nag-spawn na Egg names at i-sort ayon sa EggPriority (Cherub -> White)
+		local SpawnedEggNames = {}
+		for Name, _ in pairs(CountMap) do
+			table.insert(SpawnedEggNames, Name)
+		end
+
+		table.sort(SpawnedEggNames, function(a, b)
+			local priorityA = EggPriority[a] or 999
+			local priorityB = EggPriority[b] or 999
+			return priorityA < priorityB
+		end)
+
 		local DescriptionText = ""
-		for Name, Count in pairs(CountMap) do
+		for _, Name in ipairs(SpawnedEggNames) do
+			local Count = CountMap[Name]
 			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
 		end
 
@@ -313,7 +326,7 @@ local function UpdateRenderedEggList()
 	end
 end
 
--- Update list when eggs spawn or get despawned/picked up
+-- Update list kapag nag-spawn o nawala ang Egg
 RenderedEggs.ChildAdded:Connect(function()
 	task.defer(UpdateRenderedEggList)
 end)
@@ -523,7 +536,7 @@ local function CreateESP(Egg)
 	local TextLabel = Instance.new("TextLabel")
 	TextLabel.Size = UDim2.new(1, 0, 1, 0)
 	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- Puti / White Text
+	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White Text
 	TextLabel.TextStrokeTransparency = 0
 	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	TextLabel.Font = Enum.Font.SourceSansBold
@@ -676,24 +689,19 @@ task.spawn(function()
 				local EggPart = GetEggPart(Egg)
 				local EggPosition = EggPart and EggPart.Position
 
-				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
 					-- MAY 2 SECONDS DELAY BAGO PICKUP
 					task.wait(2)
 
-					-- Trigger Pickup
 					PickupEgg(Egg)
 
-					-- Wait hanggang sa ma-pickup/mawala ang Egg
 					WaitForEggPickup(Egg, 3)
 
-					-- 2. Teleport sa X, Z ng Egg gamit ang Y height na 39771.2422
 					if EggPosition then
 						TeleportToEggVoid(EggPosition)
 					end
 
-					-- 3. Wait para sa auto-respawn / auto-tp pabalik sa plot
-					task.wait(4)
+					task.wait(2)
 				else
 					task.wait(0.1)
 				end
