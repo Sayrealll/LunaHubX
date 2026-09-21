@@ -353,29 +353,43 @@ local function TeleportToEgg(Egg)
 end
 
 local function TeleportToPlot()
-	local mainGui = Player:WaitForChild("PlayerGui"):FindFirstChild("Main")
-	local plotTeleport = mainGui and mainGui:FindFirstChild("PlotTeleport")
+	local Character = GetCharacter()
+	if not Character then return false end
+	local rootPart = Character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return false end
 
-	-- Method 1: Fires the game's built-in GUI teleport directly
+	-- METHOD 1: Direct UI Teleport Click Trigger
+	local mainGui = Player:WaitForChild("PlayerGui"):FindFirstChild("Main")
+	local plotTeleport = mainGui and mainGui:FindFirstChild("PlotTeleport", true)
+
 	if plotTeleport and typeof(getconnections) == "function" then
+		local fired = false
 		for _, connection in pairs(getconnections(plotTeleport.MouseButton1Click)) do
 			connection:Fire()
+			fired = true
 		end
 		for _, connection in pairs(getconnections(plotTeleport.Activated)) do
 			connection:Fire()
+			fired = true
 		end
-		return true
+		if fired then
+			task.wait(0.2)
+			return true
+		end
 	end
 
-	-- Method 2: Fallback scan in case the UI connection fails
-	local Character = GetCharacter()
-	if not Character then return false end
-	
-	local rootPart = Character:FindFirstChild("HumanoidRootPart")
-	local plots = workspace:FindFirstChild("Plots")
-
-	if plots and rootPart then
+	-- METHOD 2: Direct Workspace Plots Scan
+	local plots = workspace:FindFirstChild("Plots") or workspace:FindFirstChild("Plot") or workspace:FindFirstChild("PlayerPlots")
+	if plots then
 		for _, plot in pairs(plots:GetChildren()) do
+			-- Check via Plot Attributes
+			local ownerAttr = plot:GetAttribute("Owner") or plot:GetAttribute("OwnerUserId")
+			if ownerAttr == Player.Name or ownerAttr == Player.UserId or tostring(ownerAttr) == tostring(Player.UserId) then
+				rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
+				return true
+			end
+
+			-- Check via Text/Value Descendants
 			for _, descendant in pairs(plot:GetDescendants()) do
 				if (descendant:IsA("TextLabel") or descendant:IsA("SurfaceGui")) and descendant.Text then
 					if descendant.Text:find(Player.Name) or descendant.Text:find(Player.DisplayName) then
@@ -391,6 +405,16 @@ local function TeleportToPlot()
 			end
 		end
 	end
+
+	-- METHOD 3: Fallback Remote Event Fire
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		local PlotRemote = GameRemotes and (GameRemotes:FindFirstChild("TeleportToPlot") or GameRemotes:FindFirstChild("ResetToPlot"))
+		if PlotRemote then
+			PlotRemote:FireServer()
+		end
+	end)
 
 	return false
 end
