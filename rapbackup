@@ -109,7 +109,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.4",
+	Title = "v.1.0.2.3",
 	Color = "ElementBackground",
 })
 
@@ -302,40 +302,62 @@ local function FindSelectedEgg()
 	return BestEgg
 end
 
-local function FindPickup(Egg)
-	if not Egg then return nil end
+-- ENHANCED PICKUP EGG FUNCTION (MULTIPLE FALLBACKS)
+local function PickupEgg(Egg)
+	if not Egg then return false end
 
+	-- Method 1: Check for Remote Events (Direct Claim)
+	pcall(function()
+		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+		if GameRemotes then
+			local PickupRemote = GameRemotes:FindFirstChild("PickupEgg") or GameRemotes:FindFirstChild("ClaimEgg") or GameRemotes:FindFirstChild("CollectEgg")
+			if PickupRemote then
+				PickupRemote:FireServer(Egg)
+			end
+		end
+	end)
+
+	-- Method 2: Fire All ProximityPrompts inside Egg
+	local promptsFound = false
 	for _, Descendant in ipairs(Egg:GetDescendants()) do
-		if Descendant:IsA("ProximityPrompt") and Descendant.Name == "Pickup" then
-			return Descendant
+		if Descendant:IsA("ProximityPrompt") then
+			promptsFound = true
+			
+			-- Instant trigger using fireproximityprompt if available
+			if typeof(fireproximityprompt) == "function" then
+				pcall(function()
+					fireproximityprompt(Descendant)
+				end)
+			end
+
+			-- Fallback trigger using direct input events
+			pcall(function()
+				Descendant:InputHoldBegin()
+				task.wait(0.05)
+				Descendant:InputHoldEnd()
+			end)
 		end
 	end
 
-	return nil
-end
+	-- Method 3: Direct Touch simulation for Touch/Overlap pickups
+	local Character = GetCharacter()
+	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+	local EggPart = GetEggPart(Egg)
 
-local function PickupEgg(Egg)
-	local Prompt = FindPickup(Egg)
-	if not Prompt then return false end
-
-	if typeof(fireproximityprompt) == "function" then
-		local Success = pcall(function()
-			fireproximityprompt(Prompt)
+	if HRP and EggPart then
+		pcall(function()
+			firetouchinterest(HRP, EggPart, 0)
+			task.wait(0.05)
+			firetouchinterest(HRP, EggPart, 1)
 		end)
-		if Success then return true end
 	end
 
-	local Success = pcall(function()
-		Prompt:InputHoldBegin()
-		task.wait(math.max(Prompt.HoldDuration, 0.05))
-		Prompt:InputHoldEnd()
-	end)
-
-	return Success
+	return true
 end
 
 --==================================================
--- TELEPORT FUNCTIONS (INSTANT)
+-- TELEPORT FUNCTIONS
 --==================================================
 
 local function TeleportToEgg(Egg)
@@ -347,12 +369,12 @@ local function TeleportToEgg(Egg)
 
 	if not HRP or not EggPart then return false end
 
-	-- Instant Teleport
-	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 2.5, 0)
+	-- Instant Teleport directly on top of the egg
+	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
 	return true
 end
 
--- TELEPORT TO PLOT CODE MO (ORIHINAL AT GUMAGANA)
+-- TELEPORT TO PLOT CODE
 local function TeleportToPlot()
 	local player = game:GetService("Players").LocalPlayer
 	local mainGui = player:WaitForChild("PlayerGui"):FindFirstChild("Main")
@@ -471,7 +493,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP (TELEPORTATION LOGIC)
+-- AUTO FARM LOOP (7 SECONDS DELAYS)
 task.spawn(function()
 	while true do
 		if AutoPickup then
@@ -480,24 +502,24 @@ task.spawn(function()
 			if Egg then
 				-- Step 1: Teleport to Egg
 				if TeleportToEgg(Egg) then
-					task.wait(0.1)
+					task.wait(0.2)
 
-					-- Step 2: Get Egg
+					-- Step 2: Fire Pickup Mechanics
 					PickupEgg(Egg)
 
-					-- Step 3: Delay ng 3 seconds habang nasa Egg area
-					task.wait(3)
+					-- Step 3: Wait 7 seconds habang nasa Egg Spot
+					task.wait(7)
 
 					-- Step 4: Teleport to Plot
 					TeleportToPlot()
 
-					-- Step 5: Delay ng 3 seconds habang nasa Plot bago kumuha ulit
-					task.wait(3)
+					-- Step 5: Wait 7 seconds habang nasa Plot
+					task.wait(7)
 				else
 					task.wait(0.1)
 				end
 			else
-				task.wait(0.15)
+				task.wait(0.2)
 			end
 		else
 			task.wait(0.2)
