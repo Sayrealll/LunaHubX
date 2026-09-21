@@ -109,7 +109,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.3",
+	Title = "v.1.0.2.4",
 	Color = "ElementBackground",
 })
 
@@ -302,7 +302,7 @@ local function FindSelectedEgg()
 	return BestEgg
 end
 
--- ENHANCED PICKUP EGG FUNCTION (MULTIPLE FALLBACKS)
+-- ENHANCED PICKUP EGG FUNCTION
 local function PickupEgg(Egg)
 	if not Egg then return false end
 
@@ -319,19 +319,14 @@ local function PickupEgg(Egg)
 	end)
 
 	-- Method 2: Fire All ProximityPrompts inside Egg
-	local promptsFound = false
 	for _, Descendant in ipairs(Egg:GetDescendants()) do
 		if Descendant:IsA("ProximityPrompt") then
-			promptsFound = true
-			
-			-- Instant trigger using fireproximityprompt if available
 			if typeof(fireproximityprompt) == "function" then
 				pcall(function()
 					fireproximityprompt(Descendant)
 				end)
 			end
 
-			-- Fallback trigger using direct input events
 			pcall(function()
 				Descendant:InputHoldBegin()
 				task.wait(0.05)
@@ -340,7 +335,7 @@ local function PickupEgg(Egg)
 		end
 	end
 
-	-- Method 3: Direct Touch simulation for Touch/Overlap pickups
+	-- Method 3: Direct Touch simulation
 	local Character = GetCharacter()
 	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
 	local EggPart = GetEggPart(Egg)
@@ -369,7 +364,6 @@ local function TeleportToEgg(Egg)
 
 	if not HRP or not EggPart then return false end
 
-	-- Instant Teleport directly on top of the egg
 	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
 	return true
 end
@@ -493,28 +487,29 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP (7 SECONDS DELAYS)
+-- AUTO FARM LOOP (IN-ADJUST ANG MGA DELAY)
 task.spawn(function()
 	while true do
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 
 			if Egg then
-				-- Step 1: Teleport to Egg
+				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					task.wait(0.2)
+					-- 2. Wait 3 seconds bago ipickup
+					task.wait(5)
 
-					-- Step 2: Fire Pickup Mechanics
+					-- 3. Pickup Egg
 					PickupEgg(Egg)
 
-					-- Step 3: Wait 7 seconds habang nasa Egg Spot
-					task.wait(7)
+					-- 4. Wait 3 seconds matapos ipickup bago mag TP to plot
+					task.wait(5)
 
-					-- Step 4: Teleport to Plot
+					-- 5. Teleport to Plot
 					TeleportToPlot()
 
-					-- Step 5: Wait 7 seconds habang nasa Plot
-					task.wait(7)
+					-- 6. Wait 7 seconds habang nasa plot bago kumuha ulit ng panibagong egg
+					task.wait(5)
 				else
 					task.wait(0.1)
 				end
