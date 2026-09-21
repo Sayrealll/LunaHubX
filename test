@@ -32,7 +32,7 @@ do
 			WindUI =
 				loadstring(
 					game:HttpGet(
-						"https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/main.lua"
+						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
 					)
 				)()
 		end
@@ -43,14 +43,17 @@ end
 
 local ThemeName = "Dark"
 
+-- MULTI-SELECT TABLES
 local SelectedEggs = {}
+local SelectedESPEggs = {}
 
--- OFF BY DEFAULT
+-- TOGGLES
 local AutoPickup = false
 local AutoClaimIndex = false
 local AutoUpgradeHatchLuck = false
 local AutoUpgradeHatchLuckMax = false
 local AutoRebirth = false
+local ESPEnabled = false
 
 --// EGG CONTAINER
 
@@ -86,7 +89,7 @@ local EggNames = {
 	"White Egg"
 }
 
-
+-- Mapping ng Priority
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
@@ -113,11 +116,11 @@ Window:Tag({
 })
 
 --==================================================
--- MAIN
+-- TABS
 --==================================================
 
 local Tab1 = Window:Tab({
-	Title = "DISCORD",
+	Title = "HOME",
 	Icon = "warehouse",
 })
 
@@ -128,7 +131,7 @@ local Tab2 = Window:Tab({
 
 local Tab3 = Window:Tab({
 	Title = "SHOP",
-	Icon = "shopping-cart",
+	Icon = "shop",
 })
 
 local Tab4 = Window:Tab({
@@ -142,7 +145,7 @@ local Tab5 = Window:Tab({
 })
 
 --==================================================
--- TAB 1
+-- TAB 1 (HOME)
 --==================================================
 
 Tab1:Paragraph({
@@ -164,7 +167,7 @@ Tab1:Paragraph({
 })
 
 --==================================================
--- TAB 2
+-- TAB 2 (FARM)
 --==================================================
 
 local EggSection = Tab2:Section({
@@ -175,7 +178,7 @@ local EggSection = Tab2:Section({
 })
 
 -- MULTI-SELECT DROPDOWN
-local SelectedEggsDropdown = EggSection:Dropdown({
+EggSection:Dropdown({
 	Title = "Select Egg",
 	Desc = "Choose which eggs to auto farm (Multi-Select)",
 	Values = EggNames,
@@ -187,7 +190,7 @@ local SelectedEggsDropdown = EggSection:Dropdown({
 	end,
 })
 
--- AUTO FARM TOGGLE
+-- AUTO FARM TOGGLES
 EggSection:Toggle({
 	Title = "Auto Farm",
 	Desc = "Automatic to get the egg and go to your plot",
@@ -229,6 +232,39 @@ EggSection:Toggle({
 	Value = false,
 	Callback = function(value)
 		AutoClaimIndex = value
+	end,
+})
+
+--==================================================
+-- TAB 4 (VISUAL)
+--==================================================
+
+local VisualSection = Tab4:Section({
+	Title = "ESP Settings",
+	Icon = "eye",
+	Box = true,
+	BoxBorder = true,
+})
+
+VisualSection:Dropdown({
+	Title = "Select ESP Egg",
+	Desc = "Choose which eggs to display ESP (Multi-Select)",
+	Values = EggNames,
+	Multi = true,
+	Value = {},
+
+	Callback = function(value)
+		SelectedESPEggs = value
+	end,
+})
+
+VisualSection:Toggle({
+	Title = "Egg ESP",
+	Desc = "Enable ESP and Distance meter for selected eggs",
+	Value = false,
+
+	Callback = function(value)
+		ESPEnabled = value
 	end,
 })
 
@@ -305,7 +341,6 @@ end
 local function PickupEgg(Egg)
 	if not Egg then return false end
 
-	-- Method 1: Check for Remote Events (Direct Claim)
 	pcall(function()
 		local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
 		local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
@@ -317,7 +352,6 @@ local function PickupEgg(Egg)
 		end
 	end)
 
-	-- Method 2: Fire All ProximityPrompts inside Egg
 	for _, Descendant in ipairs(Egg:GetDescendants()) do
 		if Descendant:IsA("ProximityPrompt") then
 			if typeof(fireproximityprompt) == "function" then
@@ -334,7 +368,6 @@ local function PickupEgg(Egg)
 		end
 	end
 
-	-- Method 3: Direct Touch simulation
 	local Character = GetCharacter()
 	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
 	local EggPart = GetEggPart(Egg)
@@ -391,6 +424,108 @@ local function WaitForEggPickup(Egg, Timeout)
 		task.wait(0.1)
 	end
 end
+
+--==================================================
+-- ESP SYSTEM
+--==================================================
+
+local ActiveESP = {}
+
+local function RemoveESP(Egg)
+	if ActiveESP[Egg] then
+		if ActiveESP[Egg].Billboard then
+			ActiveESP[Egg].Billboard:Destroy()
+		end
+		ActiveESP[Egg] = nil
+	end
+end
+
+local function ClearAllESP()
+	for Egg, Data in pairs(ActiveESP) do
+		RemoveESP(Egg)
+	end
+end
+
+local function CreateESP(Egg)
+	if ActiveESP[Egg] then return end
+
+	local EggPart = GetEggPart(Egg)
+	if not EggPart then return end
+
+	local Billboard = Instance.new("BillboardGui")
+	Billboard.Name = "LunaEggESP"
+	Billboard.Adornee = EggPart
+	Billboard.Size = UDim2.new(0, 200, 0, 50)
+	Billboard.StudsOffset = Vector3.new(0, 3, 0)
+	Billboard.AlwaysOnTop = true
+	Billboard.Parent = EggPart
+
+	local TextLabel = Instance.new("TextLabel")
+	TextLabel.Size = UDim2.new(1, 0, 1, 0)
+	TextLabel.BackgroundTransparency = 1
+	TextLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold Text
+	TextLabel.TextStrokeTransparency = 0
+	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	TextLabel.Font = Enum.Font.SourceSansBold
+	TextLabel.TextSize = 16
+	TextLabel.Text = Egg.Name .. "\n[0m]"
+	TextLabel.Parent = Billboard
+
+	ActiveESP[Egg] = {
+		Billboard = Billboard,
+		TextLabel = TextLabel,
+		Part = EggPart
+	}
+end
+
+-- ESP LOOP
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then
+		ClearAllESP()
+		return
+	end
+
+	local Character = GetCharacter()
+	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+
+	-- Clean up dead ESP
+	for Egg, Data in pairs(ActiveESP) do
+		if not Egg or not Egg.Parent or Egg.Parent ~= RenderedEggs then
+			RemoveESP(Egg)
+		end
+	end
+
+	-- Check rendered eggs
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+		local Name = Egg.Name
+		local IsSelected = false
+
+		if type(SelectedESPEggs) == "table" then
+			for _, SelectedName in ipairs(SelectedESPEggs) do
+				if SelectedName == Name then
+					IsSelected = true
+					break
+				end
+			end
+		elseif SelectedESPEggs == Name then
+			IsSelected = true
+		end
+
+		if IsSelected then
+			if not ActiveESP[Egg] then
+				CreateESP(Egg)
+			end
+
+			-- Update Distance Text
+			if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
+				local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
+				ActiveESP[Egg].TextLabel.Text = string.format("%s\n[%dm]", Name, Dist)
+			end
+		else
+			RemoveESP(Egg)
+		end
+	end
+end)
 
 --==================================================
 -- AUTOMATION LOOPS
@@ -481,18 +616,24 @@ task.spawn(function()
 				local EggPart = GetEggPart(Egg)
 				local EggPosition = EggPart and EggPart.Position
 
+				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
+					-- MAY 2 SECONDS DELAY BAGO PICKUP
 					task.wait(2)
 
+					-- Trigger Pickup
 					PickupEgg(Egg)
 
+					-- Wait hanggang sa ma-pickup/mawala ang Egg
 					WaitForEggPickup(Egg, 3)
 
+					-- 2. Teleport sa X, Z ng Egg gamit ang Y height na 39771.2422
 					if EggPosition then
 						TeleportToEggVoid(EggPosition)
 					end
 
-					task.wait(3)
+					-- 3. Wait para sa auto-respawn / auto-tp pabalik sa plot
+					task.wait(4)
 				else
 					task.wait(0.1)
 				end
