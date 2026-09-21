@@ -32,7 +32,7 @@ do
 			WindUI =
 				loadstring(
 					game:HttpGet(
-						"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+						"https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/main.lua"
 					)
 				)()
 		end
@@ -43,7 +43,6 @@ end
 
 local ThemeName = "Dark"
 
--- MULTI-SELECT TABLE (WALANG NAKA-SELECT BY DEFAULT)
 local SelectedEggs = {}
 
 -- OFF BY DEFAULT
@@ -57,7 +56,7 @@ local AutoRebirth = false
 
 local RenderedEggs = workspace:WaitForChild("RenderedEggs")
 
---// EGG LIST (Naka-order mula PINAKAMATAAS/Rarest hanggang PINAKAMABABA)
+--// EGG LIST
 
 local EggNames = {
 	"Cherub Egg",
@@ -87,7 +86,7 @@ local EggNames = {
 	"White Egg"
 }
 
--- Mapping ng Priority (Mababa ang Index = Mas Mataas ang Priority)
+
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
@@ -109,7 +108,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.3",
+	Title = "v.1.0.2.4",
 	Color = "ElementBackground",
 })
 
@@ -118,8 +117,8 @@ Window:Tag({
 --==================================================
 
 local Tab1 = Window:Tab({
-	Title = "HOME",
-	Icon = "warehouse",
+	Title = "DISCORD",
+	Icon = "discord-stroke",
 })
 
 local Tab2 = Window:Tab({
@@ -129,7 +128,7 @@ local Tab2 = Window:Tab({
 
 local Tab3 = Window:Tab({
 	Title = "SHOP",
-	Icon = "shop",
+	Icon = "shopping-cart-add-stroke",
 })
 
 local Tab4 = Window:Tab({
@@ -368,7 +367,6 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
--- TELEPORT AT EGG'S X & Z LOCATION WITH THE VOID Y HEIGHT (39771.2422)
 local function TeleportToEggVoid(EggPosition)
 	local Character = GetCharacter()
 	if not Character then return false end
@@ -376,15 +374,12 @@ local function TeleportToEggVoid(EggPosition)
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	if not HRP or not EggPosition then return false end
 
-	-- Exact Void Y Height
 	local voidY = 39771.2422
 
-	-- Kunin ang X at Z ng Egg, tapos ibaba sa Y = 39771.2422
 	HRP.CFrame = CFrame.new(EggPosition.X, voidY, EggPosition.Z)
 	return true
 end
 
--- Function na nag-aantay hanggang ma-pickup o mawala ang Egg
 local function WaitForEggPickup(Egg, Timeout)
 	Timeout = Timeout or 5
 	local StartTime = os.clock()
@@ -486,23 +481,17 @@ task.spawn(function()
 				local EggPart = GetEggPart(Egg)
 				local EggPosition = EggPart and EggPart.Position
 
-				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					-- MAY 2 SECONDS DELAY BAGO PICKUP
 					task.wait(2)
 
-					-- Trigger Pickup
 					PickupEgg(Egg)
 
-					-- Wait hanggang sa ma-pickup/mawala ang Egg
 					WaitForEggPickup(Egg, 3)
 
-					-- 2. Teleport sa X, Z ng Egg gamit ang Y height na 39771.2422
 					if EggPosition then
 						TeleportToEggVoid(EggPosition)
 					end
 
-					-- 3. Wait para sa auto-respawn / auto-tp pabalik sa plot
 					task.wait(3)
 				else
 					task.wait(0.1)
