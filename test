@@ -111,7 +111,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.4",
+	Title = "v.1.0.2.5",
 	Color = "ElementBackground",
 })
 
@@ -140,6 +140,11 @@ local Tab4 = Window:Tab({
 })
 
 local Tab5 = Window:Tab({
+	Title = "EGGS",
+	Icon = "list-ordered",
+})
+
+local Tab6 = Window:Tab({
 	Title = "INFO",
 	Icon = "badge-info",
 })
@@ -267,6 +272,61 @@ VisualSection:Toggle({
 		ESPEnabled = value
 	end,
 })
+
+--==================================================
+-- TAB 5 (EGGS) - LIVE RENDERED EGGS LIST
+--==================================================
+
+local EggsSection = Tab5:Section({
+	Title = "Active Rendered Eggs",
+	Icon = "list",
+	Box = true,
+	BoxBorder = true,
+})
+
+local LiveEggParagraph = EggsSection:Paragraph({
+	Title = "Spawned Eggs (0)",
+	Desc = "Scanning workspace for rendered eggs...",
+})
+
+local function UpdateRenderedEggList()
+	local CountMap = {}
+	local TotalCount = 0
+
+	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+		local Name = Egg.Name
+		CountMap[Name] = (CountMap[Name] or 0) + 1
+		TotalCount = TotalCount + 1
+	end
+
+	if TotalCount == 0 then
+		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
+		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
+	else
+		local DescriptionText = ""
+		for Name, Count in pairs(CountMap) do
+			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
+		end
+
+		LiveEggParagraph:SetTitle(string.format("Spawned Eggs (%d)", TotalCount))
+		LiveEggParagraph:SetDesc(DescriptionText)
+	end
+end
+
+-- Update list when eggs spawn or get despawned/picked up
+RenderedEggs.ChildAdded:Connect(function()
+	task.defer(UpdateRenderedEggList)
+end)
+
+RenderedEggs.ChildRemoved:Connect(function()
+	task.defer(UpdateRenderedEggList)
+end)
+
+-- Initial population
+task.spawn(function()
+	task.wait(1)
+	UpdateRenderedEggList()
+end)
 
 --==================================================
 -- CHARACTER & HELPER FUNCTIONS
@@ -463,7 +523,7 @@ local function CreateESP(Egg)
 	local TextLabel = Instance.new("TextLabel")
 	TextLabel.Size = UDim2.new(1, 0, 1, 0)
 	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold Text
+	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- Puti / White Text
 	TextLabel.TextStrokeTransparency = 0
 	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	TextLabel.Font = Enum.Font.SourceSansBold
