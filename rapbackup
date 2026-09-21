@@ -43,7 +43,7 @@ end
 
 local ThemeName = "Dark"
 
--- MULTI-SELECT TABLE (WALANG NAKA-SELECT BY DEFAULT)
+-- MULTI-SELECT TABLE
 local SelectedEggs = {}
 
 -- OFF BY DEFAULT
@@ -57,7 +57,7 @@ local AutoRebirth = false
 
 local RenderedEggs = workspace:WaitForChild("RenderedEggs")
 
---// EGG LIST (Naka-order mula PINAKAMATAAS/Rarest hanggang PINAKAMABABA)
+--// EGG LIST (Ordered highest/rarest to lowest)
 
 local EggNames = {
 	"Cherub Egg",
@@ -87,12 +87,11 @@ local EggNames = {
 	"White Egg"
 }
 
--- Mapping ng Priority (Mababa ang Index = Mas Mataas ang Priority)
+-- Mapping ng Priority
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
 end
-
 
 --==================================================
 -- WINDOW
@@ -114,33 +113,14 @@ Window:Tag({
 })
 
 --==================================================
--- MAIN
+-- MAIN TABS
 --==================================================
 
-local Tab1 = Window:Tab({
-	Title = "HOME",
-	Icon = "warehouse",
-})
-
-local Tab2 = Window:Tab({
-	Title = "FARM",
-	Icon = "egg",
-})
-
-local Tab3 = Window:Tab({
-	Title = "SHOP",
-	Icon = "shop",
-})
-
-local Tab4 = Window:Tab({
-	Title = "VISUAL",
-	Icon = "eye",
-})
-
-local Tab5 = Window:Tab({
-	Title = "INFO",
-	Icon = "badge-info",
-})
+local Tab1 = Window:Tab({ Title = "HOME", Icon = "warehouse" })
+local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
+local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shop" })
+local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
+local Tab5 = Window:Tab({ Title = "INFO", Icon = "badge-info" })
 
 --==================================================
 -- TAB 1
@@ -154,7 +134,6 @@ Tab1:Paragraph({
 			Title = "Discord",
 			Callback = function()
 				local DiscordLink = "discord.gg/Ev8k5RAU3"
-				
 				if setclipboard then
 					setclipboard(DiscordLink)
 					print("Discord link copied")
@@ -352,49 +331,77 @@ local function PickupEgg(Egg)
 end
 
 --==================================================
+-- METHOD 2: SAFE TELEPORT (VELOCITY BYPASS)
+--==================================================
+
+local function SafeTeleport(TargetCFrame)
+	local Character = GetCharacter()
+	if not Character then return false end
+
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	if not HRP then return false end
+
+	-- 1. Stop physical movement/falling forces bago mag-teleport
+	pcall(function()
+		HRP.Velocity = Vector3.new(0, 0, 0)
+		HRP.RotVelocity = Vector3.new(0, 0, 0)
+		HRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		HRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+	end)
+
+	-- 2. Teleport Character
+	HRP.CFrame = TargetCFrame
+
+	-- 3. Sync Micro-delay para maregister ng server ang new location
+	task.wait(0.1)
+
+	-- 4. Reset velocity uli post-teleport para iwas rubberband
+	pcall(function()
+		HRP.Velocity = Vector3.new(0, 0, 0)
+		HRP.RotVelocity = Vector3.new(0, 0, 0)
+		HRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		HRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+	end)
+
+	return true
+end
+
+--==================================================
 -- TELEPORT FUNCTIONS
 --==================================================
 
 local function TeleportToEgg(Egg)
-	local Character = GetCharacter()
-	if not Character then return false end
-
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	local EggPart = GetEggPart(Egg)
+	if not EggPart then return false end
 
-	if not HRP or not EggPart then return false end
-
-	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
-	return true
+	local TargetCFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
+	return SafeTeleport(TargetCFrame)
 end
 
--- TELEPORT TO STALL (workspace.Stalls.EggTracker)
 local function TeleportToStall()
-	local Character = GetCharacter()
-	if not Character then return false end
-
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
 	local StallTarget = workspace:FindFirstChild("Stalls") and workspace.Stalls:FindFirstChild("EggTracker")
 
-	if HRP and StallTarget then
+	if StallTarget then
+		local TargetCFrame
 		if StallTarget:IsA("Model") then
-			HRP.CFrame = StallTarget:GetPivot() + Vector3.new(0, 3, 0)
+			TargetCFrame = StallTarget:GetPivot() + Vector3.new(0, 3, 0)
 		elseif StallTarget:IsA("BasePart") then
-			HRP.CFrame = StallTarget.CFrame * CFrame.new(0, 3, 0)
+			TargetCFrame = StallTarget.CFrame * CFrame.new(0, 3, 0)
 		end
-		return true
+
+		if TargetCFrame then
+			return SafeTeleport(TargetCFrame)
+		end
 	end
 
 	return false
 end
 
--- TELEPORT TO PLOT CODE
 local function TeleportToPlot()
-	local player = game:GetService("Players").LocalPlayer
-	local mainGui = player:WaitForChild("PlayerGui"):FindFirstChild("Main")
+	-- Method A: Built-in GUI Teleport (Mas reliable at safe sa Anti-Cheat)
+	local mainGui = Player:WaitForChild("PlayerGui"):FindFirstChild("Main")
 	local plotTeleport = mainGui and mainGui:FindFirstChild("PlotTeleport")
 
-	-- Method 1: Fires the game's built-in GUI teleport directly
 	if plotTeleport and typeof(getconnections) == "function" then
 		for _, connection in pairs(getconnections(plotTeleport.MouseButton1Click)) do
 			connection:Fire()
@@ -402,30 +409,29 @@ local function TeleportToPlot()
 		for _, connection in pairs(getconnections(plotTeleport.Activated)) do
 			connection:Fire()
 		end
+		task.wait(0.2)
+		return true
 	end
 
-	-- Method 2: Fallback scan in case the UI connection fails
-	local character = player.Character or player.CharacterAdded:Wait()
-	local rootPart = character:WaitForChild("HumanoidRootPart")
+	-- Method B: Safe Teleport Scan Fallback
 	local plots = workspace:FindFirstChild("Plots")
-
 	if plots then
 		for _, plot in pairs(plots:GetChildren()) do
 			for _, descendant in pairs(plot:GetDescendants()) do
 				if (descendant:IsA("TextLabel") or descendant:IsA("SurfaceGui")) and descendant.Text then
-					if descendant.Text:find(player.Name) or descendant.Text:find(player.DisplayName) then
-						rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
-						return
+					if descendant.Text:find(Player.Name) or descendant.Text:find(Player.DisplayName) then
+						return SafeTeleport(plot:GetPivot() + Vector3.new(0, 5, 0))
 					end
 				elseif (descendant:IsA("StringValue") or descendant:IsA("ObjectValue")) then
-					if tostring(descendant.Value):find(player.Name) then
-						rootPart.CFrame = plot:GetPivot() + Vector3.new(0, 5, 0)
-						return
+					if tostring(descendant.Value):find(Player.Name) then
+						return SafeTeleport(plot:GetPivot() + Vector3.new(0, 5, 0))
 					end
 				end
 			end
 		end
 	end
+
+	return false
 end
 
 --==================================================
@@ -507,7 +513,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP (WITH STALL TELEPORTATION)
+-- AUTO FARM LOOP (METHOD 2: SAFE VELOCITY RESET LOOP)
 task.spawn(function()
 	while true do
 		if AutoPickup then
@@ -516,26 +522,19 @@ task.spawn(function()
 			if Egg then
 				-- 1. Teleport to Egg
 				if TeleportToEgg(Egg) then
-					-- Delay
-					task.wait(3)
+					task.wait(2.5) -- Wait briefly para ma-sync ng server ang posisyon mo sa egg
 
 					-- 2. Pick up Egg
 					PickupEgg(Egg)
-
-					-- Delay
-					task.wait(3)
+					task.wait(2.5) -- Wait briefly para ma-verify ng server ang pickup
 
 					-- 3. Teleport to Stall
 					TeleportToStall()
-
-					-- Delay
-					task.wait(3)
+					task.wait(2.5) -- Wait para ma-trigger ang stall update/check
 
 					-- 4. Teleport to Plot
 					TeleportToPlot()
-
-					-- Delay bago pumunta sa susunod na Egg
-					task.wait(7)
+					task.wait(6)   -- Wait bago kumuha ng panibagong egg
 				else
 					task.wait(0.1)
 				end
