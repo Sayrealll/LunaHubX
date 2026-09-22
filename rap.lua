@@ -242,8 +242,15 @@ Tab1:Paragraph({
 				local DiscordLink = "discord.gg/Ev8k5RAU3"
 				if setclipboard then
 					setclipboard(DiscordLink)
-					print("Discord link copied")
 				end
+
+				WindUI:Notify({
+					Title = "Discord Link",
+					Content = "Discord link copied to clipboard!",
+					Icon = "solar:copy-bold",
+					Duration = 4,
+					CanClose = true,
+				})
 			end,
 		},
 	},
@@ -580,7 +587,7 @@ end)
 
 local ConfigSection = Tab7:Section({
 	Title = "Config",
-	Icon = "settings",
+	Icon = "pen",
 	Box = true,
 	BoxBorder = true,
 })
