@@ -568,14 +568,14 @@ end)
 
 local ConfigSection = Tab7:Section({
 	Title = "Config",
-	Icon = "swttings",
+	Icon = "settings",
 	Box = true,
 	BoxBorder = true,
 })
 
 ConfigSection:Button({
 	Title = "Reset Config",
-	Desc = "Reset all your saved cnfig",
+	Desc = "Reset all your saved configurations",
 	Callback = function()
 		isResetting = true
 
