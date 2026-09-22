@@ -1,7 +1,16 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Config
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk 
+
+--ANTI AFK
+repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
+
+local VirtualUser = game:GetService("VirtualUser")
+
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
 
 --// SERVICES
-
 local cloneref = (cloneref or clonereference or function(instance)
 	return instance
 end)
@@ -63,6 +72,7 @@ local ConfigData = {
 	SelectedFood = {},
 	Autobuyfood = false,
 	SelectedESPEggs = {},
+	FPSBoost = false,	
 	ESPEnabled = false
 }
 
@@ -92,18 +102,6 @@ LoadConfig()
 
 local ThemeName = "Dark"
 
-repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
-
-local VirtualUser = game:GetService("VirtualUser")
-
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
-end)
-
-
-
-
 -- MULTI-SELECT TABLES
 local SelectedEggs = ConfigData.SelectedEggs or {}
 local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
@@ -123,6 +121,8 @@ local AutoRebirth = ConfigData.AutoRebirth or false
 local ESPEnabled = ConfigData.ESPEnabled or false
 local Autobuygear = ConfigData.Autobuygear or false
 local Autobuyfood = ConfigData.Autobuyfood or false
+local FPSBoost = ConfigData.FPSBoost or false
+
 
 -- UI ELEMENT REFERENCES FOR RESET
 local UIElements = {}
@@ -225,8 +225,8 @@ local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
 local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 local Tab5 = Window:Tab({ Title = "EGGS", Icon = "list-ordered" })
-local Tab7 = Window:Tab({ Title = "CONFIG", Icon = "pen" })
-local Tab6 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
+local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "pen" })
+local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 --==================================================
 -- TAB 1 (HOME)
@@ -582,10 +582,10 @@ task.spawn(function()
 end)
 
 --==================================================
--- TAB 7 (CONFIG)
+-- TAB 6 (CONFIG)
 --==================================================
 
-local ConfigSection = Tab7:Section({
+local ConfigSection = Tab6:Section({
 	Title = "Config",
 	Icon = "pen",
 	Box = true,
@@ -619,6 +619,7 @@ ConfigSection:Button({
 		Autobuyfood = false
 		SelectedESPEggs = {}
 		ESPEnabled = false
+		FPSBoost = false
 
 		-- Reset ConfigData Structure
 		ConfigData = {
@@ -637,7 +638,9 @@ ConfigSection:Button({
 			SelectedFood = {},
 			Autobuyfood = false,
 			SelectedESPEggs = {},
-			ESPEnabled = false
+			ESPEnabled = false,
+			FPSBoost = false
+			
 		}
 
 		-- Force Realtime Visual Reset for All Toggles & Dropdowns
@@ -657,6 +660,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.Autobuyfood, false)
 		SetUIValue(UIElements.SelectedESPEggs, {})
 		SetUIValue(UIElements.ESPEnabled, false)
+		SetUIValue(UIElements.FPSBoost, false)
 
 		-- WindUI Notification Pop-up
 		WindUI:Notify({
@@ -672,6 +676,26 @@ ConfigSection:Button({
 	end,
 })
 
+--==================================================
+-- TAB 7 (SETTINGS)
+--==================================================
+
+local SettingsSection = Tab7:Section({
+	Title = "Settings",
+	Icon = "settings",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.Autobuyfood = SettingsSection:Toggle({
+	Title = "FPS Boost",
+	Value = ConfigData.FPSBoost,
+	Callback = function(value)
+		FPSBoost = value
+		ConfigData.FPSBoost = value
+		SaveConfig()
+	end,
+})
 --==================================================
 -- HELPER FUNCTIONS
 --==================================================
