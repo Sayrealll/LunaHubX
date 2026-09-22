@@ -319,7 +319,7 @@ EggSection:Toggle({
 --==================================================
 
 local ShopSection = Tab3:Section({
-	Title = "Gear Shop",
+	Title = "GEAR SHOP",
 	Icon = "wrench",
 	Box = true,
 	BoxBorder = true,
@@ -345,7 +345,7 @@ ShopSection:Toggle({
 })
 
 local ShopSection1 = Tab3:Section({
-	Title = "Food Shop",
+	Title = "FOOD SHOP",
 	Icon = "apple",
 	Box = true,
 	BoxBorder = true,
