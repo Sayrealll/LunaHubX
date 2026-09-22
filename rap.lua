@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Config
 
 --// SERVICES
 
@@ -9,6 +9,7 @@ end)
 local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
 local RunService = cloneref(game:GetService("RunService"))
 local Players = cloneref(game:GetService("Players"))
+local HttpService = cloneref(game:GetService("HttpService"))
 
 --// PLAYER
 
@@ -41,29 +42,91 @@ do
 	end
 end
 
---// SETTINGS
+--// SETTINGS & CONFIG MANAGER
+
+local ConfigFile = "LunaHub_Config.json"
+local isResetting = false
+
+local ConfigData = {
+	SelectedEggs = {},
+	SelectedPlaceEgg = {},
+	AutoPickup = false,
+	AutoPlaceEgg = false,
+	AutoHatchEgg = false,
+	AutoUpgradeHatchLuck = false,
+	AutoUpgradeHatchLuckMax = false,
+	AutoRebirth = false,
+	AutoClaimIndex = false,
+	AutoClaimOffline = false,
+	SelectedGear = {},
+	Autobuygear = false,
+	SelectedFood = {},
+	Autobuyfood = false,
+	SelectedESPEggs = {},
+	ESPEnabled = false
+}
+
+local function LoadConfig()
+	if isfile and readfile and isfile(ConfigFile) then
+		local success, result = pcall(function()
+			return HttpService:JSONDecode(readfile(ConfigFile))
+		end)
+		if success and type(result) == "table" then
+			for k, v in pairs(result) do
+				ConfigData[k] = v
+			end
+		end
+	end
+end
+
+local function SaveConfig()
+	if isResetting then return end
+	if writefile then
+		pcall(function()
+			writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
+		end)
+	end
+end
+
+LoadConfig()
 
 local ThemeName = "Dark"
 
 -- MULTI-SELECT TABLES
-local SelectedEggs = {}
-local SelectedESPEggs = {}
-local SelectedGear = {}
-local SelectedFood = {}
-
-local SelectedPlaceEgg = ""
+local SelectedEggs = ConfigData.SelectedEggs or {}
+local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
+local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
+local SelectedGear = ConfigData.SelectedGear or {}
+local SelectedFood = ConfigData.SelectedFood or {}
 
 -- TOGGLES
-local AutoPickup = false
-local AutoPlaceEgg = false
-local AutoHatchEgg = false
-local AutoClaimIndex = false
-local AutoUpgradeHatchLuck = false
-local AutoUpgradeHatchLuckMax = false
-local AutoRebirth = false
-local ESPEnabled = false
-local Autobuygear = false
-local Autobuyfood = false
+local AutoPickup = ConfigData.AutoPickup or false
+local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
+local AutoHatchEgg = ConfigData.AutoHatchEgg or false
+local AutoClaimIndex = ConfigData.AutoClaimIndex or false
+local AutoClaimOffline = ConfigData.AutoClaimOffline or false
+local AutoUpgradeHatchLuck = ConfigData.AutoUpgradeHatchLuck or false
+local AutoUpgradeHatchLuckMax = ConfigData.AutoUpgradeHatchLuckMax or false
+local AutoRebirth = ConfigData.AutoRebirth or false
+local ESPEnabled = ConfigData.ESPEnabled or false
+local Autobuygear = ConfigData.Autobuygear or false
+local Autobuyfood = ConfigData.Autobuyfood or false
+
+-- UI ELEMENT REFERENCES FOR RESET
+local UIElements = {}
+
+local function SetUIValue(element, newValue)
+	if not element then return end
+	pcall(function()
+		if element.Set then
+			element:Set(newValue)
+		elseif element.SetValue then
+			element:SetValue(newValue)
+		elseif element.Value ~= nil then
+			element.Value = newValue
+		end
+	end)
+end
 
 --// EGG CONTAINER
 
@@ -150,6 +213,7 @@ local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
 local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 local Tab5 = Window:Tab({ Title = "EGGS", Icon = "list-ordered" })
+local Tab7 = Window:Tab({ Title = "CONFIG", Icon = "settings" })
 local Tab6 = Window:Tab({ Title = "INFO", Icon = "badge-info" })
 
 --==================================================
@@ -184,95 +248,116 @@ local EggSection = Tab2:Section({
 	BoxBorder = true,
 })
 
-EggSection:Dropdown({
+UIElements.SelectedEggs = EggSection:Dropdown({
 	Title = "Select Egg",
 	Desc = "Choose which eggs to auto farm",
 	Values = EggNames,
 	Multi = true,
-	Value = {},
+	Value = ConfigData.SelectedEggs,
 	Callback = function(value)
 		SelectedEggs = value
+		ConfigData.SelectedEggs = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoPickup = EggSection:Toggle({
 	Title = "Auto Farm",
 	Desc = "Automatic to get the egg and proceed to your plot",
-	Value = false,
+	Value = ConfigData.AutoPickup,
 	Callback = function(value)
 		AutoPickup = value
+		ConfigData.AutoPickup = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Dropdown({
-	Title = "Select egg to Auto Place",
-	Desc = "Choose which egg to place ( Go to your plot )",
+UIElements.SelectedPlaceEgg = EggSection:Dropdown({
+	Title = "Select eggs to Auto Place",
+	Desc = "Choose which eggs to place (Go to your plot)",
 	Values = EggNames,
-	Multi = false,
-	Value = "",
+	Multi = true,
+	Value = ConfigData.SelectedPlaceEgg,
 	Callback = function(value)
 		SelectedPlaceEgg = value
+		ConfigData.SelectedPlaceEgg = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoPlaceEgg = EggSection:Toggle({
 	Title = "Auto Place Eggs",
 	Desc = "Automatically equip and place the selected eggs",
-	Value = false,
+	Value = ConfigData.AutoPlaceEgg,
 	Callback = function(value)
 		AutoPlaceEgg = value
+		ConfigData.AutoPlaceEgg = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoHatchEgg = EggSection:Toggle({
 	Title = "Auto Hatch Egg",
 	Desc = "Automatically hatch ready eggs in your plot",
-	Value = false,
+	Value = ConfigData.AutoHatchEgg,
 	Callback = function(value)
 		AutoHatchEgg = value
+		ConfigData.AutoHatchEgg = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 	Title = "Auto Upgrade Hatch Luck",
 	Desc = "Auto upgrade hatch luck by 1x",
-	Value = false,
+	Value = ConfigData.AutoUpgradeHatchLuck,
 	Callback = function(value)
 		AutoUpgradeHatchLuck = value
+		ConfigData.AutoUpgradeHatchLuck = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
 	Title = "Auto Upgrade Hatch Luck (Max)",
 	Desc = "Auto upgrade hatch luck by Max",
-	Value = false,
+	Value = ConfigData.AutoUpgradeHatchLuckMax,
 	Callback = function(value)
 		AutoUpgradeHatchLuckMax = value
+		ConfigData.AutoUpgradeHatchLuckMax = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoRebirth = EggSection:Toggle({
 	Title = "Auto Rebirth",
-	Value = false,
+	Value = ConfigData.AutoRebirth,
 	Callback = function(value)
 		AutoRebirth = value
+		ConfigData.AutoRebirth = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoClaimIndex = EggSection:Toggle({
 	Title = "Auto Claim Index Reward",
-	Value = false,
+	Value = ConfigData.AutoClaimIndex,
 	Callback = function(value)
 		AutoClaimIndex = value
+		ConfigData.AutoClaimIndex = value
+		SaveConfig()
 	end,
 })
 
-EggSection:Toggle({
+UIElements.AutoClaimOffline = EggSection:Toggle({
 	Title = "Auto Claim Offline Earnings",
-	Value = false,
+	Value = ConfigData.AutoClaimOffline,
 	Callback = function(value)
+		AutoClaimOffline = value
+		ConfigData.AutoClaimOffline = value
+		SaveConfig()
+
 		if value then
-			-- 1. Direct Remote Fire
 			pcall(function()
 				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
 				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
@@ -283,7 +368,6 @@ EggSection:Toggle({
 				end
 			end)
 
-			-- 2. Force Click Screen UI Button
 			pcall(function()
 				local PlayerGui = Player:FindFirstChild("PlayerGui")
 				if PlayerGui then
@@ -325,22 +409,26 @@ local ShopSection = Tab3:Section({
 	BoxBorder = true,
 })
 
-ShopSection:Dropdown({
+UIElements.SelectedGear = ShopSection:Dropdown({
 	Title = "Select Radars",
 	Values = GearShop,
 	Multi = true,
-	Value = {},
+	Value = ConfigData.SelectedGear,
 	Callback = function(value)
 		SelectedGear = value
+		ConfigData.SelectedGear = value
+		SaveConfig()
 	end,
 })
 
-ShopSection:Toggle({
+UIElements.Autobuygear = ShopSection:Toggle({
 	Title = "Auto Buy Gears",
 	Desc = "Automatic to buy selected gears",
-	Value = false,
+	Value = ConfigData.Autobuygear,
 	Callback = function(value)
 		Autobuygear = value
+		ConfigData.Autobuygear = value
+		SaveConfig()
 	end,
 })
 
@@ -351,22 +439,26 @@ local ShopSection1 = Tab3:Section({
 	BoxBorder = true,
 })
 
-ShopSection1:Dropdown({
+UIElements.SelectedFood = ShopSection1:Dropdown({
 	Title = "Select Food",
 	Values = FoodShop,
 	Multi = true,
-	Value = {},
+	Value = ConfigData.SelectedFood,
 	Callback = function(value)
 		SelectedFood = value
+		ConfigData.SelectedFood = value
+		SaveConfig()
 	end,
 })
 
-ShopSection1:Toggle({
+UIElements.Autobuyfood = ShopSection1:Toggle({
 	Title = "Auto Buy Foods",
 	Desc = "Automatic to buy selected Food",
-	Value = false,
+	Value = ConfigData.Autobuyfood,
 	Callback = function(value)
 		Autobuyfood = value
+		ConfigData.Autobuyfood = value
+		SaveConfig()
 	end,
 })
 
@@ -381,23 +473,27 @@ local VisualSection = Tab4:Section({
 	BoxBorder = true,
 })
 
-VisualSection:Dropdown({
+UIElements.SelectedESPEggs = VisualSection:Dropdown({
 	Title = "Select ESP Egg",
 	Desc = "Choose which eggs to display ESP",
 	Values = EggNames,
 	Multi = true,
-	Value = {},
+	Value = ConfigData.SelectedESPEggs,
 	Callback = function(value)
 		SelectedESPEggs = value
+		ConfigData.SelectedESPEggs = value
+		SaveConfig()
 	end,
 })
 
-VisualSection:Toggle({
+UIElements.ESPEnabled = VisualSection:Toggle({
 	Title = "Egg ESP",
 	Desc = "Enable ESP and Distance for selected eggs",
-	Value = false,
+	Value = ConfigData.ESPEnabled,
 	Callback = function(value)
 		ESPEnabled = value
+		ConfigData.ESPEnabled = value
+		SaveConfig()
 	end,
 })
 
@@ -465,6 +561,88 @@ task.spawn(function()
 	task.wait(1)
 	UpdateRenderedEggList()
 end)
+
+--==================================================
+-- TAB 7 (CONFIG)
+--==================================================
+
+local ConfigSection = Tab7:Section({
+	Title = "Config",
+	Icon = "swttings",
+	Box = true,
+	BoxBorder = true,
+})
+
+ConfigSection:Button({
+	Title = "Reset Config",
+	Desc = "Reset all your saved cnfig",
+	Callback = function()
+		isResetting = true
+
+		if delfile and isfile and isfile(ConfigFile) then
+			pcall(function() delfile(ConfigFile) end)
+		end
+
+		-- Reset Local State Variables
+		SelectedEggs = {}
+		SelectedPlaceEgg = {}
+		AutoPickup = false
+		AutoPlaceEgg = false
+		AutoHatchEgg = false
+		AutoUpgradeHatchLuck = false
+		AutoUpgradeHatchLuckMax = false
+		AutoRebirth = false
+		AutoClaimIndex = false
+		AutoClaimOffline = false
+		SelectedGear = {}
+		Autobuygear = false
+		SelectedFood = {}
+		Autobuyfood = false
+		SelectedESPEggs = {}
+		ESPEnabled = false
+
+		-- Reset ConfigData Structure
+		ConfigData = {
+			SelectedEggs = {},
+			SelectedPlaceEgg = {},
+			AutoPickup = false,
+			AutoPlaceEgg = false,
+			AutoHatchEgg = false,
+			AutoUpgradeHatchLuck = false,
+			AutoUpgradeHatchLuckMax = false,
+			AutoRebirth = false,
+			AutoClaimIndex = false,
+			AutoClaimOffline = false,
+			SelectedGear = {},
+			Autobuygear = false,
+			SelectedFood = {},
+			Autobuyfood = false,
+			SelectedESPEggs = {},
+			ESPEnabled = false
+		}
+
+		-- Force Realtime Visual Reset for All Toggles & Dropdowns
+		SetUIValue(UIElements.SelectedEggs, {})
+		SetUIValue(UIElements.AutoPickup, false)
+		SetUIValue(UIElements.SelectedPlaceEgg, {})
+		SetUIValue(UIElements.AutoPlaceEgg, false)
+		SetUIValue(UIElements.AutoHatchEgg, false)
+		SetUIValue(UIElements.AutoUpgradeHatchLuck, false)
+		SetUIValue(UIElements.AutoUpgradeHatchLuckMax, false)
+		SetUIValue(UIElements.AutoRebirth, false)
+		SetUIValue(UIElements.AutoClaimIndex, false)
+		SetUIValue(UIElements.AutoClaimOffline, false)
+		SetUIValue(UIElements.SelectedGear, {})
+		SetUIValue(UIElements.Autobuygear, false)
+		SetUIValue(UIElements.SelectedFood, {})
+		SetUIValue(UIElements.Autobuyfood, false)
+		SetUIValue(UIElements.SelectedESPEggs, {})
+		SetUIValue(UIElements.ESPEnabled, false)
+
+		task.wait(0.1)
+		isResetting = false
+	end,
+})
 
 --==================================================
 -- HELPER FUNCTIONS
@@ -727,39 +905,45 @@ task.spawn(function()
 	while true do
 		if AutoPlaceEgg then
 			pcall(function()
-				if SelectedPlaceEgg == "" or SelectedPlaceEgg == nil then return end
+				local EggList = type(SelectedPlaceEgg) == "table" and SelectedPlaceEgg or (SelectedPlaceEgg ~= "" and {SelectedPlaceEgg} or {})
+				if #EggList == 0 then return end
+
 				local Character = GetCharacter()
 				local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
 				local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
 				local Backpack = Player:FindFirstChild("Backpack")
 
 				if Character and Humanoid and HRP then
-					local HeldTool = Character:FindFirstChildOfClass("Tool")
-					local TargetEggTool = nil
-					if HeldTool and HeldTool.Name == SelectedPlaceEgg then
-						TargetEggTool = HeldTool
-					else
-						if Backpack then TargetEggTool = Backpack:FindFirstChild(SelectedPlaceEgg) end
-						if TargetEggTool then
-							Humanoid:EquipTool(TargetEggTool)
-							task.wait(0.1)
-						end
-					end
+					for _, EggName in ipairs(EggList) do
+						local HeldTool = Character:FindFirstChildOfClass("Tool")
+						local TargetEggTool = nil
 
-					if TargetEggTool or (HeldTool and HeldTool.Name == SelectedPlaceEgg) then
-						local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-						local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
-						local EggPlacedRemote = GameRemotes and GameRemotes:FindFirstChild("EggPlaced")
-						if EggPlacedRemote then
-							local CurrentPos = HRP.Position
-							local args = {
-								{
-									PlantPosition = Vector3.new(CurrentPos.X, CurrentPos.Y - 2, CurrentPos.Z),
-									Egg = SelectedPlaceEgg,
-									EggName = SelectedPlaceEgg
+						if HeldTool and HeldTool.Name == EggName then
+							TargetEggTool = HeldTool
+						else
+							if Backpack then TargetEggTool = Backpack:FindFirstChild(EggName) end
+							if TargetEggTool then
+								Humanoid:EquipTool(TargetEggTool)
+								task.wait(0.1)
+							end
+						end
+
+						if TargetEggTool or (HeldTool and HeldTool.Name == EggName) then
+							local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+							local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+							local EggPlacedRemote = GameRemotes and GameRemotes:FindFirstChild("EggPlaced")
+							if EggPlacedRemote then
+								local CurrentPos = HRP.Position
+								local args = {
+									{
+										PlantPosition = Vector3.new(CurrentPos.X, CurrentPos.Y - 2, CurrentPos.Z),
+										Egg = EggName,
+										EggName = EggName
+									}
 								}
-							}
-							EggPlacedRemote:FireServer(unpack(args))
+								EggPlacedRemote:FireServer(unpack(args))
+								task.wait(0.2)
+							end
 						end
 					end
 				end
