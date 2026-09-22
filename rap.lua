@@ -92,6 +92,18 @@ LoadConfig()
 
 local ThemeName = "Dark"
 
+repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
+
+local VirtualUser = game:GetService("VirtualUser")
+
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+
+
+
 -- MULTI-SELECT TABLES
 local SelectedEggs = ConfigData.SelectedEggs or {}
 local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
@@ -213,8 +225,8 @@ local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
 local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 local Tab5 = Window:Tab({ Title = "EGGS", Icon = "list-ordered" })
-local Tab7 = Window:Tab({ Title = "CONFIG", Icon = "settings" })
-local Tab6 = Window:Tab({ Title = "INFO", Icon = "badge-info" })
+local Tab7 = Window:Tab({ Title = "CONFIG", Icon = "pen" })
+local Tab6 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 --==================================================
 -- TAB 1 (HOME)
@@ -638,6 +650,15 @@ ConfigSection:Button({
 		SetUIValue(UIElements.Autobuyfood, false)
 		SetUIValue(UIElements.SelectedESPEggs, {})
 		SetUIValue(UIElements.ESPEnabled, false)
+
+		-- WindUI Notification Pop-up
+		WindUI:Notify({
+			Title = "Config Reset",
+			Content = "All configurations have been reset to default!",
+            Icon = "solar:bell-bold",
+			Duration = 5,
+			CanClose = true,
+		})
 
 		task.wait(0.1)
 		isResetting = false
