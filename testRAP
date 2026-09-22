@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD
 
 --// SERVICES
 
@@ -48,6 +48,8 @@ local ThemeName = "Dark"
 -- MULTI-SELECT TABLES
 local SelectedEggs = {}
 local SelectedESPEggs = {}
+local SelectedGear = {}
+local SelectedFood = {}
 
 local SelectedPlaceEgg = ""
 
@@ -60,6 +62,8 @@ local AutoUpgradeHatchLuck = false
 local AutoUpgradeHatchLuckMax = false
 local AutoRebirth = false
 local ESPEnabled = false
+local Autobuygear = false
+local Autobuyfood = false
 
 --// EGG CONTAINER
 
@@ -96,7 +100,7 @@ local EggNames = {
 }
 
 local GearShop = {
-	"Advance Radar",
+	"Advanced Radar",
 	"Jewel Radar",
 	"Royal Radar",
 	"Magic Radar",
@@ -108,7 +112,6 @@ local FoodShop = {
 	"Grass",
 	"Bone",
 	"Meat",
-	"Grass",
 	"Magic Apple",
 	"Dragon Fruit"
 }
@@ -280,7 +283,7 @@ EggSection:Toggle({
 				end
 			end)
 
-			-- 2. Force Click Screen UI Button (Para mawala rin ang window/pop-up sa screen)
+			-- 2. Force Click Screen UI Button
 			pcall(function()
 				local PlayerGui = Player:FindFirstChild("PlayerGui")
 				if PlayerGui then
@@ -289,7 +292,6 @@ EggSection:Toggle({
 							local Text = (GuiObject:IsA("TextButton") and GuiObject.Text) or ""
 							if GuiObject.Name:lower():find("1x") or Text:lower():find("1x") or GuiObject.Name:lower():find("claim") or Text:lower():find("claim") then
 								
-								-- I-fire ang click connection sa executor
 								if getconnections then
 									for _, conn in ipairs(getconnections(GuiObject.Activated)) do
 										conn:Fire()
@@ -299,7 +301,6 @@ EggSection:Toggle({
 									end
 								end
 
-								-- Visual Hide Fallback
 								local Frame = GuiObject:FindFirstAncestorWhichIsA("Frame") or GuiObject:FindFirstAncestorWhichIsA("ScreenGui")
 								if Frame and Frame.Name:lower():find("offline") then
 									Frame.Visible = false
@@ -313,14 +314,12 @@ EggSection:Toggle({
 	end,
 })
 
-
-
 --==================================================
 -- TAB 3 (SHOP)
 --==================================================
 
 local ShopSection = Tab3:Section({
-	Title = "GEAR SHOP",
+	Title = "Gear Shop",
 	Icon = "wrench",
 	Box = true,
 	BoxBorder = true,
@@ -345,9 +344,8 @@ ShopSection:Toggle({
 	end,
 })
 
-
 local ShopSection1 = Tab3:Section({
-	Title = "FOOD SHOP",
+	Title = "Food Shop",
 	Icon = "apple",
 	Box = true,
 	BoxBorder = true,
@@ -371,8 +369,6 @@ ShopSection1:Toggle({
 		Autobuyfood = value
 	end,
 })
-
-
 
 --==================================================
 -- TAB 4 (VISUAL)
@@ -672,6 +668,60 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
+-- AUTO BUY GEAR LOOP
+task.spawn(function()
+	while true do
+		if Autobuygear then
+			pcall(function()
+				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
+					and ReplicatedStorage.Remotes:FindFirstChild("Game")
+					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
+
+				if BuyRemote then
+					if type(SelectedGear) == "table" then
+						for _, GearItem in ipairs(SelectedGear) do
+							BuyRemote:FireServer("Gears", GearItem)
+							task.wait(0.2)
+						end
+					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
+						BuyRemote:FireServer("Gears", SelectedGear)
+					end
+				end
+			end)
+			task.wait(0.5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
+-- AUTO BUY FOOD LOOP
+task.spawn(function()
+	while true do
+		if Autobuyfood then
+			pcall(function()
+				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
+					and ReplicatedStorage.Remotes:FindFirstChild("Game")
+					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
+
+				if BuyRemote then
+					if type(SelectedFood) == "table" then
+						for _, FoodItem in ipairs(SelectedFood) do
+							BuyRemote:FireServer("Food", FoodItem)
+							task.wait(0.2)
+						end
+					elseif type(SelectedFood) == "string" and SelectedFood ~= "" then
+						BuyRemote:FireServer("Food", SelectedFood)
+					end
+				end
+			end)
+			task.wait(0.5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
+
 -- AUTO PLACE EGG LOOP
 task.spawn(function()
 	while true do
@@ -721,7 +771,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO HATCH EGG LOOP (BASED ON HANDLE.HATCH STATUS)
+-- AUTO HATCH EGG LOOP
 task.spawn(function()
 	while true do
 		if AutoHatchEgg then
@@ -741,7 +791,6 @@ task.spawn(function()
 									local HatchObj = Handle and Handle:FindFirstChild("Hatch")
 									local EggData = EggModel:FindFirstChild("EggData")
 									
-									-- Kunin ang EggKey
 									local Key = nil
 									if EggData then
 										Key = EggData:GetAttribute("EggKey") 
@@ -755,16 +804,12 @@ task.spawn(function()
 									local CanHatch = false
 
 									if HatchObj then
-										-- 1. ProximityPrompt check
 										if HatchObj:IsA("ProximityPrompt") then
 											CanHatch = HatchObj.Enabled
-										-- 2. ValueBase check
 										elseif HatchObj:IsA("ValueBase") then
 											CanHatch = HatchObj.Value
-										-- 3. GUI check
 										elseif HatchObj:IsA("GuiObject") or HatchObj:IsA("LayerCollector") then
 											CanHatch = HatchObj.Enabled or HatchObj.Visible
-										-- 4. Attribute check
 										elseif HatchObj:GetAttribute("Enabled") ~= nil then
 											CanHatch = HatchObj:GetAttribute("Enabled")
 										else
@@ -772,7 +817,6 @@ task.spawn(function()
 										end
 									end
 
-									-- Fire remote kapag may EggKey at ready na sa Handle.Hatch
 									if Key and CanHatch then
 										HatchRemote:FireServer({ EggKey = tostring(Key) })
 										task.wait(0.2)
