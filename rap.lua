@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk 
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boost
 
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -19,6 +19,8 @@ local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
 local RunService = cloneref(game:GetService("RunService"))
 local Players = cloneref(game:GetService("Players"))
 local HttpService = cloneref(game:GetService("HttpService"))
+local Lighting = cloneref(game:GetService("Lighting"))
+local MaterialService = cloneref(game:GetService("MaterialService"))
 
 --// PLAYER
 
@@ -123,7 +125,6 @@ local Autobuygear = ConfigData.Autobuygear or false
 local Autobuyfood = ConfigData.Autobuyfood or false
 local FPSBoost = ConfigData.FPSBoost or false
 
-
 -- UI ELEMENT REFERENCES FOR RESET
 local UIElements = {}
 
@@ -137,6 +138,164 @@ local function SetUIValue(element, newValue)
 		elseif element.Value ~= nil then
 			element.Value = newValue
 		end
+	end)
+end
+
+--==================================================
+-- FPS BOOST & RESTORE SYSTEM
+--==================================================
+
+local SavedGraphicsState = {
+	GlobalShadows = Lighting.GlobalShadows,
+	FogEnd = Lighting.FogEnd,
+	ShadowSoftness = Lighting.ShadowSoftness,
+	QualityLevel = settings().Rendering.QualityLevel,
+	MeshPartDetailLevel = settings().Rendering.MeshPartDetailLevel,
+	Materials = {},
+	WaterWaveSize = nil,
+	WaterWaveSpeed = nil,
+	WaterReflectance = nil,
+	WaterTransparency = nil,
+	OriginalProps = {}
+}
+
+local function SaveOriginalGraphics()
+	SavedGraphicsState.GlobalShadows = Lighting.GlobalShadows
+	SavedGraphicsState.FogEnd = Lighting.FogEnd
+	SavedGraphicsState.ShadowSoftness = Lighting.ShadowSoftness
+	SavedGraphicsState.QualityLevel = settings().Rendering.QualityLevel
+	SavedGraphicsState.MeshPartDetailLevel = settings().Rendering.MeshPartDetailLevel
+
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		SavedGraphicsState.WaterWaveSize = terrain.WaterWaveSize
+		SavedGraphicsState.WaterWaveSpeed = terrain.WaterWaveSpeed
+		SavedGraphicsState.WaterReflectance = terrain.WaterReflectance
+		SavedGraphicsState.WaterTransparency = terrain.WaterTransparency
+	end
+end
+
+SaveOriginalGraphics()
+
+local FPSConn = nil
+
+local function ApplyFPSBoost(state)
+	if state then
+		SaveOriginalGraphics()
+
+		pcall(function() Lighting.GlobalShadows = false end)
+		pcall(function() Lighting.FogEnd = 9e9 end)
+		pcall(function() Lighting.ShadowSoftness = 0 end)
+
+		if sethiddenproperty then
+			pcall(function() sethiddenproperty(Lighting, "Technology", 2) end)
+		end
+
+		pcall(function()
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+			settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+		end)
+
+		local terrain = workspace:FindFirstChildOfClass("Terrain")
+		if terrain then
+			pcall(function()
+				terrain.WaterWaveSize = 0
+				terrain.WaterWaveSpeed = 0
+				terrain.WaterReflectance = 0
+				terrain.WaterTransparency = 0
+				if sethiddenproperty then
+					sethiddenproperty(terrain, "Decoration", false)
+				end
+			end)
+		end
+
+		if setfpscap then
+			pcall(function() setfpscap(1e6) end)
+		end
+
+		local function CleanInstance(Inst)
+			if not Inst or not Inst.Parent then return end
+			pcall(function()
+				if Inst:IsA("BasePart") and not Inst:IsA("MeshPart") then
+					if not SavedGraphicsState.OriginalProps[Inst] then
+						SavedGraphicsState.OriginalProps[Inst] = { Material = Inst.Material, Reflectance = Inst.Reflectance }
+					end
+					Inst.Material = Enum.Material.Plastic
+					Inst.Reflectance = 0
+				elseif Inst:IsA("MeshPart") then
+					if not SavedGraphicsState.OriginalProps[Inst] then
+						SavedGraphicsState.OriginalProps[Inst] = { Material = Inst.Material, Reflectance = Inst.Reflectance, RenderFidelity = Inst.RenderFidelity }
+					end
+					Inst.RenderFidelity = Enum.RenderFidelity.Performance
+					Inst.Reflectance = 0
+					Inst.Material = Enum.Material.Plastic
+				elseif Inst:IsA("PostEffect") or Inst:IsA("ParticleEmitter") or Inst:IsA("Trail") or Inst:IsA("Smoke") or Inst:IsA("Fire") or Inst:IsA("Sparkles") then
+					if not SavedGraphicsState.OriginalProps[Inst] then
+						SavedGraphicsState.OriginalProps[Inst] = { Enabled = Inst.Enabled }
+					end
+					Inst.Enabled = false
+				end
+			end)
+		end
+
+		for _, v in ipairs(game:GetDescendants()) do
+			CleanInstance(v)
+		end
+
+		if FPSConn then FPSConn:Disconnect() end
+		FPSConn = game.DescendantAdded:Connect(function(v)
+			if FPSBoost then
+				CleanInstance(v)
+			end
+		end)
+
+	else
+		if FPSConn then
+			FPSConn:Disconnect()
+			FPSConn = nil
+		end
+
+		pcall(function() Lighting.GlobalShadows = SavedGraphicsState.GlobalShadows end)
+		pcall(function() Lighting.FogEnd = SavedGraphicsState.FogEnd end)
+		pcall(function() Lighting.ShadowSoftness = SavedGraphicsState.ShadowSoftness end)
+
+		pcall(function()
+			settings().Rendering.QualityLevel = SavedGraphicsState.QualityLevel
+			settings().Rendering.MeshPartDetailLevel = SavedGraphicsState.MeshPartDetailLevel
+		end)
+
+		local terrain = workspace:FindFirstChildOfClass("Terrain")
+		if terrain then
+			pcall(function()
+				if SavedGraphicsState.WaterWaveSize then terrain.WaterWaveSize = SavedGraphicsState.WaterWaveSize end
+				if SavedGraphicsState.WaterWaveSpeed then terrain.WaterWaveSpeed = SavedGraphicsState.WaterWaveSpeed end
+				if SavedGraphicsState.WaterReflectance then terrain.WaterReflectance = SavedGraphicsState.WaterReflectance end
+				if SavedGraphicsState.WaterTransparency then terrain.WaterTransparency = SavedGraphicsState.WaterTransparency end
+			end)
+		end
+
+		if setfpscap then
+			pcall(function() setfpscap(60) end)
+		end
+
+		for Inst, Props in pairs(SavedGraphicsState.OriginalProps) do
+			if Inst and Inst.Parent then
+				pcall(function()
+					for prop, val in pairs(Props) do
+						Inst[prop] = val
+					end
+				end)
+			end
+		end
+		SavedGraphicsState.OriginalProps = {}
+	end
+end
+
+-- Init Boost if loaded from config
+if FPSBoost then
+	task.spawn(function()
+		task.wait(1)
+		ApplyFPSBoost(true)
 	end)
 end
 
@@ -602,6 +761,12 @@ ConfigSection:Button({
 			pcall(function() delfile(ConfigFile) end)
 		end
 
+		-- Disable FPS Boost on reset
+		if FPSBoost then
+			FPSBoost = false
+			ApplyFPSBoost(false)
+		end
+
 		-- Reset Local State Variables
 		SelectedEggs = {}
 		SelectedPlaceEgg = {}
@@ -640,7 +805,6 @@ ConfigSection:Button({
 			SelectedESPEggs = {},
 			ESPEnabled = false,
 			FPSBoost = false
-			
 		}
 
 		-- Force Realtime Visual Reset for All Toggles & Dropdowns
@@ -666,7 +830,7 @@ ConfigSection:Button({
 		WindUI:Notify({
 			Title = "Config Reset",
 			Content = "All configurations have been reset to default!",
-            Icon = "solar:bell-bold",
+			Icon = "solar:bell-bold",
 			Duration = 5,
 			CanClose = true,
 		})
@@ -687,15 +851,18 @@ local SettingsSection = Tab7:Section({
 	BoxBorder = true,
 })
 
-UIElements.Autobuyfood = SettingsSection:Toggle({
+UIElements.FPSBoost = SettingsSection:Toggle({
 	Title = "FPS Boost",
+	Desc = "Lower graphics quality to increase FPS performance",
 	Value = ConfigData.FPSBoost,
 	Callback = function(value)
 		FPSBoost = value
 		ConfigData.FPSBoost = value
 		SaveConfig()
+		ApplyFPSBoost(value)
 	end,
 })
+
 --==================================================
 -- HELPER FUNCTIONS
 --==================================================
