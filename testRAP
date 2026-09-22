@@ -1,4 +1,5 @@
---AUTO HATCH
+--AUTO HATCH, AUTO CLAIM OFFLINE
+
 --// SERVICES
 
 local cloneref = (cloneref or clonereference or function(instance)
@@ -242,6 +243,55 @@ EggSection:Toggle({
 	Value = false,
 	Callback = function(value)
 		AutoClaimIndex = value
+	end,
+})
+
+EggSection:Toggle({
+	Title = "Auto Claim Offline Earnings",
+	Value = false,
+	Callback = function(value)
+		if value then
+			-- 1. Direct Remote Fire
+			pcall(function()
+				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+				local OfflineRemote = GameRemotes and GameRemotes:FindFirstChild("OfflineEarnings")
+
+				if OfflineRemote then
+					OfflineRemote:FireServer()
+				end
+			end)
+
+			-- 2. Force Click Screen UI Button (Para mawala rin ang window/pop-up sa screen)
+			pcall(function()
+				local PlayerGui = Player:FindFirstChild("PlayerGui")
+				if PlayerGui then
+					for _, GuiObject in ipairs(PlayerGui:GetDescendants()) do
+						if (GuiObject:IsA("TextButton") or GuiObject:IsA("ImageButton")) and GuiObject.Visible then
+							local Text = (GuiObject:IsA("TextButton") and GuiObject.Text) or ""
+							if GuiObject.Name:lower():find("1x") or Text:lower():find("1x") or GuiObject.Name:lower():find("claim") or Text:lower():find("claim") then
+								
+								-- I-fire ang click connection sa executor
+								if getconnections then
+									for _, conn in ipairs(getconnections(GuiObject.Activated)) do
+										conn:Fire()
+									end
+									for _, conn in ipairs(getconnections(GuiObject.MouseButton1Click)) do
+										conn:Fire()
+									end
+								end
+
+								-- Visual Hide Fallback
+								local Frame = GuiObject:FindFirstAncestorWhichIsA("Frame") or GuiObject:FindFirstAncestorWhichIsA("ScreenGui")
+								if Frame and Frame.Name:lower():find("offline") then
+									Frame.Visible = false
+								end
+							end
+						end
+					end
+				end
+			end)
+		end
 	end,
 })
 
