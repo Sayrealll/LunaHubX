@@ -95,6 +95,24 @@ local EggNames = {
 	"White Egg"
 }
 
+local GearShop = {
+	"Advance Radar",
+	"Jewel Radar",
+	"Royal Radar",
+	"Magic Radar",
+	"Angelic Radar",
+	"Eternal Radar"
+}
+
+local FoodShop = {
+	"Grass",
+	"Bone",
+	"Meat",
+	"Grass",
+	"Magic Apple",
+	"Dragon Fruit"
+}
+
 -- Mapping ng Priority
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
@@ -294,6 +312,67 @@ EggSection:Toggle({
 		end
 	end,
 })
+
+
+
+--==================================================
+-- TAB 3 (SHOP)
+--==================================================
+
+local ShopSection = Tab3:Section({
+	Title = "GEAR SHOP",
+	Icon = "shopping-cart",
+	Box = true,
+	BoxBorder = true,
+})
+
+ShopSection:Dropdown({
+	Title = "Select Radars",
+	Values = GearShop,
+	Multi = true,
+	Value = {},
+	Callback = function(value)
+		SelectedGear = value
+	end,
+})
+
+ShopSection:Toggle({
+	Title = "Auto Buy Gears",
+	Desc = "Automatic to buy selected gears",
+	Value = false,
+	Callback = function(value)
+		Autobuygear = value
+	end,
+})
+
+
+local ShopSection1 = Tab3:Section({
+	Title = "FOOD SHOP",
+	Icon = "shopping-cart",
+	Box = true,
+	BoxBorder = true,
+})
+
+ShopSection1:Dropdown({
+	Title = "Select Food",
+	Values = FoodShop,
+	Multi = true,
+	Value = {},
+	Callback = function(value)
+		SelectedFood = value
+	end,
+})
+
+ShopSection1:Toggle({
+	Title = "Auto Buy Foods",
+	Desc = "Automatic to buy selected Food",
+	Value = false,
+	Callback = function(value)
+		Autobuyfood = value
+	end,
+})
+
+
 
 --==================================================
 -- TAB 4 (VISUAL)
