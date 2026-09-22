@@ -1,4 +1,4 @@
---AUTO HATCH 
+--AUTO HATCH
 --// SERVICES
 
 local cloneref = (cloneref or clonereference or function(instance)
@@ -592,7 +592,7 @@ task.spawn(function()
 	end
 end)
 
--- AUTO HATCH EGG LOOP (WITH AUTOMATIC EGGKEY DETECTOR)
+-- AUTO HATCH EGG LOOP (BASED ON HANDLE.HATCH STATUS)
 task.spawn(function()
 	while true do
 		if AutoHatchEgg then
@@ -602,19 +602,53 @@ task.spawn(function()
 				local HatchRemote = GameRemotes and GameRemotes:FindFirstChild("Hatch")
 
 				if HatchRemote then
-					-- Scan Workspace Plots/Placed Eggs for EggKey
-					local Plots = workspace:FindFirstChild("Plots") or workspace:FindFirstChild("PlotsFolder") or workspace
-					for _, Descendant in ipairs(Plots:GetDescendants()) do
-						if Descendant:IsA("Model") or Descendant:IsA("Folder") or Descendant:IsA("Configuration") then
-							-- Check attributes or child values
-							local Key = Descendant:GetAttribute("EggKey") 
-								or Descendant:GetAttribute("Key") 
-								or (Descendant:FindFirstChild("EggKey") and Descendant.EggKey.Value)
-								or (Descendant:FindFirstChild("Key") and Descendant.Key.Value)
+					local Plots = workspace:FindFirstChild("Plots")
+					if Plots then
+						for _, Plot in ipairs(Plots:GetChildren()) do
+							local EggsFolder = Plot:FindFirstChild("Eggs")
+							if EggsFolder then
+								for _, EggModel in ipairs(EggsFolder:GetChildren()) do
+									local Handle = EggModel:FindFirstChild("Handle")
+									local HatchObj = Handle and Handle:FindFirstChild("Hatch")
+									local EggData = EggModel:FindFirstChild("EggData")
+									
+									-- Kunin ang EggKey
+									local Key = nil
+									if EggData then
+										Key = EggData:GetAttribute("EggKey") 
+											or (EggData:FindFirstChild("EggKey") and EggData.EggKey.Value)
+									end
+									if not Key then
+										Key = EggModel:GetAttribute("EggKey") 
+											or (EggModel:FindFirstChild("EggKey") and EggModel.EggKey.Value)
+									end
 
-							if Key then
-								HatchRemote:FireServer({ EggKey = tostring(Key) })
-								task.wait(0.1)
+									local CanHatch = false
+
+									if HatchObj then
+										-- 1. ProximityPrompt check
+										if HatchObj:IsA("ProximityPrompt") then
+											CanHatch = HatchObj.Enabled
+										-- 2. ValueBase check
+										elseif HatchObj:IsA("ValueBase") then
+											CanHatch = HatchObj.Value
+										-- 3. GUI check
+										elseif HatchObj:IsA("GuiObject") or HatchObj:IsA("LayerCollector") then
+											CanHatch = HatchObj.Enabled or HatchObj.Visible
+										-- 4. Attribute check
+										elseif HatchObj:GetAttribute("Enabled") ~= nil then
+											CanHatch = HatchObj:GetAttribute("Enabled")
+										else
+											CanHatch = true
+										end
+									end
+
+									-- Fire remote kapag may EggKey at ready na sa Handle.Hatch
+									if Key and CanHatch then
+										HatchRemote:FireServer({ EggKey = tostring(Key) })
+										task.wait(0.2)
+									end
+								end
 							end
 						end
 					end
