@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boost
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, 
 
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -21,6 +21,7 @@ local Players = cloneref(game:GetService("Players"))
 local HttpService = cloneref(game:GetService("HttpService"))
 local Lighting = cloneref(game:GetService("Lighting"))
 local MaterialService = cloneref(game:GetService("MaterialService"))
+local TeleportService = cloneref(game:GetService("TeleportService"))
 
 --// PLAYER
 
@@ -392,8 +393,9 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 --==================================================
 
 Tab1:Paragraph({
-	Title = "Discord    ",
+	Title = "Discord",
 	Desc = "Join our Discord Community",
+
 	Buttons = {
 		{
 			Title = "Discord",
@@ -432,6 +434,7 @@ UIElements.SelectedEggs = EggSection:Dropdown({
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedEggs,
+    AllowNone = true,
 	Callback = function(value)
 		SelectedEggs = value
 		ConfigData.SelectedEggs = value
@@ -467,6 +470,7 @@ UIElements.AutoPlaceEgg = EggSection:Toggle({
 	Title = "Auto Place Eggs",
 	Desc = "Automatically equip and place the selected eggs",
 	Value = ConfigData.AutoPlaceEgg,
+    AllowNone = true,
 	Callback = function(value)
 		AutoPlaceEgg = value
 		ConfigData.AutoPlaceEgg = value
@@ -603,6 +607,7 @@ UIElements.Autobuygear = ShopSection:Toggle({
 	Title = "Auto Buy Gears",
 	Desc = "Automatic to buy selected gears",
 	Value = ConfigData.Autobuygear,
+    AllowNone = true,
 	Callback = function(value)
 		Autobuygear = value
 		ConfigData.Autobuygear = value
@@ -622,6 +627,7 @@ UIElements.SelectedFood = ShopSection1:Dropdown({
 	Values = FoodShop,
 	Multi = true,
 	Value = ConfigData.SelectedFood,
+    AllowNone = true,
 	Callback = function(value)
 		SelectedFood = value
 		ConfigData.SelectedFood = value
@@ -657,6 +663,7 @@ UIElements.SelectedESPEggs = VisualSection:Dropdown({
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedESPEggs,
+    AllowNone = true,
 	Callback = function(value)
 		SelectedESPEggs = value
 		ConfigData.SelectedESPEggs = value
@@ -841,12 +848,88 @@ ConfigSection:Button({
 })
 
 --==================================================
+-- SERVER FUNCTIONS
+--==================================================
+
+local function RejoinServer()
+    pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+    end)
+end
+
+local function ServerHop()
+    task.spawn(function()
+        local success, result = pcall(function()
+            local CurrentJobId = game.JobId
+            local Cursor = ""
+            local Candidates = {}
+
+            for _ = 1, 5 do
+                local Url = string.format(
+                    "https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100%s",
+                    tostring(game.PlaceId),
+                    Cursor ~= "" and "&cursor=" .. HttpService:UrlEncode(Cursor) or ""
+                )
+
+                local Body = game:HttpGet(Url)
+                local Data = HttpService:JSONDecode(Body)
+
+                if Data and Data.data then
+                    for _, Server in ipairs(Data.data) do
+                        if Server.id
+                            and Server.id ~= CurrentJobId
+                            and Server.playing
+                            and Server.maxPlayers
+                            and Server.playing < Server.maxPlayers then
+                            table.insert(Candidates, Server)
+                        end
+                    end
+                end
+
+                Cursor = (Data and Data.nextPageCursor) or ""
+                if Cursor == "" then
+                    break
+                end
+            end
+
+            table.sort(Candidates, function(a, b)
+                return a.playing < b.playing
+            end)
+
+            return Candidates[1]
+        end)
+
+        if success and result and result.id then
+            WindUI:Notify({
+                Title = "Server Hop",
+                Content = string.format("Hopping to a server with %d player(s)...", result.playing),
+                Icon = "solar:server-bold",
+                Duration = 3,
+                CanClose = true,
+            })
+
+            task.wait(0.5)
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, result.id, Player)
+            end)
+        else
+            WindUI:Notify({
+                Title = "Server Hop",
+                Content = "Server hop failed try again.",
+                Icon = "solar:bell-bold",
+                Duration = 4,
+                CanClose = true,
+            })
+        end
+    end)
+end
+
+--==================================================
 -- TAB 7 (SETTINGS)
 --==================================================
 
 local SettingsSection = Tab7:Section({
-	Title = "Settings",
-	Icon = "settings",
+	Title = "Performance",
 	Box = true,
 	BoxBorder = true,
 })
@@ -862,6 +945,30 @@ UIElements.FPSBoost = SettingsSection:Toggle({
 		ApplyFPSBoost(value)
 	end,
 })
+
+local SettingsSection1 = Tab7:Section({
+	Title = "Severs",
+	Box = true,
+	BoxBorder = true,
+})
+
+	SettingsSection1:Button({
+		Title = "Rejoin",
+		Justify = "Center",
+		Icon = "",
+		Callback = function()
+			RejoinServer()
+		end,
+	})
+
+	SettingsSection1:Button({
+		Title = "Server Hop",
+		Justify = "Center",
+		Icon = "",
+		Callback = function()
+			ServerHop()
+		end,
+	})
 
 --==================================================
 -- HELPER FUNCTIONS
