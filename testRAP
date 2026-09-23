@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, auto place eggs fixed.
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, 
 
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -520,11 +520,11 @@ UIElements.AutoPickup = EggSection:Toggle({
 
 UIElements.SelectedPlaceEgg = EggSection:Dropdown({
 	Title = "Select eggs to Auto Place",
-	Desc = "Choose which eggs to place (Go to your plot)",
+	Desc = "Choose which eggs to place in your plot",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedPlaceEgg,
-
+    AllowNone = true,
 	Callback = function(value)
 		SelectedPlaceEgg = value
 		ConfigData.SelectedPlaceEgg = value
@@ -534,9 +534,8 @@ UIElements.SelectedPlaceEgg = EggSection:Dropdown({
 
 UIElements.AutoPlaceEgg = EggSection:Toggle({
 	Title = "Auto Place Eggs",
-	Desc = "Automatically equip and place the selected eggs",
+	Desc = "Automatically place the selected eggs in your plot",
 	Value = ConfigData.AutoPlaceEgg,
-	AllowNone = true,
 
 	Callback = function(value)
 		AutoPlaceEgg = value
@@ -684,6 +683,7 @@ UIElements.SelectedGear = ShopSection:Dropdown({
 	Values = GearShop,
 	Multi = true,
 	Value = ConfigData.SelectedGear,
+    AllowNone = true,
 
 	Callback = function(value)
 		SelectedGear = value
@@ -696,7 +696,6 @@ UIElements.Autobuygear = ShopSection:Toggle({
 	Title = "Auto Buy Gears",
 	Desc = "Automatic to buy selected gears",
 	Value = ConfigData.Autobuygear,
-	AllowNone = true,
 
 	Callback = function(value)
 		Autobuygear = value
@@ -1559,302 +1558,280 @@ end)
 -- AUTO PLACE EGG LOOP
 --==================================================
 
---==================================================
--- AUTO PLACE EGG LOOP
--- RANDOM POSITION INSIDE YOUR OWN PLOT
---==================================================
+local MAX_PLANTED_EGGS = 10
 
 local function GetRandomPlotPosition(Baseplate)
-	if not Baseplate or not Baseplate:IsA("BasePart") then
-		return nil
-	end
+    if not Baseplate or not Baseplate:IsA("BasePart") then
+        return nil
+    end
 
-	local Size = Baseplate.Size
-	local Position = Baseplate.Position
+    local Size = Baseplate.Size
+    local Position = Baseplate.Position
 
-	-- Keep eggs away from the edge of the plot
-	local MarginX = math.min(3, Size.X / 4)
-	local MarginZ = math.min(3, Size.Z / 4)
+    local MarginX = math.min(3, Size.X / 4)
+    local MarginZ = math.min(3, Size.Z / 4)
 
-	local MinX = Position.X - (Size.X / 2) + MarginX
-	local MaxX = Position.X + (Size.X / 2) - MarginX
+    local MinX = Position.X - (Size.X / 2) + MarginX
+    local MaxX = Position.X + (Size.X / 2) - MarginX
 
-	local MinZ = Position.Z - (Size.Z / 2) + MarginZ
-	local MaxZ = Position.Z + (Size.Z / 2) - MarginZ
+    local MinZ = Position.Z - (Size.Z / 2) + MarginZ
+    local MaxZ = Position.Z + (Size.Z / 2) - MarginZ
 
-	if MinX > MaxX then
-		MinX = Position.X
-		MaxX = Position.X
-	end
+    local RandomX =
+        MinX + math.random() * (MaxX - MinX)
 
-	if MinZ > MaxZ then
-		MinZ = Position.Z
-		MaxZ = Position.Z
-	end
+    local RandomZ =
+        MinZ + math.random() * (MaxZ - MinZ)
 
-	local RandomX =
-		MinX + math.random() * (MaxX - MinX)
+    local Y =
+        Position.Y
+        + (Size.Y / 2)
+        + 1.5
 
-	local RandomZ =
-		MinZ + math.random() * (MaxZ - MinZ)
-
-	local Y =
-		Position.Y
-		+ (Size.Y / 2)
-		+ 1.5
-
-	return Vector3.new(
-		RandomX,
-		Y,
-		RandomZ
-	)
+    return Vector3.new(RandomX, Y, RandomZ)
 end
-
 
 task.spawn(function()
 
-	while true do
+    while true do
 
-		if AutoPlaceEgg then
+        if AutoPlaceEgg then
 
-			pcall(function()
+            pcall(function()
 
-				--==================================================
-				-- SELECTED EGGS
-				--==================================================
+                local EggList =
+                    type(SelectedPlaceEgg) == "table"
+                    and SelectedPlaceEgg
+                    or (
+                        SelectedPlaceEgg ~= ""
+                        and {SelectedPlaceEgg}
+                        or {}
+                    )
 
-				local EggList =
-					type(SelectedPlaceEgg) == "table"
-					and SelectedPlaceEgg
-					or (
-						SelectedPlaceEgg ~= ""
-						and {SelectedPlaceEgg}
-						or {}
-					)
+                if #EggList == 0 then
+                    return
+                end
 
-				if #EggList == 0 then
-					return
-				end
+                local Character = GetCharacter()
 
+                local Humanoid =
+                    Character
+                    and Character:FindFirstChildOfClass("Humanoid")
 
-				--==================================================
-				-- CHARACTER
-				--==================================================
+                local Backpack =
+                    Player:FindFirstChild("Backpack")
 
-				local Character =
-					GetCharacter()
+                if not Character or not Humanoid then
+                    return
+                end
 
-				local Humanoid =
-					Character
-					and Character:FindFirstChildOfClass("Humanoid")
 
-				local Backpack =
-					Player:FindFirstChild("Backpack")
+                --==================================================
+                -- FIND YOUR OWN PLOT
+                --==================================================
 
-				if not Character or not Humanoid then
-					return
-				end
+                local Plots =
+                    workspace:FindFirstChild("Plots")
 
+                local MyPlot = nil
 
-				--==================================================
-				-- FIND OWN PLOT
-				--==================================================
+                if Plots then
 
-				local Plots =
-					workspace:FindFirstChild("Plots")
+                    for _, Plot in ipairs(Plots:GetChildren()) do
 
-				local MyPlot = nil
+                        local NestsOwnerLoaded =
+                            Plot:GetAttribute("NestsOwnerLoaded")
 
-				if not Plots then
-					return
-				end
+                        if NestsOwnerLoaded == Player.UserId then
 
+                            MyPlot = Plot
+                            break
+                        end
 
-				for _, Plot in ipairs(Plots:GetChildren()) do
+                        local Owner =
+                            Plot:GetAttribute("Owner")
 
-					-- Primary ownership attribute
-					local NestsOwnerLoaded =
-						Plot:GetAttribute("NestsOwnerLoaded")
+                        local OwnerUserId =
+                            Plot:GetAttribute("OwnerUserId")
 
-					if NestsOwnerLoaded == Player.UserId
-						or tostring(NestsOwnerLoaded)
-							== tostring(Player.UserId) then
+                        local UserId =
+                            Plot:GetAttribute("UserId")
 
-						MyPlot = Plot
-						break
-					end
+                        if Owner == Player.Name
+                            or Owner == Player.UserId
+                            or OwnerUserId == Player.UserId
+                            or UserId == Player.UserId then
 
+                            MyPlot = Plot
+                            break
+                        end
+                    end
+                end
 
-					-- Fallback ownership checks
-					local Owner =
-						Plot:GetAttribute("Owner")
+                if not MyPlot then
+                    return
+                end
 
-					local OwnerUserId =
-						Plot:GetAttribute("OwnerUserId")
 
-					local UserId =
-						Plot:GetAttribute("UserId")
+                --==================================================
+                -- CHECK CURRENT PLANTED EGGS
+                --==================================================
 
+                local EggsFolder =
+                    MyPlot:FindFirstChild("Eggs")
 
-					if Owner == Player.Name
-						or tostring(Owner)
-							== tostring(Player.UserId)
+                local EggCount = 0
 
-						or OwnerUserId == Player.UserId
-						or tostring(OwnerUserId)
-							== tostring(Player.UserId)
+                if EggsFolder then
+                    EggCount = #EggsFolder:GetChildren()
+                end
 
-						or UserId == Player.UserId
-						or tostring(UserId)
-							== tostring(Player.UserId) then
 
-						MyPlot = Plot
-						break
-					end
-				end
+                --==================================================
+                -- STOP WHEN 10 EGGS ARE PLANTED
+                --==================================================
 
+                if EggCount >= MAX_PLANTED_EGGS then
+                    return
+                end
 
-				-- No own plot found
-				if not MyPlot then
-					return
-				end
 
+                --==================================================
+                -- GET BASEPLATE
+                --==================================================
 
-				--==================================================
-				-- FIND BASEPLATE
-				--==================================================
+                local Baseplate =
+                    MyPlot:FindFirstChild("Baseplate")
 
-				local Baseplate =
-					MyPlot:FindFirstChild("Baseplate")
+                if not Baseplate
+                    or not Baseplate:IsA("BasePart") then
 
+                    return
+                end
 
-				if not Baseplate
-					or not Baseplate:IsA("BasePart") then
 
-					return
-				end
+                --==================================================
+                -- GET EGG REMOTE
+                --==================================================
 
+                local Remotes =
+                    ReplicatedStorage:FindFirstChild("Remotes")
 
-				--==================================================
-				-- FIND EGG REMOTE
-				--==================================================
+                local GameRemotes =
+                    Remotes
+                    and Remotes:FindFirstChild("Game")
 
-				local Remotes =
-					ReplicatedStorage:FindFirstChild("Remotes")
+                local EggPlacedRemote =
+                    GameRemotes
+                    and GameRemotes:FindFirstChild("EggPlaced")
 
-				local GameRemotes =
-					Remotes
-					and Remotes:FindFirstChild("Game")
+                if not EggPlacedRemote then
+                    return
+                end
 
-				local EggPlacedRemote =
-					GameRemotes
-					and GameRemotes:FindFirstChild("EggPlaced")
 
+                --==================================================
+                -- EQUIP + PLACE SELECTED EGGS
+                --==================================================
 
-				if not EggPlacedRemote then
-					return
-				end
+                for _, EggName in ipairs(EggList) do
 
+                    -- Re-check capacity BEFORE EVERY EGG
+                    EggsFolder =
+                        MyPlot:FindFirstChild("Eggs")
 
-				--==================================================
-				-- PLACE SELECTED EGGS
-				--==================================================
+                    EggCount = 0
 
-				for _, EggName in ipairs(EggList) do
+                    if EggsFolder then
+                        EggCount = #EggsFolder:GetChildren()
+                    end
 
-					if not AutoPlaceEgg then
-						break
-					end
+                    if EggCount >= MAX_PLANTED_EGGS then
+                        break
+                    end
 
 
-					--==================================================
-					-- FIND EQUIPPED EGG
-					--==================================================
+                    local HeldTool =
+                        Character:FindFirstChildOfClass("Tool")
 
-					local TargetEggTool = nil
+                    local TargetEggTool = nil
 
-					local HeldTool =
-						Character:FindFirstChildOfClass("Tool")
 
+                    --==================================================
+                    -- ALREADY EQUIPPED
+                    --==================================================
 
-					if HeldTool
-						and HeldTool.Name == EggName then
+                    if HeldTool
+                        and HeldTool.Name == EggName then
 
-						TargetEggTool = HeldTool
+                        TargetEggTool = HeldTool
 
-					else
+                    else
 
-						--==================================================
-						-- FIND EGG IN BACKPACK
-						--==================================================
+                        --==================================================
+                        -- FIND EGG IN BACKPACK
+                        --==================================================
 
-						if Backpack then
+                        if Backpack then
 
-							TargetEggTool =
-								Backpack:FindFirstChild(EggName)
+                            TargetEggTool =
+                                Backpack:FindFirstChild(EggName)
 
-						end
+                        end
 
 
-						--==================================================
-						-- EQUIP EGG
-						--==================================================
+                        --==================================================
+                        -- EQUIP EGG
+                        --==================================================
 
-						if TargetEggTool then
+                        if TargetEggTool then
 
-							Humanoid:EquipTool(
-								TargetEggTool
-							)
+                            Humanoid:EquipTool(TargetEggTool)
 
-							task.wait(0.15)
+                            task.wait(0.1)
 
+                            local NewHeldTool =
+                                Character:FindFirstChildOfClass("Tool")
 
-							-- Refresh tool reference
-							TargetEggTool =
-								Character:FindFirstChild(EggName)
+                            if NewHeldTool
+                                and NewHeldTool.Name == EggName then
 
-						end
-					end
+                                TargetEggTool = NewHeldTool
+                            end
+                        end
+                    end
 
 
-					--==================================================
-					-- PLACE EGG
-					--==================================================
+                    --==================================================
+                    -- PLACE EGG
+                    --==================================================
 
-					if TargetEggTool then
+                    if TargetEggTool then
 
-						-- Generate a NEW random position
-						-- every time an egg is placed
-						local RandomPosition =
-							GetRandomPlotPosition(
-								Baseplate
-							)
+                        local PlantPosition =
+                            GetRandomPlotPosition(Baseplate)
 
+                        if PlantPosition then
 
-						if RandomPosition then
+                            EggPlacedRemote:FireServer({
+                                PlantPosition = PlantPosition
+                            })
 
-							EggPlacedRemote:FireServer({
-								PlantPosition =
-									RandomPosition
-							})
+                            task.wait(0.35)
+                        end
+                    end
+                end
 
+            end)
 
-							task.wait(0.35)
+            task.wait(0.3)
 
-						end
-					end
-				end
-			end)
+        else
 
+            task.wait(0.5)
 
-			task.wait(0.3)
-
-		else
-
-			task.wait(0.5)
-
-		end
-	end
+        end
+    end
 end)
 
 --==================================================
@@ -2131,7 +2108,7 @@ task.spawn(function()
 						TeleportToEggVoid(EggPosition)
 					end
 
-					task.wait(2)
+					task.wait(1)
 
 				else
 					task.wait(0.1)
