@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth 
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth. claim index
 
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -704,66 +704,34 @@ UIElements.AutoClaimIndex = EggSection:Toggle({
 })
 
 UIElements.AutoClaimOffline = EggSection:Toggle({
-	Title = "Auto Claim Offline Earnings",
+	Title = "Auto Claim Offline Rewards",
 	Value = ConfigData.AutoClaimOffline,
 
 	Callback = function(value)
+
 		AutoClaimOffline = value
 		ConfigData.AutoClaimOffline = value
+
 		SaveConfig()
 
 		if value then
 
-			pcall(function()
-				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
-				local OfflineRemote = GameRemotes and GameRemotes:FindFirstChild("OfflineEarnings")
+			task.spawn(function()
 
-				if OfflineRemote then
-					OfflineRemote:FireServer()
-				end
+				pcall(function()
+
+					local OfflineEarnings =
+						ReplicatedStorage
+							:WaitForChild("Remotes")
+							:WaitForChild("Game")
+							:WaitForChild("OfflineEarnings")
+
+					OfflineEarnings:FireServer()
+
+				end)
+
 			end)
 
-			pcall(function()
-				local PlayerGui = Player:FindFirstChild("PlayerGui")
-
-				if PlayerGui then
-					for _, GuiObject in ipairs(PlayerGui:GetDescendants()) do
-
-						if (GuiObject:IsA("TextButton") or GuiObject:IsA("ImageButton"))
-							and GuiObject.Visible then
-
-							local Text = (GuiObject:IsA("TextButton") and GuiObject.Text) or ""
-
-							if GuiObject.Name:lower():find("1x")
-								or Text:lower():find("1x")
-								or GuiObject.Name:lower():find("claim")
-								or Text:lower():find("claim") then
-
-								if getconnections then
-
-									for _, conn in ipairs(getconnections(GuiObject.Activated)) do
-										conn:Fire()
-									end
-
-									for _, conn in ipairs(getconnections(GuiObject.MouseButton1Click)) do
-										conn:Fire()
-									end
-
-								end
-
-								local Frame =
-									GuiObject:FindFirstAncestorWhichIsA("Frame")
-									or GuiObject:FindFirstAncestorWhichIsA("ScreenGui")
-
-								if Frame and Frame.Name:lower():find("offline") then
-									Frame.Visible = false
-								end
-							end
-						end
-					end
-				end
-			end)
 		end
 	end,
 })
