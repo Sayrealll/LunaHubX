@@ -1460,46 +1460,84 @@ end)
 
 -- AUTO BUY GEAR LOOP
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Helper Function: Titignan kung may stock pa ang specific gear sa UI
+local function HasStock(gearName)
+	local hasStockFound = true
+
+	pcall(function()
+		-- Hanapin ang Shop GUI sa PlayerGui
+		local shopGui = PlayerGui:FindFirstChild("StockShopSystem") 
+			or PlayerGui:FindFirstChild("Shop") 
+			or PlayerGui:FindFirstChildWhichIsA("ScreenGui")
+
+		if shopGui then
+			-- Hanapin ang frame o tile na may pangalan ng gear
+			local gearTile = shopGui:FindFirstChild(gearName, true)
+
+			if gearTile then
+				-- Hanapin ang Stock TextLabel o Attribute
+				local stockLabel = gearTile:FindFirstChild("Stock", true) 
+					or gearTile:FindFirstChild("Amount", true)
+					or gearTile:FindFirstChild("Count", true)
+
+				if stockLabel and stockLabel:IsA("TextLabel") then
+					local text = stockLabel.Text
+					-- Kapag nakitang "x0", "0 Stock", o "Out of Stock", nangangahulugang WALANG STOCK
+					if string.find(text, "x0") or string.find(text, " 0") or string.find(text, "Out") or text == "0" then
+						hasStockFound = false
+					end
+				end
+
+				-- Check kung may custom attribute na "Stock" o "Amount"
+				local stockAttr = gearTile:GetAttribute("Stock") or gearTile:GetAttribute("Amount")
+				if stockAttr and tonumber(stockAttr) <= 0 then
+					hasStockFound = false
+				end
+			end
+		end
+	end)
+
+	return hasStockFound
+end
+
+
+-- Main Auto Buy Loop
 task.spawn(function()
-
 	while true do
-
 		if Autobuygear then
-
 			pcall(function()
-
-				local BuyRemote =
-					ReplicatedStorage:FindFirstChild("Remotes")
+				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
 					and ReplicatedStorage.Remotes:FindFirstChild("Game")
 					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
 
 				if BuyRemote then
-
 					if type(SelectedGear) == "table" then
-
 						for _, GearItem in ipairs(SelectedGear) do
-
-							BuyRemote:FireServer(
-								"Gears",
-								GearItem
-							)
-
-							task.wait(0.2)
+							-- HINDI MAG-FIRE KUNG WALANG STOCK
+							if HasStock(GearItem) then
+								BuyRemote:FireServer("Gears", GearItem)
+								task.wait(0.2)
+							else
+								-- Skip muna kung 0 stock
+								task.wait(0.05)
+							end
 						end
-
-					elseif type(SelectedGear) == "string"
-						and SelectedGear ~= "" then
-
-						BuyRemote:FireServer(
-							"Gears",
-							SelectedGear
-						)
+					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
+						-- HINDI MAG-FIRE KUNG WALANG STOCK
+						if HasStock(SelectedGear) then
+							BuyRemote:FireServer("Gears", SelectedGear)
+						end
 					end
 				end
 			end)
 
 			task.wait(0.5)
-
 		else
 			task.wait(0.5)
 		end
