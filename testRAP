@@ -1458,34 +1458,7 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
-task.spawn(function()
-	while true do
-		if Autobuygear then
-			pcall(function()
-				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
-					and ReplicatedStorage.Remotes:FindFirstChild("Game")
-					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
-
-				if BuyRemote then
-					if type(SelectedGear) == "table" then
-						for _, GearItem in ipairs(SelectedGear) do
-							BuyRemote:FireServer("Gears", GearItem)
-							task.wait(0.2)
-						end
-					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
-						BuyRemote:FireServer("Gears", SelectedGear)
-					end
-				end
-			end)
-			task.wait(0.5)
-		else
-			task.wait(0.5)
-		end
-	end
-end)
-
-
--- Main Auto Buy Loop
+--  Auto Buy Loop
 task.spawn(function()
 	while true do
 		if Autobuygear then
