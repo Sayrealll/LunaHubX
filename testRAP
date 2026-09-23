@@ -1,4 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth. claim index
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth claim index
 --auto offline rewards
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -1006,7 +1006,7 @@ ConfigSection:Button({
 			Autobuyfood = false,
 			SelectedESPEggs = {},
 			ESPEnabled = false,
-            AutoEquipBestPet = false
+            AutoEquipBestPet = false,
 			FPSBoost = false
 		}
 
@@ -2109,49 +2109,67 @@ end)
 -- AUTO EQUIP BEST PET
 --==================================================
 
-local PetsData = ReplicatedStorage
-	:WaitForChild("GameData")
-	:WaitForChild("Pets")
+--==================================================
+-- AUTO EQUIP + PLACE BEST PET
+--==================================================
 
-local PetRenderer = require(
-	Player:WaitForChild("PlayerScripts")
+local PlacePet =
+	ReplicatedStorage
+		:WaitForChild("Remotes")
 		:WaitForChild("Game")
-		:WaitForChild("Pets")
-		:WaitForChild("PetRenderer")
-)
+		:WaitForChild("PlacePet")
 
-local function GetPetIncome(Pet)
-	local PetName =
-		Pet:GetAttribute("PetName")
-		or Pet.Name
+local General_m =
+	require(
+		ReplicatedStorage
+			:WaitForChild("GameServices")
+			:WaitForChild("General")
+	)
 
-	local PetInfo = PetsData:FindFirstChild(PetName)
+local AutoPetBusy = false
+local LastPetPlace = 0
 
-	if not PetInfo then
-		return 0
+
+--==================================================
+-- GET OWN PLOT
+--==================================================
+
+local function GetOwnPlot()
+
+	local Plot = General_m:GetPlot(Player)
+
+	if not Plot then
+		return nil
 	end
 
-	local BaseIncome =
-		tonumber(PetInfo:GetAttribute("Income"))
-		or 0
+	local Baseplate =
+		Plot:FindFirstChild("Baseplate")
 
-	local Weight =
-		tonumber(Pet:GetAttribute("Weight"))
-		or 1
+	if not Baseplate then
+		return nil
+	end
 
-	return BaseIncome * Weight
+	return Plot, Baseplate
 end
+
+
+--==================================================
+-- FIND BEST PET
+--==================================================
 
 local function FindBestPetTool()
 
-	local BestTool = nil
-	local BestIncome = -math.huge
+	local Character =
+		Player.Character
 
 	local Backpack =
 		Player:FindFirstChildOfClass("Backpack")
 
+	local BestPet = nil
+	local BestIncome = -math.huge
+
 	for _, Container in ipairs({
-		Player.Character,
+		Character,
 		Backpack
 	}) do
 
@@ -2167,20 +2185,212 @@ local function FindBestPetTool()
 						GetPetIncome(Tool)
 
 					if Income > BestIncome then
+
 						BestIncome = Income
-						BestTool = Tool
+						BestPet = Tool
+
 					end
-
 				end
-
 			end
+		end
+	end
+
+	return BestPet
+end
+
+
+--==================================================
+-- PLACE BEST PET
+--==================================================
+
+local function AutoPlaceBestPet()
+
+	if AutoPetBusy then
+		return
+	end
+
+	AutoPetBusy = true
+
+	pcall(function()
+
+		local Character =
+			Player.Character
+
+		local Humanoid =
+			Character
+			and Character:FindFirstChildOfClass("Humanoid")
+
+		local HRP =
+			Character
+			and Character:FindFirstChild("HumanoidRootPart")
+
+		if not Character
+			or not Humanoid
+			or not HRP then
+
+			return
+		end
+
+
+		--==================================================
+		-- OWN PLOT
+		--==================================================
+
+		local MyPlot, Baseplate =
+			GetOwnPlot()
+
+		if not MyPlot or not Baseplate then
+			return
+		end
+
+
+		--==================================================
+		-- BEST PET
+		--==================================================
+
+		local BestPet =
+			FindBestPetTool()
+
+		if not BestPet then
+			return
+		end
+
+
+		local PetKey =
+			BestPet:GetAttribute("PetKey")
+
+		if not PetKey then
+			return
+		end
+
+
+		--==================================================
+		-- TELEPORT INSIDE OWN PLOT
+		--==================================================
+
+		local OldCFrame =
+			HRP.CFrame
+
+		local PlotCFrame =
+			Baseplate.CFrame
+
+		HRP.CFrame =
+			PlotCFrame
+			* CFrame.new(
+				0,
+				Baseplate.Size.Y / 2 + 3,
+				0
+			)
+
+		task.wait(0.3)
+
+
+		--==================================================
+		-- EQUIP
+		--==================================================
+
+		if BestPet.Parent ~= Character then
+
+			Humanoid:EquipTool(BestPet)
+
+			task.wait(0.25)
 
 		end
 
-	end
 
-	return BestTool
+		--==================================================
+		-- VERIFY PET IS ACTUALLY HELD
+		--==================================================
+
+		local HeldPet = nil
+
+		for _, Tool in ipairs(Character:GetChildren()) do
+
+			if Tool:IsA("Tool")
+				and Tool:HasTag("Pet")
+				and Tool:GetAttribute("PetKey") then
+
+				HeldPet = Tool
+				break
+
+			end
+		end
+
+		if not HeldPet then
+
+			HRP.CFrame = OldCFrame
+			return
+
+		end
+
+
+		PetKey =
+			HeldPet:GetAttribute("PetKey")
+
+		if not PetKey then
+
+			HRP.CFrame = OldCFrame
+			return
+
+		end
+
+
+		--==================================================
+		-- EXACT SAME POSITION AS GAME
+		--==================================================
+
+		local Position =
+			(
+				HRP.CFrame
+				* CFrame.new(0, 0, -5)
+			).Position
+
+
+		--==================================================
+		-- SAME REMOTE CALL AS GAME
+		--==================================================
+
+		if os.clock() - LastPetPlace >= 0.4 then
+
+			LastPetPlace =
+				os.clock()
+
+			PlacePet:FireServer(
+				PetKey,
+				Position
+			)
+
+			task.wait(0.5)
+
+		end
+
+
+		--==================================================
+		-- UNEQUIP
+		--==================================================
+
+		Humanoid:UnequipTools()
+
+		task.wait(0.1)
+
+
+		--==================================================
+		-- RETURN
+		--==================================================
+
+		if HRP and HRP.Parent then
+			HRP.CFrame = OldCFrame
+		end
+
+	end)
+
+	AutoPetBusy = false
 end
+
+
+--==================================================
+-- LOOP
+--==================================================
 
 task.spawn(function()
 
@@ -2188,38 +2398,11 @@ task.spawn(function()
 
 		if AutoEquipBestPet then
 
-			pcall(function()
-
-				local Character =
-					Player.Character
-
-				local Humanoid =
-					Character
-					and Character:FindFirstChildOfClass("Humanoid")
-
-				if not Humanoid then
-					return
-				end
-
-				local BestPet =
-					FindBestPetTool()
-
-				if not BestPet then
-					return
-				end
-
-				-- Already equipped
-				if BestPet.Parent == Character then
-					return
-				end
-
-				Humanoid:EquipTool(BestPet)
-
-			end)
+			AutoPlaceBestPet()
 
 		end
 
-		task.wait(2)
+		task.wait(0.5)
 
 	end
 
