@@ -500,7 +500,6 @@ end
 local Window = WindUI:CreateWindow({
 	Title = "LUNA HUB",
 	Author = "RIDE A PET",
-	Icon = "dog",
 	Theme = ThemeName,
 
 	ToggleKey = Enum.KeyCode.F,
