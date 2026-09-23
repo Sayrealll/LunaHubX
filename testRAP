@@ -365,6 +365,107 @@ local EggNames = {
 	"White Egg"
 }
 
+--==================================================
+-- SHOP STOCK SYSTEM
+--==================================================
+
+local GameRemotes =
+	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Game")
+
+local BuyWithCash =
+	GameRemotes:WaitForChild("BuyWithCash")
+
+local ShopStockRemote =
+	GameRemotes:WaitForChild("ShopStock")
+
+local RestockRemote =
+	GameRemotes:WaitForChild("Restock")
+
+local ShopStockData = {}
+local ShopStockReady = false
+
+--==================================================
+-- RECEIVE STOCK DATA
+--==================================================
+
+RestockRemote.OnClientEvent:Connect(function(stockData)
+
+	if type(stockData) ~= "table" then
+		return
+	end
+
+	ShopStockData = stockData
+	ShopStockReady = true
+
+end)
+
+--==================================================
+-- REQUEST INITIAL STOCK
+--==================================================
+
+task.spawn(function()
+
+	for i = 1, 10 do
+
+		if ShopStockReady then
+			break
+		end
+
+		pcall(function()
+			ShopStockRemote:FireServer()
+		end)
+
+		task.wait(2)
+	end
+
+end)
+
+--==================================================
+-- GET CURRENT STOCK
+--==================================================
+
+local function GetShopStock(Category, ItemName)
+
+	local CategoryData = ShopStockData[Category]
+
+	if type(CategoryData) ~= "table" then
+		return 0
+	end
+
+	local ItemData = CategoryData[ItemName]
+
+	if type(ItemData) ~= "table" then
+		return 0
+	end
+
+	return tonumber(ItemData.Amount) or 0
+
+end
+
+--==================================================
+-- REDUCE LOCAL STOCK AFTER PURCHASE
+--==================================================
+
+local function ReduceShopStock(Category, ItemName)
+
+	local CategoryData = ShopStockData[Category]
+
+	if type(CategoryData) ~= "table" then
+		return
+	end
+
+	local ItemData = CategoryData[ItemName]
+
+	if type(ItemData) ~= "table" then
+		return
+	end
+
+	local Amount = tonumber(ItemData.Amount) or 0
+
+	ItemData.Amount = math.max(0, Amount - 1)
+
+end
+
 local GearShop = {
 	"Advanced Radar",
 	"Jewel Radar",
@@ -1458,55 +1559,119 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
---  Auto Buy Loop
+--==================================================
+-- AUTO BUY GEAR LOOP
+--==================================================
 task.spawn(function()
-	while true do
-		if Autobuygear then
-			pcall(function()
-				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
-					and ReplicatedStorage.Remotes:FindFirstChild("Game")
-					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
 
-				if BuyRemote then
-					if type(SelectedGear) == "table" then
-						for _, GearItem in ipairs(SelectedGear) do
-							BuyRemote:FireServer("Gears", GearItem)
+	while true do
+
+		if Autobuygear and ShopStockReady then
+
+			pcall(function()
+
+				if type(SelectedGear) == "table" then
+
+					for _, GearItem in ipairs(SelectedGear) do
+
+						if not Autobuygear then
+							break
+						end
+
+						local Stock =
+							GetShopStock("Gears", GearItem)
+
+						-- ONLY FIRE WHEN STOCK EXISTS
+						if Stock > 0 then
+
+							BuyWithCash:FireServer(
+								"Gears",
+								GearItem
+							)
+
+							-- Prevent repeated firing
+							-- before server sends next stock update
+							ReduceShopStock(
+								"Gears",
+								GearItem
+							)
+
 							task.wait(0.2)
 						end
-					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
-						BuyRemote:FireServer("Gears", SelectedGear)
+
+					end
+
+				elseif type(SelectedGear) == "string"
+					and SelectedGear ~= "" then
+
+					local Stock =
+						GetShopStock(
+							"Gears",
+							SelectedGear
+						)
+
+					if Stock > 0 then
+
+						BuyWithCash:FireServer(
+							"Gears",
+							SelectedGear
+						)
+
+						ReduceShopStock(
+							"Gears",
+							SelectedGear
+						)
+
 					end
 				end
+
 			end)
-			task.wait(0.5)
-		else
-			task.wait(0.5)
+
 		end
+
+		task.wait(0.5)
+
 	end
+
 end)
 
+--==================================================
 -- AUTO BUY FOOD LOOP
+--==================================================
 
 task.spawn(function()
 
 	while true do
 
-		if Autobuyfood then
+		if Autobuyfood and ShopStockReady then
 
 			pcall(function()
 
-				local BuyRemote =
-					ReplicatedStorage:FindFirstChild("Remotes")
-					and ReplicatedStorage.Remotes:FindFirstChild("Game")
-					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
+				if type(SelectedFood) == "table" then
 
-				if BuyRemote then
+					for _, FoodItem in ipairs(SelectedFood) do
 
-					if type(SelectedFood) == "table" then
+						if not Autobuyfood then
+							break
+						end
 
-						for _, FoodItem in ipairs(SelectedFood) do
+						local Stock =
+							GetShopStock(
+								"Food",
+								FoodItem
+							)
 
-							BuyRemote:FireServer(
+						-- ONLY FIRE WHEN STOCK EXISTS
+						if Stock > 0 then
+
+							BuyWithCash:FireServer(
+								"Food",
+								FoodItem
+							)
+
+							-- Prevent repeated firing
+							-- before server sends next stock update
+							ReduceShopStock(
 								"Food",
 								FoodItem
 							)
@@ -1514,23 +1679,40 @@ task.spawn(function()
 							task.wait(0.2)
 						end
 
-					elseif type(SelectedFood) == "string"
-						and SelectedFood ~= "" then
+					end
 
-						BuyRemote:FireServer(
+				elseif type(SelectedFood) == "string"
+					and SelectedFood ~= "" then
+
+					local Stock =
+						GetShopStock(
 							"Food",
 							SelectedFood
 						)
+
+					if Stock > 0 then
+
+						BuyWithCash:FireServer(
+							"Food",
+							SelectedFood
+						)
+
+						ReduceShopStock(
+							"Food",
+							SelectedFood
+						)
+
 					end
 				end
+
 			end)
 
-			task.wait(0.5)
-
-		else
-			task.wait(0.5)
 		end
+
+		task.wait(0.5)
+
 	end
+
 end)
 
 --==================================================
@@ -2111,6 +2293,82 @@ task.spawn(function()
 			task.wait(0.5)
 		end
 	end
+end)
+
+--==================================================
+-- AUTO CLAIM INDEX REWARD
+--==================================================
+
+local ClaimIndexReward =
+	ReplicatedStorage
+		:WaitForChild("Remotes")
+		:WaitForChild("Game")
+		:WaitForChild("ClaimIndexReward")
+
+local IndexRewards =
+	require(
+		ReplicatedStorage
+			:WaitForChild("GameData")
+			:WaitForChild("IndexRewards")
+	)
+
+local SavedDataIndex =
+	Player:WaitForChild("SavedData")
+
+local OwnedPetsIndex =
+	SavedDataIndex:WaitForChild("OwnedPets")
+
+local IndexRewardStage =
+	SavedDataIndex:WaitForChild("IndexRewardStage")
+
+
+local function CanClaimIndexReward()
+
+	local success, result = pcall(function()
+
+		local discovered =
+			IndexRewards.DiscoveredCount(
+				OwnedPetsIndex.Value
+			)
+
+		local stage =
+			IndexRewards.StageAt(
+				IndexRewardStage.Value
+			)
+
+		if not stage then
+			return false
+		end
+
+		return discovered >= stage.Goal
+
+	end)
+
+	return success and result == true
+end
+
+
+task.spawn(function()
+
+	while true do
+
+		if AutoClaimIndex then
+
+			if CanClaimIndexReward() then
+
+				pcall(function()
+					ClaimIndexReward:FireServer()
+				end)
+
+				task.wait(1)
+			end
+
+		end
+
+		task.wait(0.5)
+
+	end
+
 end)
 
 --==================================================
