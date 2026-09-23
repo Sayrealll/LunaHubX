@@ -1,5 +1,5 @@
 --AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth claim index
---auto offline rewards
+--auto offline rewards, auto equip best not fixed
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
