@@ -1,5 +1,5 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth 
-
+--AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth claim index
+--auto offline rewards, auto equip best not fixed
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -76,6 +76,7 @@ local ConfigData = {
 	Autobuyfood = false,
 	SelectedESPEggs = {},
 	FPSBoost = false,	
+    AutoEquipBestPet = false,
 	ESPEnabled = false
 }
 
@@ -125,6 +126,8 @@ local ESPEnabled = ConfigData.ESPEnabled or false
 local Autobuygear = ConfigData.Autobuygear or false
 local Autobuyfood = ConfigData.Autobuyfood or false
 local FPSBoost = ConfigData.FPSBoost or false
+local AutoEquipBestPet = ConfigData.AutoEquipBestPet or false
+
 
 -- UI ELEMENT REFERENCES FOR RESET
 local UIElements = {}
@@ -365,6 +368,107 @@ local EggNames = {
 	"White Egg"
 }
 
+--==================================================
+-- SHOP STOCK SYSTEM
+--==================================================
+
+local GameRemotes =
+	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Game")
+
+local BuyWithCash =
+	GameRemotes:WaitForChild("BuyWithCash")
+
+local ShopStockRemote =
+	GameRemotes:WaitForChild("ShopStock")
+
+local RestockRemote =
+	GameRemotes:WaitForChild("Restock")
+
+local ShopStockData = {}
+local ShopStockReady = false
+
+--==================================================
+-- RECEIVE STOCK DATA
+--==================================================
+
+RestockRemote.OnClientEvent:Connect(function(stockData)
+
+	if type(stockData) ~= "table" then
+		return
+	end
+
+	ShopStockData = stockData
+	ShopStockReady = true
+
+end)
+
+--==================================================
+-- REQUEST INITIAL STOCK
+--==================================================
+
+task.spawn(function()
+
+	for i = 1, 10 do
+
+		if ShopStockReady then
+			break
+		end
+
+		pcall(function()
+			ShopStockRemote:FireServer()
+		end)
+
+		task.wait(2)
+	end
+
+end)
+
+--==================================================
+-- GET CURRENT STOCK
+--==================================================
+
+local function GetShopStock(Category, ItemName)
+
+	local CategoryData = ShopStockData[Category]
+
+	if type(CategoryData) ~= "table" then
+		return 0
+	end
+
+	local ItemData = CategoryData[ItemName]
+
+	if type(ItemData) ~= "table" then
+		return 0
+	end
+
+	return tonumber(ItemData.Amount) or 0
+
+end
+
+--==================================================
+-- REDUCE LOCAL STOCK AFTER PURCHASE
+--==================================================
+
+local function ReduceShopStock(Category, ItemName)
+
+	local CategoryData = ShopStockData[Category]
+
+	if type(CategoryData) ~= "table" then
+		return
+	end
+
+	local ItemData = CategoryData[ItemName]
+
+	if type(ItemData) ~= "table" then
+		return
+	end
+
+	local Amount = tonumber(ItemData.Amount) or 0
+
+	ItemData.Amount = math.max(0, Amount - 1)
+
+end
+
 local GearShop = {
 	"Advanced Radar",
 	"Jewel Radar",
@@ -556,6 +660,17 @@ UIElements.AutoHatchEgg = EggSection:Toggle({
 	end,
 })
 
+UIElements.AutoEquipBestPet = EggSection:Toggle({
+	Title = "Auto Equip Best Pet",
+	Value = ConfigData.AutoEquipBestPet,
+
+	Callback = function(value)
+		AutoEquipBestPet = value
+		ConfigData.AutoEquipBestPet = value
+		SaveConfig()
+	end,
+})
+
 UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 	Title = "Auto Upgrade Hatch Luck",
 	Desc = "Auto upgrade hatch luck by 1x",
@@ -603,66 +718,34 @@ UIElements.AutoClaimIndex = EggSection:Toggle({
 })
 
 UIElements.AutoClaimOffline = EggSection:Toggle({
-	Title = "Auto Claim Offline Earnings",
+	Title = "Auto Claim Offline Rewards",
 	Value = ConfigData.AutoClaimOffline,
 
 	Callback = function(value)
+
 		AutoClaimOffline = value
 		ConfigData.AutoClaimOffline = value
+
 		SaveConfig()
 
 		if value then
 
-			pcall(function()
-				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-				local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
-				local OfflineRemote = GameRemotes and GameRemotes:FindFirstChild("OfflineEarnings")
+			task.spawn(function()
 
-				if OfflineRemote then
-					OfflineRemote:FireServer()
-				end
+				pcall(function()
+
+					local OfflineEarnings =
+						ReplicatedStorage
+							:WaitForChild("Remotes")
+							:WaitForChild("Game")
+							:WaitForChild("OfflineEarnings")
+
+					OfflineEarnings:FireServer()
+
+				end)
+
 			end)
 
-			pcall(function()
-				local PlayerGui = Player:FindFirstChild("PlayerGui")
-
-				if PlayerGui then
-					for _, GuiObject in ipairs(PlayerGui:GetDescendants()) do
-
-						if (GuiObject:IsA("TextButton") or GuiObject:IsA("ImageButton"))
-							and GuiObject.Visible then
-
-							local Text = (GuiObject:IsA("TextButton") and GuiObject.Text) or ""
-
-							if GuiObject.Name:lower():find("1x")
-								or Text:lower():find("1x")
-								or GuiObject.Name:lower():find("claim")
-								or Text:lower():find("claim") then
-
-								if getconnections then
-
-									for _, conn in ipairs(getconnections(GuiObject.Activated)) do
-										conn:Fire()
-									end
-
-									for _, conn in ipairs(getconnections(GuiObject.MouseButton1Click)) do
-										conn:Fire()
-									end
-
-								end
-
-								local Frame =
-									GuiObject:FindFirstAncestorWhichIsA("Frame")
-									or GuiObject:FindFirstAncestorWhichIsA("ScreenGui")
-
-								if Frame and Frame.Name:lower():find("offline") then
-									Frame.Visible = false
-								end
-							end
-						end
-					end
-				end
-			end)
 		end
 	end,
 })
@@ -904,6 +987,7 @@ ConfigSection:Button({
 		SelectedESPEggs = {}
 		ESPEnabled = false
 		FPSBoost = false
+        AutoEquipBestPet = false
 
 		ConfigData = {
 			SelectedEggs = {},
@@ -922,6 +1006,7 @@ ConfigSection:Button({
 			Autobuyfood = false,
 			SelectedESPEggs = {},
 			ESPEnabled = false,
+            AutoEquipBestPet = false,
 			FPSBoost = false
 		}
 
@@ -942,6 +1027,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedESPEggs, {})
 		SetUIValue(UIElements.ESPEnabled, false)
 		SetUIValue(UIElements.FPSBoost, false)
+        SetUIValue(UIElements.AutoEquipBestPet, false)
 
 		WindUI:Notify({
 			Title = "Config Reset",
@@ -1458,55 +1544,119 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
---  Auto Buy Loop
+--==================================================
+-- AUTO BUY GEAR LOOP
+--==================================================
 task.spawn(function()
-	while true do
-		if Autobuygear then
-			pcall(function()
-				local BuyRemote = ReplicatedStorage:FindFirstChild("Remotes")
-					and ReplicatedStorage.Remotes:FindFirstChild("Game")
-					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
 
-				if BuyRemote then
-					if type(SelectedGear) == "table" then
-						for _, GearItem in ipairs(SelectedGear) do
-							BuyRemote:FireServer("Gears", GearItem)
+	while true do
+
+		if Autobuygear and ShopStockReady then
+
+			pcall(function()
+
+				if type(SelectedGear) == "table" then
+
+					for _, GearItem in ipairs(SelectedGear) do
+
+						if not Autobuygear then
+							break
+						end
+
+						local Stock =
+							GetShopStock("Gears", GearItem)
+
+						-- ONLY FIRE WHEN STOCK EXISTS
+						if Stock > 0 then
+
+							BuyWithCash:FireServer(
+								"Gears",
+								GearItem
+							)
+
+							-- Prevent repeated firing
+							-- before server sends next stock update
+							ReduceShopStock(
+								"Gears",
+								GearItem
+							)
+
 							task.wait(0.2)
 						end
-					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
-						BuyRemote:FireServer("Gears", SelectedGear)
+
+					end
+
+				elseif type(SelectedGear) == "string"
+					and SelectedGear ~= "" then
+
+					local Stock =
+						GetShopStock(
+							"Gears",
+							SelectedGear
+						)
+
+					if Stock > 0 then
+
+						BuyWithCash:FireServer(
+							"Gears",
+							SelectedGear
+						)
+
+						ReduceShopStock(
+							"Gears",
+							SelectedGear
+						)
+
 					end
 				end
+
 			end)
-			task.wait(0.5)
-		else
-			task.wait(0.5)
+
 		end
+
+		task.wait(0.5)
+
 	end
+
 end)
 
+--==================================================
 -- AUTO BUY FOOD LOOP
+--==================================================
 
 task.spawn(function()
 
 	while true do
 
-		if Autobuyfood then
+		if Autobuyfood and ShopStockReady then
 
 			pcall(function()
 
-				local BuyRemote =
-					ReplicatedStorage:FindFirstChild("Remotes")
-					and ReplicatedStorage.Remotes:FindFirstChild("Game")
-					and ReplicatedStorage.Remotes.Game:FindFirstChild("BuyWithCash")
+				if type(SelectedFood) == "table" then
 
-				if BuyRemote then
+					for _, FoodItem in ipairs(SelectedFood) do
 
-					if type(SelectedFood) == "table" then
+						if not Autobuyfood then
+							break
+						end
 
-						for _, FoodItem in ipairs(SelectedFood) do
+						local Stock =
+							GetShopStock(
+								"Food",
+								FoodItem
+							)
 
-							BuyRemote:FireServer(
+						-- ONLY FIRE WHEN STOCK EXISTS
+						if Stock > 0 then
+
+							BuyWithCash:FireServer(
+								"Food",
+								FoodItem
+							)
+
+							-- Prevent repeated firing
+							-- before server sends next stock update
+							ReduceShopStock(
 								"Food",
 								FoodItem
 							)
@@ -1514,23 +1664,40 @@ task.spawn(function()
 							task.wait(0.2)
 						end
 
-					elseif type(SelectedFood) == "string"
-						and SelectedFood ~= "" then
+					end
 
-						BuyRemote:FireServer(
+				elseif type(SelectedFood) == "string"
+					and SelectedFood ~= "" then
+
+					local Stock =
+						GetShopStock(
 							"Food",
 							SelectedFood
 						)
+
+					if Stock > 0 then
+
+						BuyWithCash:FireServer(
+							"Food",
+							SelectedFood
+						)
+
+						ReduceShopStock(
+							"Food",
+							SelectedFood
+						)
+
 					end
 				end
+
 			end)
 
-			task.wait(0.5)
-
-		else
-			task.wait(0.5)
 		end
+
+		task.wait(0.5)
+
 	end
+
 end)
 
 --==================================================
@@ -1937,6 +2104,310 @@ task.spawn(function()
 	end
 end)
 
+
+--==================================================
+-- AUTO EQUIP BEST PET
+--==================================================
+
+--==================================================
+-- AUTO EQUIP + PLACE BEST PET
+--==================================================
+
+local PlacePet =
+	ReplicatedStorage
+		:WaitForChild("Remotes")
+		:WaitForChild("Game")
+		:WaitForChild("PlacePet")
+
+local General_m =
+	require(
+		ReplicatedStorage
+			:WaitForChild("GameServices")
+			:WaitForChild("General")
+	)
+
+local AutoPetBusy = false
+local LastPetPlace = 0
+
+
+--==================================================
+-- GET OWN PLOT
+--==================================================
+
+local function GetOwnPlot()
+
+	local Plot = General_m:GetPlot(Player)
+
+	if not Plot then
+		return nil
+	end
+
+	local Baseplate =
+		Plot:FindFirstChild("Baseplate")
+
+	if not Baseplate then
+		return nil
+	end
+
+	return Plot, Baseplate
+end
+
+
+--==================================================
+-- FIND BEST PET
+--==================================================
+
+local function FindBestPetTool()
+
+	local Character =
+		Player.Character
+
+	local Backpack =
+		Player:FindFirstChildOfClass("Backpack")
+
+	local BestPet = nil
+	local BestIncome = -math.huge
+
+	for _, Container in ipairs({
+		Character,
+		Backpack
+	}) do
+
+		if Container then
+
+			for _, Tool in ipairs(Container:GetChildren()) do
+
+				if Tool:IsA("Tool")
+					and Tool:HasTag("Pet")
+					and Tool:GetAttribute("PetKey") then
+
+					local Income =
+						GetPetIncome(Tool)
+
+					if Income > BestIncome then
+
+						BestIncome = Income
+						BestPet = Tool
+
+					end
+				end
+			end
+		end
+	end
+
+	return BestPet
+end
+
+
+--==================================================
+-- PLACE BEST PET
+--==================================================
+
+local function AutoPlaceBestPet()
+
+	if AutoPetBusy then
+		return
+	end
+
+	AutoPetBusy = true
+
+	pcall(function()
+
+		local Character =
+			Player.Character
+
+		local Humanoid =
+			Character
+			and Character:FindFirstChildOfClass("Humanoid")
+
+		local HRP =
+			Character
+			and Character:FindFirstChild("HumanoidRootPart")
+
+		if not Character
+			or not Humanoid
+			or not HRP then
+
+			return
+		end
+
+
+		--==================================================
+		-- OWN PLOT
+		--==================================================
+
+		local MyPlot, Baseplate =
+			GetOwnPlot()
+
+		if not MyPlot or not Baseplate then
+			return
+		end
+
+
+		--==================================================
+		-- BEST PET
+		--==================================================
+
+		local BestPet =
+			FindBestPetTool()
+
+		if not BestPet then
+			return
+		end
+
+
+		local PetKey =
+			BestPet:GetAttribute("PetKey")
+
+		if not PetKey then
+			return
+		end
+
+
+		--==================================================
+		-- TELEPORT INSIDE OWN PLOT
+		--==================================================
+
+		local OldCFrame =
+			HRP.CFrame
+
+		local PlotCFrame =
+			Baseplate.CFrame
+
+		HRP.CFrame =
+			PlotCFrame
+			* CFrame.new(
+				0,
+				Baseplate.Size.Y / 2 + 3,
+				0
+			)
+
+		task.wait(0.3)
+
+
+		--==================================================
+		-- EQUIP
+		--==================================================
+
+		if BestPet.Parent ~= Character then
+
+			Humanoid:EquipTool(BestPet)
+
+			task.wait(0.25)
+
+		end
+
+
+		--==================================================
+		-- VERIFY PET IS ACTUALLY HELD
+		--==================================================
+
+		local HeldPet = nil
+
+		for _, Tool in ipairs(Character:GetChildren()) do
+
+			if Tool:IsA("Tool")
+				and Tool:HasTag("Pet")
+				and Tool:GetAttribute("PetKey") then
+
+				HeldPet = Tool
+				break
+
+			end
+		end
+
+		if not HeldPet then
+
+			HRP.CFrame = OldCFrame
+			return
+
+		end
+
+
+		PetKey =
+			HeldPet:GetAttribute("PetKey")
+
+		if not PetKey then
+
+			HRP.CFrame = OldCFrame
+			return
+
+		end
+
+
+		--==================================================
+		-- EXACT SAME POSITION AS GAME
+		--==================================================
+
+		local Position =
+			(
+				HRP.CFrame
+				* CFrame.new(0, 0, -5)
+			).Position
+
+
+		--==================================================
+		-- SAME REMOTE CALL AS GAME
+		--==================================================
+
+		if os.clock() - LastPetPlace >= 0.4 then
+
+			LastPetPlace =
+				os.clock()
+
+			PlacePet:FireServer(
+				PetKey,
+				Position
+			)
+
+			task.wait(0.5)
+
+		end
+
+
+		--==================================================
+		-- UNEQUIP
+		--==================================================
+
+		Humanoid:UnequipTools()
+
+		task.wait(0.1)
+
+
+		--==================================================
+		-- RETURN
+		--==================================================
+
+		if HRP and HRP.Parent then
+			HRP.CFrame = OldCFrame
+		end
+
+	end)
+
+	AutoPetBusy = false
+end
+
+
+--==================================================
+-- LOOP
+--==================================================
+
+task.spawn(function()
+
+	while true do
+
+		if AutoEquipBestPet then
+
+			AutoPlaceBestPet()
+
+		end
+
+		task.wait(0.5)
+
+	end
+
+end)
+
 --==================================================
 -- AUTO UPGRADE HATCH LUCK
 --==================================================
@@ -2111,6 +2582,82 @@ task.spawn(function()
 			task.wait(0.5)
 		end
 	end
+end)
+
+--==================================================
+-- AUTO CLAIM INDEX REWARD
+--==================================================
+
+local ClaimIndexReward =
+	ReplicatedStorage
+		:WaitForChild("Remotes")
+		:WaitForChild("Game")
+		:WaitForChild("ClaimIndexReward")
+
+local IndexRewards =
+	require(
+		ReplicatedStorage
+			:WaitForChild("GameData")
+			:WaitForChild("IndexRewards")
+	)
+
+local SavedDataIndex =
+	Player:WaitForChild("SavedData")
+
+local OwnedPetsIndex =
+	SavedDataIndex:WaitForChild("OwnedPets")
+
+local IndexRewardStage =
+	SavedDataIndex:WaitForChild("IndexRewardStage")
+
+
+local function CanClaimIndexReward()
+
+	local success, result = pcall(function()
+
+		local discovered =
+			IndexRewards.DiscoveredCount(
+				OwnedPetsIndex.Value
+			)
+
+		local stage =
+			IndexRewards.StageAt(
+				IndexRewardStage.Value
+			)
+
+		if not stage then
+			return false
+		end
+
+		return discovered >= stage.Goal
+
+	end)
+
+	return success and result == true
+end
+
+
+task.spawn(function()
+
+	while true do
+
+		if AutoClaimIndex then
+
+			if CanClaimIndexReward() then
+
+				pcall(function()
+					ClaimIndexReward:FireServer()
+				end)
+
+				task.wait(1)
+			end
+
+		end
+
+		task.wait(0.5)
+
+	end
+
 end)
 
 --==================================================
