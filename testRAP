@@ -2045,32 +2045,88 @@ end)
 -- AUTO REBIRTH LOOP
 --==================================================
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local SavedData = LocalPlayer:WaitForChild("SavedData")
+local Cash = SavedData:WaitForChild("Cash")
+local Rebirths = SavedData:WaitForChild("Rebirths")
+
+local Rebirths_m = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("Rebirths"))
+local General_m = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("General"))
+local PetRenderer_m = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("Game"):WaitForChild("Pets"):WaitForChild("PetRenderer"))
+
+local function CanRebirth()
+	local maxCap = tonumber(Rebirths_m.Cap)
+	if maxCap and Rebirths.Value >= maxCap then
+		return false
+	end
+
+	local currentCost = Rebirths_m.GetCost(Rebirths.Value)
+	if Cash.Value < currentCost then
+		return false
+	end
+
+	local nextIndex = Rebirths.Value + 1
+	local reqList = General_m.RebirthRequirements
+	local requiredPet = reqList[math.clamp(nextIndex, 1, math.max(#reqList, 1))]
+
+	if not requiredPet then 
+		return true -- Direct pass kung walang pet requirement
+	end
+
+	for _, val in pairs(PetRenderer_m.GetAll()) do
+		if val.OwnerUserId == LocalPlayer.UserId and (val.Model.Parent and val.Model.Name == requiredPet) then
+			return true
+		end
+	end
+
+	local function ScanContainer(container)
+		if not container then return false end
+		for _, child in ipairs(container:GetChildren()) do
+			if child:IsA("Tool") and child:GetAttribute("PetKey") then
+				local petName = string.match(child.Name, "^(.-) %[") or child.Name
+				if petName == requiredPet then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
+	if ScanContainer(LocalPlayer:FindFirstChildOfClass("Backpack")) or ScanContainer(LocalPlayer.Character) then
+		return true
+	end
+
+	local char = LocalPlayer.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local mountJoint = hrp and hrp:FindFirstChild("PetMountJoint")
+	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Part1.Parent)
+
+	if mountedPart and mountedPart:GetAttribute("PetName") == requiredPet then
+		return true
+	end
+
+	return false
+end
+
 task.spawn(function()
-
 	while true do
-
 		if AutoRebirth then
-
 			pcall(function()
+				if CanRebirth() then
+					local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+					local GameRemotes = Remotes and Remotes:FindFirstChild("Game")
+					local RebirthRemote = GameRemotes and GameRemotes:FindFirstChild("Rebirth")
 
-				local Remotes =
-					ReplicatedStorage:FindFirstChild("Remotes")
-
-				local GameRemotes =
-					Remotes
-					and Remotes:FindFirstChild("Game")
-
-				local RebirthRemote =
-					GameRemotes
-					and GameRemotes:FindFirstChild("Rebirth")
-
-				if RebirthRemote then
-					RebirthRemote:FireServer()
+					if RebirthRemote then
+						RebirthRemote:FireServer()
+						print("[AutoRebirth] Rebirth Remote Fired!")
+					end
 				end
 			end)
-
-			task.wait(7)
-
+			task.wait(2) -- Pwede mo babaan o taasan ang wait interval
 		else
 			task.wait(0.5)
 		end
