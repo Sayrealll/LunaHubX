@@ -1497,24 +1497,14 @@ task.spawn(function()
 				if BuyRemote then
 					if type(SelectedGear) == "table" then
 						for _, GearItem in ipairs(SelectedGear) do
-							-- HINDI MAG-FIRE KUNG WALANG STOCK
-							if HasStock(GearItem) then
-								BuyRemote:FireServer("Gears", GearItem)
-								task.wait(0.2)
-							else
-								-- Skip muna kung 0 stock
-								task.wait(0.05)
-							end
+							BuyRemote:FireServer("Gears", GearItem)
+							task.wait(0.2)
 						end
 					elseif type(SelectedGear) == "string" and SelectedGear ~= "" then
-						-- HINDI MAG-FIRE KUNG WALANG STOCK
-						if HasStock(SelectedGear) then
-							BuyRemote:FireServer("Gears", SelectedGear)
-						end
+						BuyRemote:FireServer("Gears", SelectedGear)
 					end
 				end
 			end)
-
 			task.wait(0.5)
 		else
 			task.wait(0.5)
@@ -2061,9 +2051,9 @@ end)
 -- AUTO REBIRTH LOOP
 --==================================================
 
---[[local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-]]
+
 
 local LocalPlayer = Players.LocalPlayer
 local SavedData = LocalPlayer:WaitForChild("SavedData")
