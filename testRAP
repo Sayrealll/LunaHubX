@@ -2108,7 +2108,7 @@ task.spawn(function()
 						TeleportToEggVoid(EggPosition)
 					end
 
-					task.wait(1)
+					task.wait(2)
 
 				else
 					task.wait(0.1)
