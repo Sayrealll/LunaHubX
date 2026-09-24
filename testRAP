@@ -1372,7 +1372,7 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
-local function TeleportToEggVoid(EggPosition)
+local function TeleportToMyPlot()
 
 	local Character = GetCharacter()
 
@@ -1382,17 +1382,70 @@ local function TeleportToEggVoid(EggPosition)
 
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 
-	if not HRP or not EggPosition then
+	if not HRP then
 		return false
 	end
 
-	HRP.CFrame = CFrame.new(
-		EggPosition.X,
-		39771.2422,
-		EggPosition.Z
-	)
+	local Plots = workspace:FindFirstChild("Plots")
 
-	return true
+	if not Plots then
+		return false
+	end
+
+	local MyPlot = nil
+
+	for _, Plot in ipairs(Plots:GetChildren()) do
+
+		local NestsOwnerLoaded =
+			Plot:GetAttribute("NestsOwnerLoaded")
+
+		if NestsOwnerLoaded == Player.UserId then
+			MyPlot = Plot
+			break
+		end
+
+		local Owner =
+			Plot:GetAttribute("Owner")
+
+		local OwnerUserId =
+			Plot:GetAttribute("OwnerUserId")
+
+		local UserId =
+			Plot:GetAttribute("UserId")
+
+		if Owner == Player.Name
+			or Owner == Player.UserId
+			or OwnerUserId == Player.UserId
+			or UserId == Player.UserId then
+
+			MyPlot = Plot
+			break
+		end
+	end
+
+	if not MyPlot then
+		return false
+	end
+
+	local Baseplate =
+		MyPlot:FindFirstChild("Baseplate")
+
+	if Baseplate and Baseplate:IsA("BasePart") then
+		HRP.CFrame =
+			Baseplate.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	local PlotPart =
+		MyPlot:FindFirstChildWhichIsA("BasePart", true)
+
+	if PlotPart then
+		HRP.CFrame =
+			PlotPart.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	return false
 end
 
 local function WaitForEggPickup(Egg, Timeout)
@@ -2673,24 +2726,17 @@ task.spawn(function()
 
 			if Egg then
 
-				local EggPart = GetEggPart(Egg)
-				local EggPosition =
-					EggPart
-					and EggPart.Position
-
 				if TeleportToEgg(Egg) then
 
 					task.wait(1)
 
 					PickupEgg(Egg)
 
-					WaitForEggPickup(Egg, 3)
+					WaitForEggPickup(Egg, 1)
 
-					if EggPosition then
-						TeleportToEggVoid(EggPosition)
-					end
+					TeleportToMyPlot()
 
-					task.wait(2)
+					task.wait(1)
 
 				else
 					task.wait(0.1)
