@@ -1573,7 +1573,7 @@ task.spawn(function()
             pcall(function()
                 ForceTeleportAndSellPets()
             end)
-            task.wait(1.5)
+            task.wait(4)
         else
             task.wait(0.5)
         end
@@ -1584,49 +1584,66 @@ end)
 
 
 
--- AUTO SELL ALL PET LOOP
+-- Safe Auto Sell All Pets Function
 local function ForceTeleportAndSellAllPets()
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = character:WaitForChild("HumanoidRootPart", 2)
+    -- Safety Check kung existing ang NPC at Character
+    if not RichieNPC or not RichieNPC.Parent then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
-    if hrp then
+    -- 1. Teleport sa harap ni Richie
+    local success, err = pcall(function()
         local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
         hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
-        task.wait(0.3)
+    end)
+    if not success then return end
 
-        local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
-        if prompt and typeof(fireproximityprompt) == "function" then
-            fireproximityprompt(prompt)
-        end
+    task.wait(0.5)
 
-        task.wait(0.5)
+    -- 2. Open Dialogue
+    local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if prompt and typeof(fireproximityprompt) == "function" then
+        fireproximityprompt(prompt)
+    end
 
+    task.wait(0.6)
+
+    -- 3. Select Option: "I would like to sell my pets"
+    if DialogueSelect then
         DialogueSelect:FireServer(RichieNPC, "I would like to sell my pets")
-
-        task.wait(0.3)
-
-        if latestRequestId then
-            ConfirmRequest:FireServer(latestRequestId, true, "Yes")
-            latestRequestId = nil
-        end
         
-        task.wait(0.5)
+        task.wait(0.6)
+
+        -- 4. Select "Yes" sa confirmation
+        DialogueSelect:FireServer(RichieNPC, "Yes")
+    end
+
+    task.wait(0.5)
+
+    -- 5. Confirm Request Remote (kung may Request ID)
+    if latestRequestId and ConfirmRequest then
+        ConfirmRequest:FireServer(latestRequestId, true, "Yes")
+        latestRequestId = nil
     end
 end
 
+-- Main Auto-Sell All Loop Thread
 task.spawn(function()
     while true do
         if AutoSellAllPets then
             pcall(function()
                 ForceTeleportAndSellAllPets()
             end)
-            task.wait(2)
+            task.wait(5) 
         else
             task.wait(0.5)
         end
     end
 end)
-
 
 
 
