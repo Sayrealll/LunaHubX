@@ -1,4 +1,4 @@
---AUTO OFFLINE REWARD, AUTO EQUIP BEST, AUTO HATCH
+--AUTO OFFLINE REWARD, AUTO EQUIP BEST
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -2035,133 +2035,71 @@ end)
 -- AUTO HATCH EGG LOOP
 --==================================================
 
+local GameServices = ReplicatedStorage:WaitForChild("GameServices")
+local General_m_Hatch = require(GameServices:WaitForChild("General"))
+local Eggs_mData = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("Eggs"))
+local General_mData = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("General"))
+local DayNight_mData = require(GameServices:WaitForChild("DayNight"))
+
+-- Helper function upang suriin kung ready na mag-hatch ang itlog nang hindi dumaan sa proximity prompt
+local function IsEggReadyToHatch(eggModel)
+    local eggConfig = Eggs_mData[eggModel.Name]
+    local eggData = eggModel:FindFirstChild("EggData")
+    local placeTimeObj = eggData and eggData:FindFirstChild("PlaceTime")
+
+    if not eggConfig or not placeTimeObj or placeTimeObj.Value <= 0 then
+        return false
+    end
+
+    local weightObj = eggData:FindFirstChild("Weight")
+    local weightVal = weightObj and tonumber(weightObj.Value) or 1
+    local totalGrowthTime = General_mData.GrowthTimeFor(eggConfig.GrowthTime, weightVal)
+    
+    local elapsedTime = eggModel:GetAttribute("FlatGrow") == true 
+        and (workspace:GetServerTimeNow() - placeTimeObj.Value) 
+        or DayNight_mData.GrowthElapsed(placeTimeObj.Value)
+
+    local timeLeft = totalGrowthTime - elapsedTime
+    return timeLeft <= 0
+end
+
 task.spawn(function()
+    while true do
+        if AutoHatchEgg then
+            pcall(function()
+                local HatchRemote = ReplicatedStorage:FindFirstChild("Remotes")
+                    and ReplicatedStorage.Remotes:FindFirstChild("Game")
+                    and ReplicatedStorage.Remotes.Game:FindFirstChild("Hatch")
 
-	while true do
+                if HatchRemote then
+                    -- Direktang kunin ang Sariling Plot gamit ang laro mismo
+                    local myPlot = General_m_Hatch:GetPlot(Player)
+                    local eggsFolder = myPlot and myPlot:FindFirstChild("Eggs")
 
-		if AutoHatchEgg then
+                    if eggsFolder then
+                        for _, eggModel in ipairs(eggsFolder:GetChildren()) do
+                            local eggKey = eggModel:GetAttribute("EggKey") 
+                                or (eggModel:FindFirstChild("EggKey") and eggModel.EggKey.Value)
 
-			pcall(function()
-
-				local Remotes =
-					ReplicatedStorage:FindFirstChild("Remotes")
-
-				local GameRemotes =
-					Remotes
-					and Remotes:FindFirstChild("Game")
-
-				local HatchRemote =
-					GameRemotes
-					and GameRemotes:FindFirstChild("Hatch")
-
-				if HatchRemote then
-
-					local Plots =
-						workspace:FindFirstChild("Plots")
-
-					if Plots then
-
-						for _, Plot in ipairs(Plots:GetChildren()) do
-
-							local EggsFolder =
-								Plot:FindFirstChild("Eggs")
-
-							if EggsFolder then
-
-								for _, EggModel in ipairs(EggsFolder:GetChildren()) do
-
-									local Handle =
-										EggModel:FindFirstChild("Handle")
-
-									local HatchObj =
-										Handle
-										and Handle:FindFirstChild("Hatch")
-
-									local EggData =
-										EggModel:FindFirstChild("EggData")
-
-									local Key = nil
-
-									if EggData then
-
-										Key =
-											EggData:GetAttribute("EggKey")
-											or (
-												EggData:FindFirstChild("EggKey")
-												and EggData.EggKey.Value
-											)
-									end
-
-									if not Key then
-
-										Key =
-											EggModel:GetAttribute("EggKey")
-											or (
-												EggModel:FindFirstChild("EggKey")
-												and EggModel.EggKey.Value
-											)
-									end
-
-									local CanHatch = false
-
-									if HatchObj then
-
-										if HatchObj:IsA("ProximityPrompt") then
-
-											CanHatch = HatchObj.Enabled
-
-										elseif HatchObj:IsA("ValueBase") then
-
-											CanHatch = HatchObj.Value
-
-										elseif HatchObj:IsA("GuiObject")
-											or HatchObj:IsA("LayerCollector") then
-
-											CanHatch =
-												HatchObj.Enabled
-												or HatchObj.Visible
-
-										elseif HatchObj:GetAttribute("Enabled") ~= nil then
-
-											CanHatch =
-												HatchObj:GetAttribute("Enabled")
-
-										else
-
-											CanHatch = true
-										end
-									end
-
-									if Key and CanHatch then
-
-										HatchRemote:FireServer({
-											EggKey = tostring(Key)
-										})
-
-										task.wait(0.2)
-									end
-								end
-							end
-						end
-					end
-				end
-			end)
-
-			task.wait(0.5)
-
-		else
-			task.wait(0.5)
-		end
-	end
+                            if eggKey and IsEggReadyToHatch(eggModel) then
+                                HatchRemote:FireServer({
+                                    EggKey = tostring(eggKey)
+                                })
+                                task.wait(0.2)
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(0.5)
+        else
+            task.wait(0.5)
+        end
+    end
 end)
-
 
 --==================================================
 -- AUTO EQUIP BEST PET
---==================================================
-
---==================================================
--- AUTO EQUIP + PLACE BEST PET
 --==================================================
 
 local PlacePet =
