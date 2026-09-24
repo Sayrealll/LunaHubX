@@ -2189,30 +2189,48 @@ end)
 
 -- AUTO REBIRTH LOOP
 local function CanRebirth()
+	-- 1. Cap Check
 	local maxCap = tonumber(Rebirths_m.Cap)
-	if maxCap and Rebirths.Value >= maxCap then return false end
+	if maxCap and Rebirths.Value >= maxCap then 
+		return false 
+	end
 
+	-- 2. Cost Check
 	local currentCost = Rebirths_m.GetCost(Rebirths.Value)
-	if Cash.Value < currentCost then return false end
+	if Cash.Value < currentCost then 
+		return false 
+	end
 
+	-- 3. Pet Requirement Check
 	local nextIndex = Rebirths.Value + 1
 	local reqList = General_m.RebirthRequirements
+	
+	if not reqList then
+		return true
+	end
+
 	local requiredPet = reqList[math.clamp(nextIndex, 1, math.max(#reqList, 1))]
 
-	if not requiredPet then return true end
+	-- Kung walang pet requirement sa level na 'to
+	if not requiredPet then 
+		return true 
+	end
 
-	for _, val in pairs(PetRenderer_m.GetAll()) do
-		if val.OwnerUserId == LocalPlayer.UserId and (val.Model.Parent and val.Model.Name == requiredPet) then
-			return true
+	-- Check Pet via PetRenderer
+	if PetRenderer_m and PetRenderer_m.GetAll then
+		for _, val in pairs(PetRenderer_m.GetAll()) do
+			if val.OwnerUserId == LocalPlayer.UserId and (val.Model and val.Model.Parent and val.Model.Name == requiredPet) then
+				return true
+			end
 		end
 	end
 
+	-- Check Container (Backpack & Character)
 	local function ScanContainer(container)
 		if not container then return false end
 		for _, child in ipairs(container:GetChildren()) do
-			if child:IsA("Tool") and child:GetAttribute("PetKey") then
-				local petName = string.match(child.Name, "^(.-) %[") or child.Name
-				if petName == requiredPet then return true end
+			if child:IsA("Tool") and string.find(child.Name, requiredPet) then
+				return true
 			end
 		end
 		return false
@@ -2222,18 +2240,23 @@ local function CanRebirth()
 		return true
 	end
 
+	-- Check Mount / Mounted Part
 	local char = LocalPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local mountJoint = hrp and hrp:FindFirstChild("PetMountJoint")
 	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Part1.Parent)
 
-	if mountedPart and mountedPart:GetAttribute("PetName") == requiredPet then
-		return true
+	if mountedPart then
+		local petAttr = mountedPart:GetAttribute("PetName") or mountedPart.Name
+		if string.find(petAttr, requiredPet) then
+			return true
+		end
 	end
 
 	return false
 end
 
+-- MAIN LOOP
 task.spawn(function()
 	while true do
 		if AutoRebirth then
@@ -2245,10 +2268,10 @@ task.spawn(function()
 
 					if RebirthRemote then
 						RebirthRemote:FireServer()
-						print("[AutoRebirth] Rebirth Remote Fired!")
 					end
 				end
 			end)
+
 			task.wait(2)
 		else
 			task.wait(0.5)
