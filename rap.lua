@@ -595,7 +595,7 @@ UIElements.SelectedEggs = EggSection:Dropdown({
 
 UIElements.AutoPickup = EggSection:Toggle({
 	Title = "Auto Farm",
-	Desc = "Automatic to get the egg and proceed to your plot",
+	Desc = "Automatically get the egg and proceed to your plot",
 	Value = ConfigData.AutoPickup,
 
 	Callback = function(value)
@@ -606,7 +606,7 @@ UIElements.AutoPickup = EggSection:Toggle({
 })
 
 UIElements.SelectedPlaceEgg = EggSection:Dropdown({
-	Title = "Select eggs to Auto Place",
+	Title = "Select Eggs to Auto Place",
 	Desc = "Choose which eggs to place in your plot",
 	Values = EggNames,
 	Multi = true,
@@ -645,7 +645,7 @@ UIElements.AutoHatchEgg = EggSection:Toggle({
 
 UIElements.AutoEquipBestPet = EggSection:Toggle({
 	Title = "Auto Equip Best Pet",
-    Desc = "Auto equip the best pet in your backpack (Go to Plot)",
+    Desc = "Automatically equip the best pet (go to your plot)",
 	Value = ConfigData.AutoEquipBestPet,
 
 	Callback = function(value)
@@ -657,7 +657,7 @@ UIElements.AutoEquipBestPet = EggSection:Toggle({
 
 UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 	Title = "Auto Upgrade Hatch Luck",
-	Desc = "Auto upgrade hatch luck by 1x",
+	Desc = "Automatically upgrade hatch luck by 1x",
 	Value = ConfigData.AutoUpgradeHatchLuck,
 
 	Callback = function(value)
@@ -669,7 +669,7 @@ UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 
 UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
 	Title = "Auto Upgrade Hatch Luck (Max)",
-	Desc = "Auto upgrade hatch luck by Max",
+	Desc = "Automatically upgrade hatch luck by max",
 	Value = ConfigData.AutoUpgradeHatchLuckMax,
 
 	Callback = function(value)
@@ -748,7 +748,7 @@ UIElements.SelectedGear = ShopSection:Dropdown({
 
 UIElements.Autobuygear = ShopSection:Toggle({
 	Title = "Auto Buy Gears",
-	Desc = "Automatic to buy selected gears",
+	Desc = "Automatically buy selected gear",
 	Value = ConfigData.Autobuygear,
 
 	Callback = function(value)
@@ -781,7 +781,7 @@ UIElements.SelectedFood = ShopSection1:Dropdown({
 
 UIElements.Autobuyfood = ShopSection1:Toggle({
 	Title = "Auto Buy Foods",
-	Desc = "Automatic to buy selected Food",
+	Desc = "Automatically buy selected food",
 	Value = ConfigData.Autobuyfood,
 
 	Callback = function(value)
@@ -814,7 +814,7 @@ UIElements.SelectedPetToSell = ShopSection2:Dropdown({
 
 UIElements.AutoSellPet = ShopSection2:Toggle({
 	Title = "Auto Sell Pets",
-	Desc = "Automatically sell selected pets",
+	Desc = "Automatically sell selected pets (turn off equip best)",
 	Value = ConfigData.AutoSellPet,
 
 	Callback = function(value)
@@ -826,7 +826,7 @@ UIElements.AutoSellPet = ShopSection2:Toggle({
 
 UIElements.AutoSellAllPets = ShopSection2:Toggle({
 	Title = "Auto Sell All Pets",
-	Desc = "Automatically sell all pets in inventory",
+	Desc = "Automatically sell all pets in inventory (turn off equip best)",
 	Value = ConfigData.AutoSellAllPets,
 
 	Callback = function(value)
@@ -864,7 +864,7 @@ UIElements.SelectedESPEggs = VisualSection:Dropdown({
 
 UIElements.ESPEnabled = VisualSection:Toggle({
 	Title = "Egg ESP",
-	Desc = "Enable ESP and Distance for selected eggs",
+	Desc = "Enable esp and distance for selected eggs",
 	Value = ConfigData.ESPEnabled,
 
 	Callback = function(value)
