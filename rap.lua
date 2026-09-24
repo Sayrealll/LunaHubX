@@ -595,6 +595,7 @@ UIElements.AutoHatchEgg = EggSection:Toggle({
 
 UIElements.AutoEquipBestPet = EggSection:Toggle({
 	Title = "Auto Equip Best Pet",
+    Desc = "Auto equip the best pet in your backpack (Go to Plot)",
 	Value = ConfigData.AutoEquipBestPet,
 
 	Callback = function(value)
