@@ -1,5 +1,4 @@
---AUTO HATCH, AUTO CLAIM OFFLINE, AUTO BUY GEAR & FOOD, Confi, anti afk, fps boos, server hop rejoin, fixed placed eggs, auto rebrth claim index
---auto offline rewards, auto equip best not fixed
+--AUTO OFFLINE REWARD
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -1372,7 +1371,7 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
-local function TeleportToEggVoid(EggPosition)
+local function TeleportToMyPlot()
 
 	local Character = GetCharacter()
 
@@ -1382,17 +1381,70 @@ local function TeleportToEggVoid(EggPosition)
 
 	local HRP = Character:FindFirstChild("HumanoidRootPart")
 
-	if not HRP or not EggPosition then
+	if not HRP then
 		return false
 	end
 
-	HRP.CFrame = CFrame.new(
-		EggPosition.X,
-		39771.2422,
-		EggPosition.Z
-	)
+	local Plots = workspace:FindFirstChild("Plots")
 
-	return true
+	if not Plots then
+		return false
+	end
+
+	local MyPlot = nil
+
+	for _, Plot in ipairs(Plots:GetChildren()) do
+
+		local NestsOwnerLoaded =
+			Plot:GetAttribute("NestsOwnerLoaded")
+
+		if NestsOwnerLoaded == Player.UserId then
+			MyPlot = Plot
+			break
+		end
+
+		local Owner =
+			Plot:GetAttribute("Owner")
+
+		local OwnerUserId =
+			Plot:GetAttribute("OwnerUserId")
+
+		local UserId =
+			Plot:GetAttribute("UserId")
+
+		if Owner == Player.Name
+			or Owner == Player.UserId
+			or OwnerUserId == Player.UserId
+			or UserId == Player.UserId then
+
+			MyPlot = Plot
+			break
+		end
+	end
+
+	if not MyPlot then
+		return false
+	end
+
+	local Baseplate =
+		MyPlot:FindFirstChild("Baseplate")
+
+	if Baseplate and Baseplate:IsA("BasePart") then
+		HRP.CFrame =
+			Baseplate.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	local PlotPart =
+		MyPlot:FindFirstChildWhichIsA("BasePart", true)
+
+	if PlotPart then
+		HRP.CFrame =
+			PlotPart.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	return false
 end
 
 local function WaitForEggPickup(Egg, Timeout)
@@ -1565,7 +1617,6 @@ task.spawn(function()
 						local Stock =
 							GetShopStock("Gears", GearItem)
 
-						-- ONLY FIRE WHEN STOCK EXISTS
 						if Stock > 0 then
 
 							BuyWithCash:FireServer(
@@ -1573,8 +1624,7 @@ task.spawn(function()
 								GearItem
 							)
 
-							-- Prevent repeated firing
-							-- before server sends next stock update
+							
 							ReduceShopStock(
 								"Gears",
 								GearItem
@@ -1645,7 +1695,7 @@ task.spawn(function()
 								FoodItem
 							)
 
-						-- ONLY FIRE WHEN STOCK EXISTS
+						
 						if Stock > 0 then
 
 							BuyWithCash:FireServer(
@@ -1653,8 +1703,7 @@ task.spawn(function()
 								FoodItem
 							)
 
-							-- Prevent repeated firing
-							-- before server sends next stock update
+						
 							ReduceShopStock(
 								"Food",
 								FoodItem
@@ -1983,428 +2032,253 @@ end)
 -- AUTO HATCH EGG LOOP
 --==================================================
 
+local GameServices = ReplicatedStorage:WaitForChild("GameServices")
+local General_m_Hatch = require(GameServices:WaitForChild("General"))
+local Eggs_mData = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("Eggs"))
+local General_mData = require(ReplicatedStorage:WaitForChild("GameData"):WaitForChild("General"))
+local DayNight_mData = require(GameServices:WaitForChild("DayNight"))
+
+local function IsEggReadyToHatch(eggModel)
+    local eggConfig = Eggs_mData[eggModel.Name]
+    local eggData = eggModel:FindFirstChild("EggData")
+    local placeTimeObj = eggData and eggData:FindFirstChild("PlaceTime")
+
+    if not eggConfig or not placeTimeObj or placeTimeObj.Value <= 0 then
+        return false
+    end
+
+    local weightObj = eggData:FindFirstChild("Weight")
+    local weightVal = weightObj and tonumber(weightObj.Value) or 1
+    local totalGrowthTime = General_mData.GrowthTimeFor(eggConfig.GrowthTime, weightVal)
+    
+    local elapsedTime = eggModel:GetAttribute("FlatGrow") == true 
+        and (workspace:GetServerTimeNow() - placeTimeObj.Value) 
+        or DayNight_mData.GrowthElapsed(placeTimeObj.Value)
+
+    local timeLeft = totalGrowthTime - elapsedTime
+    return timeLeft <= 0
+end
+
 task.spawn(function()
+    while true do
+        if AutoHatchEgg then
+            pcall(function()
+                local HatchRemote = ReplicatedStorage:FindFirstChild("Remotes")
+                    and ReplicatedStorage.Remotes:FindFirstChild("Game")
+                    and ReplicatedStorage.Remotes.Game:FindFirstChild("Hatch")
 
-	while true do
+                if HatchRemote then
+                    
+                    local myPlot = General_m_Hatch:GetPlot(Player)
+                    local eggsFolder = myPlot and myPlot:FindFirstChild("Eggs")
 
-		if AutoHatchEgg then
+                    if eggsFolder then
+                        for _, eggModel in ipairs(eggsFolder:GetChildren()) do
+                            local eggKey = eggModel:GetAttribute("EggKey") 
+                                or (eggModel:FindFirstChild("EggKey") and eggModel.EggKey.Value)
 
-			pcall(function()
+                            if eggKey and IsEggReadyToHatch(eggModel) then
+                                HatchRemote:FireServer({
+                                    EggKey = tostring(eggKey)
+                                })
+                                task.wait(0.2)
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(0.5)
+        else
+            task.wait(0.5)
+        end
+    end
+end)
 
-				local Remotes =
-					ReplicatedStorage:FindFirstChild("Remotes")
+--==================================================
+-- AUTO PLACE BEST PETS 
+--==================================================
 
-				local GameRemotes =
-					Remotes
-					and Remotes:FindFirstChild("Game")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
 
-				local HatchRemote =
-					GameRemotes
-					and GameRemotes:FindFirstChild("Hatch")
+local SavedData = LocalPlayer:WaitForChild("SavedData")
+local Rebirths = SavedData:WaitForChild("Rebirths")
 
-				if HatchRemote then
+local GameServices = ReplicatedStorage:WaitForChild("GameServices")
+local GameData = ReplicatedStorage:WaitForChild("GameData")
 
-					local Plots =
-						workspace:FindFirstChild("Plots")
+local General_m = require(GameServices:WaitForChild("General"))
+local PetAging_m = require(GameServices:WaitForChild("PetAging"))
+local Pets_m = require(GameData:WaitForChild("Pets"))
+local Mutations_m = require(GameData:WaitForChild("Mutations"))
+local PetRenderer_m = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("Game"):WaitForChild("Pets"):WaitForChild("PetRenderer"))
 
-					if Plots then
+local RemotesGame = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Game")
+local PlacePetRemote = RemotesGame:WaitForChild("PlacePet")
+local PickupPetRemote = RemotesGame:WaitForChild("PickupPet")
 
-						for _, Plot in ipairs(Plots:GetChildren()) do
+local function GetMaxPetCapacity()
+	local currentRebirths = Rebirths and Rebirths.Value or 0
+	local attrMax = LocalPlayer:GetAttribute("MaxPets")
+	
+	local calculatedCapacity = 5 + math.floor(currentRebirths)
 
-							local EggsFolder =
-								Plot:FindFirstChild("Eggs")
+	if attrMax and attrMax > 0 then
+		return math.max(attrMax, calculatedCapacity)
+	end
 
-							if EggsFolder then
+	return calculatedCapacity
+end
 
-								for _, EggModel in ipairs(EggsFolder:GetChildren()) do
+local function CalculatePetIncome(petTool)
+	local petName = string.match(petTool.Name, "^(.-) %[") or petTool:GetAttribute("PetName") or petTool.Name
+	local petConfig = Pets_m[petName]
+	local baseIncome = petConfig and tonumber(petConfig.Income) or 0
 
-									local Handle =
-										EggModel:FindFirstChild("Handle")
+	if baseIncome <= 0 then return 0 end
 
-									local HatchObj =
-										Handle
-										and Handle:FindFirstChild("Hatch")
+	local weight = tonumber(petTool:GetAttribute("Weight")) or 1
+	local mutation = petTool:GetAttribute("Mutation")
+	local spawnMutation = petTool:GetAttribute("SpawnMutation")
 
-									local EggData =
-										EggModel:FindFirstChild("EggData")
+	local combinedFactor = Mutations_m.CombinedFactor and Mutations_m.CombinedFactor(mutation, spawnMutation) or 1
+	local weightStandard = PetAging_m.WeightStandardKG or 1
 
-									local Key = nil
+	return math.floor(math.floor(baseIncome * (weight / weightStandard)) * combinedFactor)
+end
 
-									if EggData then
+local function GetAllPetsSorted()
+	local petsList = {}
 
-										Key =
-											EggData:GetAttribute("EggKey")
-											or (
-												EggData:FindFirstChild("EggKey")
-												and EggData.EggKey.Value
-											)
-									end
+	for _, petData in pairs(PetRenderer_m.GetAll()) do
+		if petData.OwnerUserId == LocalPlayer.UserId and petData.Model and petData.Model.Parent then
+			table.insert(petsList, {
+				Key = petData.PetKey,
+				Income = tonumber(petData.DisplayIncome) or tonumber(petData.Income) or 0,
+				Placed = true,
+				Position = petData.Model:GetPivot().Position
+			})
+		end
+	end
 
-									if not Key then
+	local containers = {LocalPlayer.Character, LocalPlayer:FindFirstChildOfClass("Backpack")}
+	for _, container in ipairs(containers) do
+		if container then
+			for _, child in ipairs(container:GetChildren()) do
+				if child:IsA("Tool") and child:GetAttribute("PetKey") then
+					table.insert(petsList, {
+						Key = child:GetAttribute("PetKey"),
+						Income = CalculatePetIncome(child),
+						Placed = false,
+						Tool = child
+					})
+				end
+			end
+		end
+	end
 
-										Key =
-											EggModel:GetAttribute("EggKey")
-											or (
-												EggModel:FindFirstChild("EggKey")
-												and EggModel.EggKey.Value
-											)
-									end
+	table.sort(petsList, function(a, b)
+		return a.Income > b.Income
+	end)
 
-									local CanHatch = false
+	return petsList
+end
 
-									if HatchObj then
+local function GetPlotPlacementPos(rootPart, index)
+	local targetPos = (rootPart.CFrame * CFrame.new(((index - 1) % 3 - 1) * 4, 0, -(math.floor((index - 1) / 3) * 4 + 8))).Position
+	local myPlot = General_m:GetPlot(LocalPlayer)
+	local baseplate = myPlot and myPlot:FindFirstChild("Baseplate")
 
-										if HatchObj:IsA("ProximityPrompt") then
+	if not baseplate then return targetPos end
 
-											CanHatch = HatchObj.Enabled
+	local objSpace = baseplate.CFrame:PointToObjectSpace(targetPos)
+	local sizeX = baseplate.Size.X / 2 - 2
+	local sizeZ = baseplate.Size.Z / 2 - 2
+	local clampedX = math.clamp(objSpace.X, -sizeX, sizeX)
+	local clampedZ = math.clamp(objSpace.Z, -sizeZ, sizeZ)
 
-										elseif HatchObj:IsA("ValueBase") then
+	return baseplate.CFrame:PointToWorldSpace(Vector3.new(clampedX, objSpace.Y, clampedZ))
+end
 
-											CanHatch = HatchObj.Value
+local function PlaceBestPets()
+	local char = LocalPlayer.Character
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
 
-										elseif HatchObj:IsA("GuiObject")
-											or HatchObj:IsA("LayerCollector") then
+	if not humanoid or not rootPart or humanoid.Health <= 0 then return end
 
-											CanHatch =
-												HatchObj.Enabled
-												or HatchObj.Visible
+	local allPets = GetAllPetsSorted()
+	if #allPets == 0 then return end
 
-										elseif HatchObj:GetAttribute("Enabled") ~= nil then
+	local maxCapacity = GetMaxPetCapacity()
+	local targetPetsCount = math.min(maxCapacity, #allPets)
 
-											CanHatch =
-												HatchObj:GetAttribute("Enabled")
+	local bestPetsToPlace = {}
+	local bestKeysMap = {}
 
-										else
+	for i = 1, targetPetsCount do
+		bestPetsToPlace[i] = allPets[i]
+		bestKeysMap[allPets[i].Key] = true
+	end
 
-											CanHatch = true
-										end
-									end
+	local freedPositions = {}
 
-									if Key and CanHatch then
+	for _, pet in ipairs(allPets) do
+		if pet.Placed and not bestKeysMap[pet.Key] then
+			table.insert(freedPositions, pet.Position)
+			PetRenderer_m.Remove(LocalPlayer.UserId, pet.Key)
+			PickupPetRemote:FireServer(pet.Key)
+			task.wait(0.2)
+		end
+	end
 
-										HatchRemote:FireServer({
-											EggKey = tostring(Key)
-										})
 
-										task.wait(0.2)
-									end
-								end
-							end
+	for slotIndex, pet in ipairs(bestPetsToPlace) do
+		if not pet.Placed then
+			local petTool = pet.Tool
+			if not petTool or not petTool.Parent then
+				local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+				if backpack then
+					for _, item in ipairs(backpack:GetChildren()) do
+						if item:GetAttribute("PetKey") == pet.Key then
+							petTool = item
+							break
 						end
 					end
 				end
+			end
+
+			if petTool then
+				humanoid:EquipTool(petTool)
+				local timeout = os.clock() + 2
+				repeat task.wait() until petTool.Parent == char or os.clock() > timeout
+
+				if petTool.Parent == char then
+					local placePos = table.remove(freedPositions, 1) or GetPlotPlacementPos(rootPart, slotIndex)
+					PlacePetRemote:FireServer(pet.Key, placePos)
+					task.wait(0.2)
+				end
+			end
+		end
+	end
+
+	if LocalPlayer:GetAttribute("IsRiding") ~= true then
+		humanoid:UnequipTools()
+	end
+end
+
+task.spawn(function()
+	while true do
+		if AutoEquipBestPet then
+			pcall(function()
+				PlaceBestPets()
 			end)
-
-			task.wait(0.5)
-
+			task.wait(3) -- delay
 		else
 			task.wait(0.5)
 		end
 	end
-end)
-
-
---==================================================
--- AUTO EQUIP BEST PET
---==================================================
-
---==================================================
--- AUTO EQUIP + PLACE BEST PET
---==================================================
-
-local PlacePet =
-	ReplicatedStorage
-		:WaitForChild("Remotes")
-		:WaitForChild("Game")
-		:WaitForChild("PlacePet")
-
-local General_m =
-	require(
-		ReplicatedStorage
-			:WaitForChild("GameServices")
-			:WaitForChild("General")
-	)
-
-local AutoPetBusy = false
-local LastPetPlace = 0
-
-
---==================================================
--- GET OWN PLOT
---==================================================
-
-local function GetOwnPlot()
-
-	local Plot = General_m:GetPlot(Player)
-
-	if not Plot then
-		return nil
-	end
-
-	local Baseplate =
-		Plot:FindFirstChild("Baseplate")
-
-	if not Baseplate then
-		return nil
-	end
-
-	return Plot, Baseplate
-end
-
-
---==================================================
--- FIND BEST PET
---==================================================
-
-local function FindBestPetTool()
-
-	local Character =
-		Player.Character
-
-	local Backpack =
-		Player:FindFirstChildOfClass("Backpack")
-
-	local BestPet = nil
-	local BestIncome = -math.huge
-
-	for _, Container in ipairs({
-		Character,
-		Backpack
-	}) do
-
-		if Container then
-
-			for _, Tool in ipairs(Container:GetChildren()) do
-
-				if Tool:IsA("Tool")
-					and Tool:HasTag("Pet")
-					and Tool:GetAttribute("PetKey") then
-
-					local Income =
-						GetPetIncome(Tool)
-
-					if Income > BestIncome then
-
-						BestIncome = Income
-						BestPet = Tool
-
-					end
-				end
-			end
-		end
-	end
-
-	return BestPet
-end
-
-
---==================================================
--- PLACE BEST PET
---==================================================
-
-local function AutoPlaceBestPet()
-
-	if AutoPetBusy then
-		return
-	end
-
-	AutoPetBusy = true
-
-	pcall(function()
-
-		local Character =
-			Player.Character
-
-		local Humanoid =
-			Character
-			and Character:FindFirstChildOfClass("Humanoid")
-
-		local HRP =
-			Character
-			and Character:FindFirstChild("HumanoidRootPart")
-
-		if not Character
-			or not Humanoid
-			or not HRP then
-
-			return
-		end
-
-
-		--==================================================
-		-- OWN PLOT
-		--==================================================
-
-		local MyPlot, Baseplate =
-			GetOwnPlot()
-
-		if not MyPlot or not Baseplate then
-			return
-		end
-
-
-		--==================================================
-		-- BEST PET
-		--==================================================
-
-		local BestPet =
-			FindBestPetTool()
-
-		if not BestPet then
-			return
-		end
-
-
-		local PetKey =
-			BestPet:GetAttribute("PetKey")
-
-		if not PetKey then
-			return
-		end
-
-
-		--==================================================
-		-- TELEPORT INSIDE OWN PLOT
-		--==================================================
-
-		local OldCFrame =
-			HRP.CFrame
-
-		local PlotCFrame =
-			Baseplate.CFrame
-
-		HRP.CFrame =
-			PlotCFrame
-			* CFrame.new(
-				0,
-				Baseplate.Size.Y / 2 + 3,
-				0
-			)
-
-		task.wait(0.3)
-
-
-		--==================================================
-		-- EQUIP
-		--==================================================
-
-		if BestPet.Parent ~= Character then
-
-			Humanoid:EquipTool(BestPet)
-
-			task.wait(0.25)
-
-		end
-
-
-		--==================================================
-		-- VERIFY PET IS ACTUALLY HELD
-		--==================================================
-
-		local HeldPet = nil
-
-		for _, Tool in ipairs(Character:GetChildren()) do
-
-			if Tool:IsA("Tool")
-				and Tool:HasTag("Pet")
-				and Tool:GetAttribute("PetKey") then
-
-				HeldPet = Tool
-				break
-
-			end
-		end
-
-		if not HeldPet then
-
-			HRP.CFrame = OldCFrame
-			return
-
-		end
-
-
-		PetKey =
-			HeldPet:GetAttribute("PetKey")
-
-		if not PetKey then
-
-			HRP.CFrame = OldCFrame
-			return
-
-		end
-
-
-		--==================================================
-		-- EXACT SAME POSITION AS GAME
-		--==================================================
-
-		local Position =
-			(
-				HRP.CFrame
-				* CFrame.new(0, 0, -5)
-			).Position
-
-
-		--==================================================
-		-- SAME REMOTE CALL AS GAME
-		--==================================================
-
-		if os.clock() - LastPetPlace >= 0.4 then
-
-			LastPetPlace =
-				os.clock()
-
-			PlacePet:FireServer(
-				PetKey,
-				Position
-			)
-
-			task.wait(0.5)
-
-		end
-
-
-		--==================================================
-		-- UNEQUIP
-		--==================================================
-
-		Humanoid:UnequipTools()
-
-		task.wait(0.1)
-
-
-		--==================================================
-		-- RETURN
-		--==================================================
-
-		if HRP and HRP.Parent then
-			HRP.CFrame = OldCFrame
-		end
-
-	end)
-
-	AutoPetBusy = false
-end
-
-
---==================================================
--- LOOP
---==================================================
-
-task.spawn(function()
-
-	while true do
-
-		if AutoEquipBestPet then
-
-			AutoPlaceBestPet()
-
-		end
-
-		task.wait(0.5)
-
-	end
-
 end)
 
 --==================================================
@@ -2673,24 +2547,17 @@ task.spawn(function()
 
 			if Egg then
 
-				local EggPart = GetEggPart(Egg)
-				local EggPosition =
-					EggPart
-					and EggPart.Position
-
 				if TeleportToEgg(Egg) then
 
 					task.wait(1)
 
 					PickupEgg(Egg)
 
-					WaitForEggPickup(Egg, 3)
+					WaitForEggPickup(Egg, 1)
 
-					if EggPosition then
-						TeleportToEggVoid(EggPosition)
-					end
+					TeleportToMyPlot()
 
-					task.wait(2)
+					task.wait(1)
 
 				else
 					task.wait(0.1)
