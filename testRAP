@@ -134,6 +134,7 @@ local ConfigData = {
 	SelectedGear = {},
 	Autobuygear = false,
 	SelectedFood = {},
+    AutoSellAllPets = false,    
     SelectedPetToSell = {},
 	Autobuyfood = false,
 	SelectedESPEggs = {},
@@ -192,6 +193,8 @@ local Autobuyfood = ConfigData.Autobuyfood or false
 local FPSBoost = ConfigData.FPSBoost or false
 local AutoEquipBestPet = ConfigData.AutoEquipBestPet or false
 local AutoSellPet = ConfigData.AutoSellPet or false
+local AutoSellAllPets = ConfigData.AutoSellAllPets or false
+
 
 
 -- UI ELEMENT REFERENCES FOR RESET
@@ -821,6 +824,18 @@ UIElements.AutoSellPet = ShopSection2:Toggle({
 	end,
 })
 
+UIElements.AutoSellAllPets = ShopSection2:Toggle({
+	Title = "Auto Sell All Pets",
+	Desc = "Automatically sell all pets in inventory",
+	Value = ConfigData.AutoSellAllPets,
+
+	Callback = function(value)
+		AutoSellAllPets = value
+		ConfigData.AutoSellAllPets = value
+		SaveConfig()
+	end,
+})
+
 --==================================================
 -- TAB 4 (VISUAL)
 --==================================================
@@ -948,6 +963,7 @@ ConfigSection:Button({
 
 		SelectedEggs = {}
 		SelectedPlaceEgg = {}
+        SelectedPetToSell = {}
 		AutoPickup = false
 		AutoPlaceEgg = false
 		AutoHatchEgg = false
@@ -963,6 +979,8 @@ ConfigSection:Button({
 		SelectedESPEggs = {}
 		ESPEnabled = false
 		FPSBoost = false
+        AutoSellPet = false
+        AutoSellAllPets = false
         AutoEquipBestPet = false
 
 		ConfigData = {
@@ -985,6 +1003,7 @@ ConfigSection:Button({
 			ESPEnabled = false,
             AutoEquipBestPet = false,
             AutoSellPet = false,
+            AutoSellAllPets = false,
 			FPSBoost = false
 		}
 
@@ -1007,6 +1026,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.ESPEnabled, false)
 		SetUIValue(UIElements.FPSBoost, false)
         SetUIValue(UIElements.AutoSellPet, false)
+        SetUIValue(UIElements.AutoSellAllPets, false)
         SetUIValue(UIElements.AutoEquipBestPet, false)
 
 		WindUI:Notify({
@@ -1470,6 +1490,9 @@ task.spawn(function()
 end)
 
 
+
+
+
 -- AUTO SELL PET LOOP
 local function EquipTargetPet(petName)
     if not petName or petName == "" then return false end
@@ -1544,7 +1567,6 @@ local function ForceTeleportAndSellPets()
     end
 end
 
--- Main Auto-Sell Loop
 task.spawn(function()
     while true do
         if AutoSellPet then
@@ -1557,6 +1579,56 @@ task.spawn(function()
         end
     end
 end)
+
+
+
+
+
+-- AUTO SELL ALL PET LOOP
+local function ForceTeleportAndSellAllPets()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart", 2)
+
+    if hrp then
+        local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
+        hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
+        task.wait(0.3)
+
+        local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt and typeof(fireproximityprompt) == "function" then
+            fireproximityprompt(prompt)
+        end
+
+        task.wait(0.5)
+
+        DialogueSelect:FireServer(RichieNPC, "I would like to sell my pets")
+
+        task.wait(0.3)
+
+        if latestRequestId then
+            ConfirmRequest:FireServer(latestRequestId, true, "Yes")
+            latestRequestId = nil
+        end
+        
+        task.wait(0.5)
+    end
+end
+
+task.spawn(function()
+    while true do
+        if AutoSellAllPets then
+            pcall(function()
+                ForceTeleportAndSellAllPets()
+            end)
+            task.wait(2)
+        else
+            task.wait(0.5)
+        end
+    end
+end)
+
+
+
 
 
 -- AUTO PLACE EGG LOOP
