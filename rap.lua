@@ -57,6 +57,7 @@ local RestockRemote = GameRemotes:WaitForChild("Restock")
 local PlacePetRemote = GameRemotes:WaitForChild("PlacePet")
 local PickupPetRemote = GameRemotes:WaitForChild("PickupPet")
 local ClaimIndexReward = GameRemotes:WaitForChild("ClaimIndexReward")
+local FavoritePetRemote = GameRemotes:WaitForChild("FavoritePet")
 
 --// SELL SHOP REMOTES & REFERENCES
 local DialogueRemotes = ReplicatedStorage:WaitForChild("Dialogue"):WaitForChild("Remotes")
@@ -141,7 +142,9 @@ local ConfigData = {
 	FPSBoost = false,
     AutoSellPet = false,
 	AutoEquipBestPet = false,
-	ESPEnabled = false
+	ESPEnabled = false,
+	SelectedFavPet = {},
+	AutoFavoritePet = false
 }
 
 local function LoadConfig()
@@ -177,6 +180,7 @@ local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
 local SelectedGear = ConfigData.SelectedGear or {}
 local SelectedFood = ConfigData.SelectedFood or {}
 local SelectedPetToSell = ConfigData.SelectedPetToSell or {}
+local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
 -- TOGGLES
 local AutoPickup = ConfigData.AutoPickup or false
@@ -194,7 +198,7 @@ local FPSBoost = ConfigData.FPSBoost or false
 local AutoEquipBestPet = ConfigData.AutoEquipBestPet or false
 local AutoSellPet = ConfigData.AutoSellPet or false
 local AutoSellAllPets = ConfigData.AutoSellAllPets or false
-
+local AutoFavoritePet = ConfigData.AutoFavoritePet or false
 
 
 -- UI ELEMENT REFERENCES FOR RESET
@@ -836,6 +840,43 @@ UIElements.AutoSellAllPets = ShopSection2:Toggle({
 	end,
 })
 
+local FavSection = Tab3:Section({
+	Title = "Favorite Pet",
+	Icon = "heart",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.SelectedFavPet = FavSection:Dropdown({
+	Title = "Select Pet to Favorite",
+	Desc = "Choose which pets to auto favorite",
+	Values = PET_LIST,
+	Multi = true,
+	Value = ConfigData.SelectedFavPet,
+	AllowNone = true,
+
+	Callback = function(value)
+		SelectedFavPet = value
+		ConfigData.SelectedFavPet = value
+		SaveConfig()
+	end,
+})
+
+UIElements.AutoFavoritePet = FavSection:Toggle({
+	Title = "Auto Favorite Pet",
+	Desc = "Automatically favorites selected pets then stops when finished",
+	Value = ConfigData.AutoFavoritePet,
+
+	Callback = function(value)
+		AutoFavoritePet = value
+		ConfigData.AutoFavoritePet = value
+		SaveConfig()
+		if value then
+			task.spawn(ProcessAutoFavorite)
+		end
+	end,
+})
+
 --==================================================
 -- TAB 4 (VISUAL)
 --==================================================
@@ -964,6 +1005,7 @@ ConfigSection:Button({
 		SelectedEggs = {}
 		SelectedPlaceEgg = {}
         SelectedPetToSell = {}
+		SelectedFavPet = {}
 		AutoPickup = false
 		AutoPlaceEgg = false
 		AutoHatchEgg = false
@@ -982,6 +1024,7 @@ ConfigSection:Button({
         AutoSellPet = false
         AutoSellAllPets = false
         AutoEquipBestPet = false
+		AutoFavoritePet = false
 
 		ConfigData = {
 			SelectedEggs = {},
@@ -1004,7 +1047,9 @@ ConfigSection:Button({
             AutoEquipBestPet = false,
             AutoSellPet = false,
             AutoSellAllPets = false,
-			FPSBoost = false
+			FPSBoost = false,
+			SelectedFavPet = {},
+			AutoFavoritePet = false
 		}
 
 		SetUIValue(UIElements.SelectedEggs, {})
@@ -1028,6 +1073,8 @@ ConfigSection:Button({
         SetUIValue(UIElements.AutoSellPet, false)
         SetUIValue(UIElements.AutoSellAllPets, false)
         SetUIValue(UIElements.AutoEquipBestPet, false)
+		SetUIValue(UIElements.SelectedFavPet, {})
+		SetUIValue(UIElements.AutoFavoritePet, false)
 
 		WindUI:Notify({
 			Title = "Config Reset",
@@ -1433,6 +1480,92 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
+function ProcessAutoFavorite()
+	-- Gagawin ang loop habang NAKA-ON ang toggle
+	while AutoFavoritePet do
+		local favList = type(SelectedFavPet) == "table" and SelectedFavPet or (SelectedFavPet ~= "" and {SelectedFavPet} or {})
+		
+		if #favList > 0 then
+			local favMap = {}
+			for _, name in ipairs(favList) do
+				favMap[string.lower(name)] = true
+			end
+
+			local function IsPetFavorited(inst)
+				if inst:GetAttribute("IsFavorite") == true or inst:GetAttribute("Favorite") == true or inst:GetAttribute("Favorited") == true then
+					return true
+				end
+				local favVal = inst:FindFirstChild("Favorite") or inst:FindFirstChild("IsFavorite")
+				if favVal and (favVal:IsA("BoolValue") and favVal.Value == true) then
+					return true
+				end
+				return false
+			end
+
+			local function GetTargetPets()
+				local targets = {}
+
+				local petsFolder = SavedData:FindFirstChild("Pets") or SavedData:FindFirstChild("OwnedPets")
+				if petsFolder then
+					for _, petObj in ipairs(petsFolder:GetChildren()) do
+						local rawName = petObj:GetAttribute("PetName") or petObj.Name
+						local petName = string.match(rawName, "^(.-) %[") or rawName
+
+						if favMap[string.lower(petName)] and not IsPetFavorited(petObj) then
+							table.insert(targets, { Instance = petObj, Key = petObj:GetAttribute("PetKey") or petObj.Name })
+						end
+					end
+				end
+
+				local containers = {LocalPlayer:FindFirstChildOfClass("Backpack"), LocalPlayer.Character}
+				for _, container in ipairs(containers) do
+					if container then
+						for _, child in ipairs(container:GetChildren()) do
+							if child:IsA("Tool") then
+								local rawName = child:GetAttribute("PetName") or child.Name
+								local petName = string.match(rawName, "^(.-) %[") or rawName
+
+								if favMap[string.lower(petName)] and not IsPetFavorited(child) then
+									local key = child:GetAttribute("PetKey") or child.Name
+									table.insert(targets, { Instance = child, Key = key })
+								end
+							end
+						end
+					end
+				end
+
+				return targets
+			end
+
+			local targets = GetTargetPets()
+
+			if #targets > 0 then
+				for _, item in ipairs(targets) do
+					if not AutoFavoritePet then break end
+
+					pcall(function()
+						if FavoritePetRemote then
+							if item.Key then
+								FavoritePetRemote:FireServer(item.Key)
+							else
+								FavoritePetRemote:FireServer(item.Instance)
+							end
+						end
+					end)
+
+					task.wait(0.3) 
+				end
+			end
+		end
+
+		task.wait(10)
+	end
+end
+
+
+
+
+
 -- AUTO BUY GEAR LOOP
 task.spawn(function()
 	while true do
@@ -1460,6 +1593,11 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+
+
+
+
 
 -- AUTO BUY FOOD LOOP
 task.spawn(function()
@@ -1584,6 +1722,7 @@ end)
 
 
 
+
 -- Safe Auto Sell All Pets Function
 local function ForceTeleportAndSellAllPets()
     -- Safety Check kung existing ang NPC at Character
@@ -1644,6 +1783,7 @@ task.spawn(function()
         end
     end
 end)
+
 
 
 
@@ -1767,6 +1907,10 @@ task.spawn(function()
     end
 end)
 
+
+
+
+
 -- AUTO HATCH EGG LOOP
 local function IsEggReadyToHatch(eggModel)
     local eggConfig = Eggs_mData[eggModel.Name]
@@ -1820,6 +1964,11 @@ task.spawn(function()
         end
     end
 end)
+
+
+
+
+
 
 -- AUTO PLACE BEST PETS
 local function GetMaxPetCapacity()
@@ -1981,6 +2130,11 @@ task.spawn(function()
 	end
 end)
 
+
+
+
+
+
 -- AUTO UPGRADE HATCH LUCK
 task.spawn(function()
 	while true do
@@ -2002,6 +2156,11 @@ task.spawn(function()
 	end
 end)
 
+
+
+
+
+
 -- AUTO UPGRADE HATCH LUCK MAX
 task.spawn(function()
 	while true do
@@ -2022,6 +2181,11 @@ task.spawn(function()
 		end
 	end
 end)
+
+
+
+
+
 
 -- AUTO REBIRTH LOOP
 local function CanRebirth()
@@ -2092,6 +2256,11 @@ task.spawn(function()
 	end
 end)
 
+
+
+
+
+
 -- AUTO CLAIM INDEX REWARD
 local function CanClaimIndexReward()
 	local success, result = pcall(function()
@@ -2114,6 +2283,11 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+
+
+
+
 
 -- AUTO FARM LOOP
 task.spawn(function()
