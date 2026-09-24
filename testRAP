@@ -1,4 +1,4 @@
---AUTO OFFLINE REWARD
+--NOT YET FIX- AUTO OFFLINE REWARD
 --ANTI AFK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
