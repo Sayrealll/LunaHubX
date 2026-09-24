@@ -58,6 +58,38 @@ local PlacePetRemote = GameRemotes:WaitForChild("PlacePet")
 local PickupPetRemote = GameRemotes:WaitForChild("PickupPet")
 local ClaimIndexReward = GameRemotes:WaitForChild("ClaimIndexReward")
 
+--// SELL SHOP REMOTES & REFERENCES
+local DialogueRemotes = ReplicatedStorage:WaitForChild("Dialogue"):WaitForChild("Remotes")
+local DialogueSelect = DialogueRemotes:WaitForChild("DialogueSelect")
+local DialogueTypingDone = DialogueRemotes:WaitForChild("DialogueTypingDone")
+local DialogueSend = DialogueRemotes:WaitForChild("DialogueSend")
+local ConfirmRequest = GameRemotes:WaitForChild("ConfirmRequest")
+
+local RichieNPC = workspace:WaitForChild("Stalls"):WaitForChild("Sell"):WaitForChild("Richie")
+local latestRequestId = nil
+
+-- Dynamic Request ID Sniffer
+for _, remote in ipairs(GameRemotes:GetChildren()) do
+    if remote:IsA("RemoteEvent") then
+        remote.OnClientEvent:Connect(function(...)
+            local args = {...}
+            for i = 1, #args do
+                if type(args[i]) == "string" and #args[i] >= 30 then
+                    latestRequestId = args[i]
+                end
+            end
+        end)
+    end
+end
+
+-- Bypass dialogue typing animation
+DialogueSend.OnClientEvent:Connect(function(data)
+    if data and data.Model == RichieNPC and data.AwaitComplete then
+        DialogueTypingDone:FireServer(data.Model, data.CompleteToken)
+    end
+end)
+
+
 --// WINDUI INITIALIZATION
 local WindUI
 
@@ -102,9 +134,11 @@ local ConfigData = {
 	SelectedGear = {},
 	Autobuygear = false,
 	SelectedFood = {},
+    SelectedPetToSell = {},
 	Autobuyfood = false,
 	SelectedESPEggs = {},
-	FPSBoost = false,	
+	FPSBoost = false,
+    AutoSellPet = false,
 	AutoEquipBestPet = false,
 	ESPEnabled = false
 }
@@ -141,6 +175,7 @@ local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
 local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
 local SelectedGear = ConfigData.SelectedGear or {}
 local SelectedFood = ConfigData.SelectedFood or {}
+local SelectedPetToSell = ConfigData.SelectedPetToSell or {}
 
 -- TOGGLES
 local AutoPickup = ConfigData.AutoPickup or false
@@ -156,6 +191,8 @@ local Autobuygear = ConfigData.Autobuygear or false
 local Autobuyfood = ConfigData.Autobuyfood or false
 local FPSBoost = ConfigData.FPSBoost or false
 local AutoEquipBestPet = ConfigData.AutoEquipBestPet or false
+local AutoSellPet = ConfigData.AutoSellPet or false
+
 
 -- UI ELEMENT REFERENCES FOR RESET
 local UIElements = {}
@@ -449,6 +486,16 @@ local FoodShop = {
 	"Dragon Fruit"
 }
 
+local PET_LIST = {
+    "Axolotl", "Capybara", "Cerberus", "Cheetah", "Chicken",
+    "Crocodile", "Deer", "Dragon", "Elephant", "Fox",
+    "Giraffe", "Gorilla", "Horse", "Kangaroo", "Kitsune",
+    "Koala", "Lion", "Ostrich", "Panda", "Phoenix",
+    "Pig", "Shark", "Sloth", "Snail", "Snake",
+    "Spider", "TRex", "Turtle", "Unicorn", "Wolf"
+}
+
+
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
@@ -741,6 +788,39 @@ UIElements.Autobuyfood = ShopSection1:Toggle({
 	end,
 })
 
+local ShopSection2 = Tab3:Section({
+	Title = "Sell Shop",
+	Icon = "dollar-sign",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.SelectedPetToSell = ShopSection2:Dropdown({
+	Title = "Select Pets to Sell",
+	Values = PET_LIST,
+	Multi = true,
+	Value = ConfigData.SelectedPetToSell,
+	AllowNone = true,
+
+	Callback = function(value)
+		SelectedPetToSell = value
+		ConfigData.SelectedPetToSell = SelectedPetToSell
+		SaveConfig()
+	end,
+})
+
+UIElements.AutoSellPet = ShopSection2:Toggle({
+	Title = "Auto Sell Pets",
+	Desc = "Automatically sell selected pets",
+	Value = ConfigData.AutoSellPet,
+
+	Callback = function(value)
+		AutoSellPet = value
+		ConfigData.AutoSellPet = value
+		SaveConfig()
+	end,
+})
+
 --==================================================
 -- TAB 4 (VISUAL)
 --==================================================
@@ -899,10 +979,12 @@ ConfigSection:Button({
 			SelectedGear = {},
 			Autobuygear = false,
 			SelectedFood = {},
+            SelectedPetToSell = {},
 			Autobuyfood = false,
 			SelectedESPEggs = {},
 			ESPEnabled = false,
             AutoEquipBestPet = false,
+            AutoSellPet = false,
 			FPSBoost = false
 		}
 
@@ -919,10 +1001,12 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedGear, {})
 		SetUIValue(UIElements.Autobuygear, false)
 		SetUIValue(UIElements.SelectedFood, {})
+		SetUIValue(UIElements.SelectedPetToSell, {})
 		SetUIValue(UIElements.Autobuyfood, false)
 		SetUIValue(UIElements.SelectedESPEggs, {})
 		SetUIValue(UIElements.ESPEnabled, false)
 		SetUIValue(UIElements.FPSBoost, false)
+        SetUIValue(UIElements.AutoSellPet, false)
         SetUIValue(UIElements.AutoEquipBestPet, false)
 
 		WindUI:Notify({
@@ -1384,6 +1468,96 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+
+-- AUTO SELL PET LOOP
+local function EquipTargetPet(petName)
+    if not petName or petName == "" then return false end
+
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if not character or not backpack or not humanoid then return false end
+
+    local targetPetName = string.lower(petName)
+
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") and string.find(string.lower(item.Name), targetPetName) then
+            return true
+        end
+    end
+
+    for _, item in ipairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and string.find(string.lower(item.Name), targetPetName) then
+            humanoid:EquipTool(item)
+            task.wait(0.3)
+            return true
+        end
+    end
+
+    return false
+end
+
+local function ForceTeleportAndSellPets()
+    local targetList = {}
+    if type(SelectedPetToSell) == "table" then
+        targetList = SelectedPetToSell
+    elseif type(SelectedPetToSell) == "string" and SelectedPetToSell ~= "" then
+        targetList = {SelectedPetToSell}
+    end
+
+    if #targetList == 0 then return end
+
+    for _, petName in ipairs(targetList) do
+        if not AutoSellPet then break end
+
+        local isEquipped = EquipTargetPet(petName)
+        if isEquipped then
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local hrp = character:WaitForChild("HumanoidRootPart", 2)
+
+            if hrp then
+                local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
+                hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
+                task.wait(0.3)
+
+                local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if prompt and typeof(fireproximityprompt) == "function" then
+                    fireproximityprompt(prompt)
+                end
+
+                task.wait(0.5)
+
+                DialogueSelect:FireServer(RichieNPC, "I would like to sell this")
+
+                task.wait(0.3)
+
+                if latestRequestId then
+                    ConfirmRequest:FireServer(latestRequestId, true, "Yes")
+                    latestRequestId = nil
+                end
+                
+                task.wait(0.5)
+            end
+        end
+    end
+end
+
+-- Main Auto-Sell Loop
+task.spawn(function()
+    while true do
+        if AutoSellPet then
+            pcall(function()
+                ForceTeleportAndSellPets()
+            end)
+            task.wait(1.5)
+        else
+            task.wait(0.5)
+        end
+    end
+end)
+
 
 -- AUTO PLACE EGG LOOP
 local MAX_PLANTED_EGGS = 10
