@@ -1,5 +1,3 @@
---NOT YET FIXED- AUTO CLAIM OFFLINE EARNINGS
-
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -783,11 +781,48 @@ UIElements.AutoClaimOffline = EggSection2:Toggle({
 		ConfigData.AutoClaimOffline = value
 		SaveConfig()
 
+		-- One-time execution pag na-toggle sa ON
 		if value then
 			task.spawn(function()
 				pcall(function()
-					local OfflineEarnings = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Game"):WaitForChild("OfflineEarnings")
-					OfflineEarnings:FireServer()
+					local OfflineEarnings = ReplicatedStorage:FindFirstChild("Remotes") 
+						and ReplicatedStorage.Remotes:FindFirstChild("Game") 
+						and ReplicatedStorage.Remotes.Game:FindFirstChild("OfflineEarnings")
+
+					if OfflineEarnings then
+						-- 1. I-fire ang server para ma-claim ang reward
+						OfflineEarnings:FireServer()
+						task.wait(0.3)
+						
+						-- 2. Isara/Itago ang Pop-up UI sa screen
+						local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 2)
+						if PlayerGui then
+							for _, gui in ipairs(PlayerGui:GetChildren()) do
+								if gui:IsA("ScreenGui") then
+									local guiName = string.lower(gui.Name)
+									if string.find(guiName, "offline") or string.find(guiName, "away") or string.find(guiName, "reward") then
+										gui.Enabled = false
+									end
+									
+									for _, desc in ipairs(gui:GetDescendants()) do
+										if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+											local text = string.lower(desc.Text)
+											if string.find(text, "while you're away") or string.find(text, "your pets made you") then
+												local targetFrame = desc:FindFirstAncestorOfClass("Frame") or desc:FindFirstAncestorOfClass("ScreenGui")
+												if targetFrame then
+													if targetFrame:IsA("ScreenGui") then
+														targetFrame.Enabled = false
+													else
+														targetFrame.Visible = false
+													end
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
 				end)
 			end)
 		end
@@ -1273,6 +1308,7 @@ end
 
 local SettingsSection = Tab7:Section({
 	Title = "Performance",
+	Icon = "zap",
 	Box = true,
 	BoxBorder = true,
 })
@@ -1291,11 +1327,11 @@ UIElements.FPSBoost = SettingsSection:Toggle({
 })
 
 local SettingsSection1 = Tab7:Section({
-	Title = "Severs",
+	Title = "Servers",
+	Icon = "globe",
 	Box = true,
 	BoxBorder = true,
 })
-
 SettingsSection1:Button({
 	Title = "Rejoin",
 	Justify = "Center",
@@ -1661,6 +1697,7 @@ end)
 -- AUTOMATION LOOPS
 --==================================================
 
+--AUTO FAVORITE PET 
 function ProcessAutoFavorite()
 	-- Gagawin ang loop habang NAKA-ON ang toggle
 	while AutoFavoritePet do
