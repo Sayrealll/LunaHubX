@@ -523,7 +523,7 @@ local PET_LIST = {
     "Lion", "Ostrich", "Fox", "Boar", "Giraffe",
     "Cheetah", "Monkey", "Unicorn", "Flamingo", "TRex",
     "Phoenix", "Peacock", "Cerberus", "Komodo", "Kitsune",
-    "Dragon", "Griffin"
+    "Dragon", "Griffin", "Volkaris"
 }
 
 
@@ -554,7 +554,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.6",
+	Title = "v.1.0.0.5",
 	Color = "ElementBackground",
 })
 
