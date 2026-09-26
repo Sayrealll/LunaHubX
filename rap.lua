@@ -125,6 +125,7 @@ local ConfigData = {
 	SelectedEggs = {},
 	SelectedRarities = {},
 	SelectedPlaceEgg = {},
+	SelectedPlaceRarities = {},
 	AutoPickup = false,
 	AutoPlaceEgg = false,
 	AutoHatchEgg = false,
@@ -138,8 +139,10 @@ local ConfigData = {
 	SelectedFood = {},
     AutoSellAllPets = false,    
     SelectedPetToSell = {},
+    SelectedSellRarities = {},
 	Autobuyfood = false,
 	SelectedESPEggs = {},
+	SelectedESPRarities = {},
 	FPSBoost = false,
     AutoSellPet = false,
 	AutoEquipBestPet = false,
@@ -178,10 +181,13 @@ local ThemeName = "Dark"
 local SelectedEggs = ConfigData.SelectedEggs or {}
 local SelectedRarities = ConfigData.SelectedRarities or {}
 local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
+local SelectedPlaceRarities = ConfigData.SelectedPlaceRarities or {}
 local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
+local SelectedESPRarities = ConfigData.SelectedESPRarities or {}
 local SelectedGear = ConfigData.SelectedGear or {}
 local SelectedFood = ConfigData.SelectedFood or {}
 local SelectedPetToSell = ConfigData.SelectedPetToSell or {}
+local SelectedSellRarities = ConfigData.SelectedSellRarities or {}
 local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
 -- TOGGLES
@@ -554,8 +560,8 @@ local Tab1 = Window:Tab({ Title = "HOME", Icon = "warehouse" })
 local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
 local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
-local Tab5 = Window:Tab({ Title = "EGGS", Icon = "list-ordered" })
-local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "pen" })
+local Tab5 = Window:Tab({ Title = "Tracker", Icon = "radar" })
+local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "file-cog" })
 local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 --==================================================
@@ -641,9 +647,32 @@ UIElements.AutoPickup = EggSection:Toggle({
 	end,
 })
 
-UIElements.SelectedPlaceEgg = EggSection:Dropdown({
-	Title = "Select Eggs to Auto Place",
-	Desc = "Choose which eggs to place in your plot",
+
+
+local EggSection1 = Tab2:Section({
+	Title = "Auto Place & Hatch",
+	Icon = "sparkles",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.SelectedPlaceRarities = EggSection1:Dropdown({
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to place in your plot",
+	Values = RarityNames,
+	Multi = true,
+	Value = ConfigData.SelectedPlaceRarities,
+	AllowNone = true,
+	Callback = function(value)
+		SelectedPlaceRarities = value
+		ConfigData.SelectedPlaceRarities = value
+		SaveConfig()
+	end,
+})
+
+UIElements.SelectedPlaceEgg = EggSection1:Dropdown({
+	Title = "Category Filter",
+	Desc = "Choose category to place in your plot",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedPlaceEgg,
@@ -655,7 +684,7 @@ UIElements.SelectedPlaceEgg = EggSection:Dropdown({
 	end,
 })
 
-UIElements.AutoPlaceEgg = EggSection:Toggle({
+UIElements.AutoPlaceEgg = EggSection1:Toggle({
 	Title = "Auto Place Eggs",
 	Desc = "Automatically place the selected eggs in your plot",
 	Value = ConfigData.AutoPlaceEgg,
@@ -667,7 +696,7 @@ UIElements.AutoPlaceEgg = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoHatchEgg = EggSection:Toggle({
+UIElements.AutoHatchEgg = EggSection1:Toggle({
 	Title = "Auto Hatch Egg",
 	Desc = "Automatically hatch ready eggs in your plot",
 	Value = ConfigData.AutoHatchEgg,
@@ -679,7 +708,7 @@ UIElements.AutoHatchEgg = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoEquipBestPet = EggSection:Toggle({
+UIElements.AutoEquipBestPet = EggSection1:Toggle({
 	Title = "Auto Equip Best Pet",
     Desc = "Automatically equip the best pet (go to your plot)",
 	Value = ConfigData.AutoEquipBestPet,
@@ -691,7 +720,15 @@ UIElements.AutoEquipBestPet = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
+
+local EggSection2 = Tab2:Section({
+	Title = "Upgrades",
+	Icon = "trending-up",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.AutoUpgradeHatchLuck = EggSection2:Toggle({
 	Title = "Auto Upgrade Hatch Luck",
 	Desc = "Automatically upgrade hatch luck by 1x",
 	Value = ConfigData.AutoUpgradeHatchLuck,
@@ -703,7 +740,7 @@ UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
+UIElements.AutoUpgradeHatchLuckMax = EggSection2:Toggle({
 	Title = "Auto Upgrade Hatch Luck (Max)",
 	Desc = "Automatically upgrade hatch luck by max",
 	Value = ConfigData.AutoUpgradeHatchLuckMax,
@@ -715,7 +752,7 @@ UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoRebirth = EggSection:Toggle({
+UIElements.AutoRebirth = EggSection2:Toggle({
 	Title = "Auto Rebirth",
 	Value = ConfigData.AutoRebirth,
 
@@ -726,7 +763,7 @@ UIElements.AutoRebirth = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoClaimIndex = EggSection:Toggle({
+UIElements.AutoClaimIndex = EggSection2:Toggle({
 	Title = "Auto Claim Index Reward",
 	Value = ConfigData.AutoClaimIndex,
 
@@ -737,7 +774,7 @@ UIElements.AutoClaimIndex = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoClaimOffline = EggSection:Toggle({
+UIElements.AutoClaimOffline = EggSection2:Toggle({
 	Title = "Auto Claim Offline Rewards",
 	Value = ConfigData.AutoClaimOffline,
 
@@ -834,6 +871,21 @@ local ShopSection2 = Tab3:Section({
 	BoxBorder = true,
 })
 
+UIElements.SelectedSellRarities = ShopSection2:Dropdown({
+	Title = "Select Rarities to Sell",
+	Desc = "Choose which pet rarities to sell",
+	Values = RarityNames,
+	Multi = true,
+	Value = ConfigData.SelectedSellRarities,
+	AllowNone = true,
+
+	Callback = function(value)
+		SelectedSellRarities = value
+		ConfigData.SelectedSellRarities = SelectedSellRarities
+		SaveConfig()
+	end,
+})
+
 UIElements.SelectedPetToSell = ShopSection2:Dropdown({
 	Title = "Select Pets to Sell",
 	Values = PET_LIST,
@@ -920,6 +972,21 @@ local VisualSection = Tab4:Section({
 	BoxBorder = true,
 })
 
+UIElements.SelectedESPRarities = VisualSection:Dropdown({
+	Title = "Select ESP Rarity",
+	Desc = "Choose which egg rarities to display ESP",
+	Values = RarityNames,
+	Multi = true,
+	Value = ConfigData.SelectedESPRarities,
+	AllowNone = true,
+
+	Callback = function(value)
+		SelectedESPRarities = value
+		ConfigData.SelectedESPRarities = value
+		SaveConfig()
+	end,
+})
+
 UIElements.SelectedESPEggs = VisualSection:Dropdown({
 	Title = "Select ESP Egg",
 	Desc = "Choose which eggs to display ESP",
@@ -948,18 +1015,18 @@ UIElements.ESPEnabled = VisualSection:Toggle({
 })
 
 --==================================================
--- TAB 5 (EGGS)
+-- TAB 5 (TRACKER)
 --==================================================
 
 local EggsSection = Tab5:Section({
-	Title = "Active Eggs",
-	Icon = "list",
+	Title = "Egg Tracker",
+	Icon = "radar",
 	Box = true,
 	BoxBorder = true,
 })
 
 local LiveEggParagraph = EggsSection:Paragraph({
-	Title = "Spawned Eggs (0)",
+	Title = "Tracked Eggs (0)",
 	Desc = "Scanning workspace for rendered eggs...",
 })
 
@@ -974,7 +1041,7 @@ local function UpdateRenderedEggList()
 	end
 
 	if TotalCount == 0 then
-		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
+		LiveEggParagraph:SetTitle("Tracked Eggs (0)")
 		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
 	else
 		local SpawnedEggNames = {}
@@ -994,7 +1061,7 @@ local function UpdateRenderedEggList()
 			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
 		end
 
-		LiveEggParagraph:SetTitle(string.format("Spawned Eggs (%d)", TotalCount))
+		LiveEggParagraph:SetTitle(string.format("Tracked Eggs (%d)", TotalCount))
 		LiveEggParagraph:SetDesc(DescriptionText)
 	end
 end
@@ -1013,7 +1080,7 @@ end)
 
 local ConfigSection = Tab6:Section({
 	Title = "Config",
-	Icon = "pen",
+	Icon = "file-cog",
 	Box = true,
 	BoxBorder = true,
 })
@@ -1037,7 +1104,9 @@ ConfigSection:Button({
 		SelectedEggs = {}
 		SelectedRarities = {}
 		SelectedPlaceEgg = {}
+		SelectedPlaceRarities = {}
         SelectedPetToSell = {}
+        SelectedSellRarities = {}
 		SelectedFavPet = {}
 		AutoPickup = false
 		AutoPlaceEgg = false
@@ -1052,6 +1121,7 @@ ConfigSection:Button({
 		SelectedFood = {}
 		Autobuyfood = false
 		SelectedESPEggs = {}
+		SelectedESPRarities = {}
 		ESPEnabled = false
 		FPSBoost = false
         AutoSellPet = false
@@ -1063,6 +1133,7 @@ ConfigSection:Button({
 			SelectedEggs = {},
 			SelectedRarities = {},
 			SelectedPlaceEgg = {},
+			SelectedPlaceRarities = {},
 			AutoPickup = false,
 			AutoPlaceEgg = false,
 			AutoHatchEgg = false,
@@ -1075,8 +1146,10 @@ ConfigSection:Button({
 			Autobuygear = false,
 			SelectedFood = {},
             SelectedPetToSell = {},
+            SelectedSellRarities = {},
 			Autobuyfood = false,
 			SelectedESPEggs = {},
+			SelectedESPRarities = {},
 			ESPEnabled = false,
             AutoEquipBestPet = false,
             AutoSellPet = false,
@@ -1090,6 +1163,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedEggs, {})
 		SetUIValue(UIElements.AutoPickup, false)
 		SetUIValue(UIElements.SelectedPlaceEgg, {})
+		SetUIValue(UIElements.SelectedPlaceRarities, {})
 		SetUIValue(UIElements.AutoPlaceEgg, false)
 		SetUIValue(UIElements.AutoHatchEgg, false)
 		SetUIValue(UIElements.AutoUpgradeHatchLuck, false)
@@ -1101,8 +1175,10 @@ ConfigSection:Button({
 		SetUIValue(UIElements.Autobuygear, false)
 		SetUIValue(UIElements.SelectedFood, {})
 		SetUIValue(UIElements.SelectedPetToSell, {})
+		SetUIValue(UIElements.SelectedSellRarities, {})
 		SetUIValue(UIElements.Autobuyfood, false)
 		SetUIValue(UIElements.SelectedESPEggs, {})
+		SetUIValue(UIElements.SelectedESPRarities, {})
 		SetUIValue(UIElements.ESPEnabled, false)
 		SetUIValue(UIElements.FPSBoost, false)
         SetUIValue(UIElements.AutoSellPet, false)
@@ -1538,20 +1614,35 @@ RunService.RenderStepped:Connect(function()
 
 	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
 		local Name = Egg.Name
-		local IsSelected = false
+		local eggData = Eggs_mData[Name]
+		local Rarity = eggData and eggData.Rarity or "Common"
+
+		local IsNameSelected = false
+		local IsRaritySelected = false
 
 		if type(SelectedESPEggs) == "table" then
 			for _, SelectedName in ipairs(SelectedESPEggs) do
 				if SelectedName == Name then
-					IsSelected = true
+					IsNameSelected = true
 					break
 				end
 			end
 		elseif SelectedESPEggs == Name then
-			IsSelected = true
+			IsNameSelected = true
 		end
 
-		if IsSelected then
+		if type(SelectedESPRarities) == "table" then
+			for _, SelectedRarity in ipairs(SelectedESPRarities) do
+				if SelectedRarity == Rarity then
+					IsRaritySelected = true
+					break
+				end
+			end
+		elseif SelectedESPRarities == Rarity then
+			IsRaritySelected = true
+		end
+
+		if IsNameSelected or IsRaritySelected then
 			if not ActiveESP[Egg] then
 				CreateESP(Egg)
 			end
@@ -1722,8 +1813,8 @@ end)
 
 
 -- AUTO SELL PET LOOP
-local function EquipTargetPet(petName)
-    if not petName or petName == "" then return false end
+local function EquipTargetPet(petTool)
+    if not petTool or not petTool:IsA("Tool") then return false end
 
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -1731,39 +1822,81 @@ local function EquipTargetPet(petName)
 
     if not character or not backpack or not humanoid then return false end
 
-    local targetPetName = string.lower(petName)
-
-    for _, item in ipairs(character:GetChildren()) do
-        if item:IsA("Tool") and string.find(string.lower(item.Name), targetPetName) then
-            return true
-        end
+    if petTool.Parent == character then
+        return true
     end
 
-    for _, item in ipairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(string.lower(item.Name), targetPetName) then
-            humanoid:EquipTool(item)
-            task.wait(0.3)
-            return true
-        end
+    if petTool.Parent == backpack then
+        humanoid:EquipTool(petTool)
+        task.wait(0.3)
+        return true
     end
 
     return false
 end
 
-local function ForceTeleportAndSellPets()
-    local targetList = {}
+local function GetTargetPetsToSell()
+    local targetTools = {}
+    local containers = {LocalPlayer:FindFirstChildOfClass("Backpack"), LocalPlayer.Character}
+
+    local targetPets = {}
     if type(SelectedPetToSell) == "table" then
-        targetList = SelectedPetToSell
+        targetPets = SelectedPetToSell
     elseif type(SelectedPetToSell) == "string" and SelectedPetToSell ~= "" then
-        targetList = {SelectedPetToSell}
+        targetPets = {SelectedPetToSell}
     end
 
-    if #targetList == 0 then return end
+    local targetRarities = {}
+    if type(SelectedSellRarities) == "table" then
+        targetRarities = SelectedSellRarities
+    elseif type(SelectedSellRarities) == "string" and SelectedSellRarities ~= "" then
+        targetRarities = {SelectedSellRarities}
+    end
 
-    for _, petName in ipairs(targetList) do
+    for _, container in ipairs(containers) do
+        if container then
+            for _, child in ipairs(container:GetChildren()) do
+                if child:IsA("Tool") then
+                    local rawName = child:GetAttribute("PetName") or child.Name
+                    local petName = string.match(rawName, "^(.-) %[") or rawName
+                    local petConfig = Pets_m[petName]
+                    local petRarity = petConfig and petConfig.Rarity or child:GetAttribute("Rarity") or "Common"
+
+                    local isPetSelected = false
+                    for _, name in ipairs(targetPets) do
+                        if string.lower(name) == string.lower(petName) then
+                            isPetSelected = true
+                            break
+                        end
+                    end
+
+                    local isRaritySelected = false
+                    for _, rarity in ipairs(targetRarities) do
+                        if string.lower(rarity) == string.lower(petRarity) then
+                            isRaritySelected = true
+                            break
+                        end
+                    end
+
+                    if isPetSelected or isRaritySelected then
+                        table.insert(targetTools, child)
+                    end
+                end
+            end
+        end
+    end
+
+    return targetTools
+end
+
+local function ForceTeleportAndSellPets()
+    local targetTools = GetTargetPetsToSell()
+    if #targetTools == 0 then return end
+
+    for _, petTool in ipairs(targetTools) do
         if not AutoSellPet then break end
 
-        local isEquipped = EquipTargetPet(petName)
+        local isEquipped = EquipTargetPet(petTool)
         if isEquipped then
             local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
             local hrp = character:WaitForChild("HumanoidRootPart", 2)
@@ -1904,16 +2037,57 @@ local function GetRandomPlotPosition(Baseplate)
     return Vector3.new(RandomX, Y, RandomZ)
 end
 
+local function GetTargetEggsToPlace()
+    local targetEggTools = {}
+    local containers = {Player:FindFirstChild("Backpack"), LocalPlayer.Character}
+
+    local targetEggNames = type(SelectedPlaceEgg) == "table" and SelectedPlaceEgg or (SelectedPlaceEgg ~= "" and {SelectedPlaceEgg} or {})
+    local targetRarities = type(SelectedPlaceRarities) == "table" and SelectedPlaceRarities or (SelectedPlaceRarities ~= "" and {SelectedPlaceRarities} or {})
+
+    for _, container in ipairs(containers) do
+        if container then
+            for _, child in ipairs(container:GetChildren()) do
+                if child:IsA("Tool") then
+                    local eggName = child.Name
+                    local eggData = Eggs_mData[eggName]
+                    local eggRarity = eggData and eggData.Rarity or "Common"
+
+                    local isNameSelected = false
+                    for _, name in ipairs(targetEggNames) do
+                        if name == eggName then
+                            isNameSelected = true
+                            break
+                        end
+                    end
+
+                    local isRaritySelected = false
+                    for _, rarity in ipairs(targetRarities) do
+                        if rarity == eggRarity then
+                            isRaritySelected = true
+                            break
+                        end
+                    end
+
+                    if isNameSelected or isRaritySelected then
+                        table.insert(targetEggTools, child)
+                    end
+                end
+            end
+        end
+    end
+
+    return targetEggTools
+end
+
 task.spawn(function()
     while true do
         if AutoPlaceEgg then
             pcall(function()
-                local EggList = type(SelectedPlaceEgg) == "table" and SelectedPlaceEgg or (SelectedPlaceEgg ~= "" and {SelectedPlaceEgg} or {})
-                if #EggList == 0 then return end
+                local TargetTools = GetTargetEggsToPlace()
+                if #TargetTools == 0 then return end
 
                 local Character = GetCharacter()
                 local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-                local Backpack = Player:FindFirstChild("Backpack")
 
                 if not Character or not Humanoid then return end
 
@@ -1955,33 +2129,18 @@ task.spawn(function()
 
                 if not EggPlacedRemote then return end
 
-                for _, EggName in ipairs(EggList) do
+                for _, EggTool in ipairs(TargetTools) do
                     EggsFolder = MyPlot:FindFirstChild("Eggs")
                     EggCount = EggsFolder and #EggsFolder:GetChildren() or 0
 
                     if EggCount >= MAX_PLANTED_EGGS then break end
 
-                    local HeldTool = Character:FindFirstChildOfClass("Tool")
-                    local TargetEggTool = nil
-
-                    if HeldTool and HeldTool.Name == EggName then
-                        TargetEggTool = HeldTool
-                    else
-                        if Backpack then
-                            TargetEggTool = Backpack:FindFirstChild(EggName)
-                        end
-
-                        if TargetEggTool then
-                            Humanoid:EquipTool(TargetEggTool)
-                            task.wait(0.1)
-                            local NewHeldTool = Character:FindFirstChildOfClass("Tool")
-                            if NewHeldTool and NewHeldTool.Name == EggName then
-                                TargetEggTool = NewHeldTool
-                            end
-                        end
+                    if EggTool.Parent ~= Character then
+                        Humanoid:EquipTool(EggTool)
+                        task.wait(0.1)
                     end
 
-                    if TargetEggTool then
+                    if EggTool.Parent == Character then
                         local PlantPosition = GetRandomPlotPosition(Baseplate)
                         if PlantPosition then
                             EggPlacedRemote:FireServer({ PlantPosition = PlantPosition })
