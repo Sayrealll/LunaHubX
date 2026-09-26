@@ -1041,7 +1041,7 @@ local function UpdateRenderedEggList()
 	end
 
 	if TotalCount == 0 then
-		LiveEggParagraph:SetTitle("Spawned Eggs (0)")
+		LiveEggParagraph:SetTitle("Tracked Eggs (0)")
 		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
 	else
 		local SpawnedEggNames = {}
@@ -1061,7 +1061,7 @@ local function UpdateRenderedEggList()
 			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
 		end
 
-		LiveEggParagraph:SetTitle(string.format("Spawned Eggs (%d)", TotalCount))
+		LiveEggParagraph:SetTitle(string.format("Tracked Eggs (%d)", TotalCount))
 		LiveEggParagraph:SetDesc(DescriptionText)
 	end
 end
@@ -1080,7 +1080,7 @@ end)
 
 local ConfigSection = Tab6:Section({
 	Title = "Config",
-	Icon = "pen",
+	Icon = "file-cog",
 	Box = true,
 	BoxBorder = true,
 })
