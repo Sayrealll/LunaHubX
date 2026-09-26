@@ -1,3 +1,5 @@
+--NEEDS TO FIX ( AUTO PLACE FILTER, SELL FILTER)
+
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -907,8 +909,8 @@ local ShopSection2 = Tab3:Section({
 })
 
 UIElements.SelectedSellRarities = ShopSection2:Dropdown({
-	Title = "Select Rarities to Sell",
-	Desc = "Choose which pet rarities to sell",
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to auto sell",
 	Values = RarityNames,
 	Multi = true,
 	Value = ConfigData.SelectedSellRarities,
@@ -922,7 +924,8 @@ UIElements.SelectedSellRarities = ShopSection2:Dropdown({
 })
 
 UIElements.SelectedPetToSell = ShopSection2:Dropdown({
-	Title = "Select Pets to Sell",
+	Title = "Category Filter",
+    Desc = "Choose category to auto sell",
 	Values = PET_LIST,
 	Multi = true,
 	Value = ConfigData.SelectedPetToSell,
@@ -937,7 +940,7 @@ UIElements.SelectedPetToSell = ShopSection2:Dropdown({
 
 UIElements.AutoSellPet = ShopSection2:Toggle({
 	Title = "Auto Sell Pets",
-	Desc = "Automatically sell selected pets (turn off equip best)",
+	Desc = "Automatically sell selected pets",
 	Value = ConfigData.AutoSellPet,
 
 	Callback = function(value)
@@ -949,7 +952,7 @@ UIElements.AutoSellPet = ShopSection2:Toggle({
 
 UIElements.AutoSellAllPets = ShopSection2:Toggle({
 	Title = "Auto Sell All Pets",
-	Desc = "Automatically sell all pets in inventory (turn off equip best)",
+	Desc = "Automatically sell all pets in inventory",
 	Value = ConfigData.AutoSellAllPets,
 
 	Callback = function(value)
@@ -1008,8 +1011,8 @@ local VisualSection = Tab4:Section({
 })
 
 UIElements.SelectedESPRarities = VisualSection:Dropdown({
-	Title = "Select ESP Rarity",
-	Desc = "Choose which egg rarities to display ESP",
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to display ESP",
 	Values = RarityNames,
 	Multi = true,
 	Value = ConfigData.SelectedESPRarities,
@@ -1023,8 +1026,8 @@ UIElements.SelectedESPRarities = VisualSection:Dropdown({
 })
 
 UIElements.SelectedESPEggs = VisualSection:Dropdown({
-	Title = "Select ESP Egg",
-	Desc = "Choose which eggs to display ESP",
+	Title = "Category Filter",
+	Desc = "Choose category to display ESP",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedESPEggs,
