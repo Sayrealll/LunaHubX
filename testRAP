@@ -1384,6 +1384,30 @@ end
 
 local ActiveESP = {}
 
+-- Function para makuha ang color batay sa rarity
+local function GetEggColor(eggName)
+	local eggData = Eggs_mData[eggName]
+	local rarity = eggData and eggData.Rarity or "Common"
+
+	if rarity == "Common" then
+		return Color3.fromRGB(255, 255, 255) -- White
+	elseif rarity == "Rare" then
+		return Color3.fromRGB(85, 170, 255) -- Blue
+	elseif rarity == "Epic" then
+		return Color3.fromRGB(170, 85, 255) -- Purple
+	elseif rarity == "Legendary" then
+		return Color3.fromRGB(255, 215, 0) -- Gold / Yellow
+	elseif rarity == "Mythic" then
+		return Color3.fromRGB(255, 50, 50) -- Red
+	elseif rarity == "Divine" then
+		return Color3.fromRGB(255, 255, 153) -- Light Yellow
+	elseif rarity == "Ethereal" or rarity == "Eternal" then
+		return Color3.fromRGB(255, 0, 127) -- Neon Pink/Eternal
+	end
+
+	return Color3.fromRGB(255, 255, 255) -- Default White
+end
+
 local function RemoveESP(Egg)
 	if ActiveESP[Egg] then
 		if ActiveESP[Egg].Billboard then
@@ -1405,6 +1429,8 @@ local function CreateESP(Egg)
 	local EggPart = GetEggPart(Egg)
 	if not EggPart then return end
 
+	local textColor = GetEggColor(Egg.Name)
+
 	local Billboard = Instance.new("BillboardGui")
 	Billboard.Name = "LunaEggESP"
 	Billboard.Adornee = EggPart
@@ -1416,7 +1442,7 @@ local function CreateESP(Egg)
 	local TextLabel = Instance.new("TextLabel")
 	TextLabel.Size = UDim2.new(1, 0, 1, 0)
 	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TextLabel.TextColor3 = textColor
 	TextLabel.TextStrokeTransparency = 0
 	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	TextLabel.Font = Enum.Font.SourceSansBold
@@ -1723,7 +1749,7 @@ end)
 
 
 
--- Safe Auto Sell All Pets Function
+-- Auto Sell All Pets Function
 local function ForceTeleportAndSellAllPets()
     -- Safety Check kung existing ang NPC at Character
     if not RichieNPC or not RichieNPC.Parent then return end
@@ -1734,7 +1760,6 @@ local function ForceTeleportAndSellAllPets()
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- 1. Teleport sa harap ni Richie
     local success, err = pcall(function()
         local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
         hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
@@ -1743,7 +1768,6 @@ local function ForceTeleportAndSellAllPets()
 
     task.wait(0.5)
 
-    -- 2. Open Dialogue
     local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
     if prompt and typeof(fireproximityprompt) == "function" then
         fireproximityprompt(prompt)
@@ -1751,26 +1775,22 @@ local function ForceTeleportAndSellAllPets()
 
     task.wait(0.6)
 
-    -- 3. Select Option: "I would like to sell my pets"
     if DialogueSelect then
         DialogueSelect:FireServer(RichieNPC, "I would like to sell my pets")
         
         task.wait(0.6)
 
-        -- 4. Select "Yes" sa confirmation
         DialogueSelect:FireServer(RichieNPC, "Yes")
     end
 
     task.wait(0.5)
 
-    -- 5. Confirm Request Remote (kung may Request ID)
     if latestRequestId and ConfirmRequest then
         ConfirmRequest:FireServer(latestRequestId, true, "Yes")
         latestRequestId = nil
     end
 end
 
--- Main Auto-Sell All Loop Thread
 task.spawn(function()
     while true do
         if AutoSellAllPets then
@@ -1788,7 +1808,6 @@ end)
 
 
 
--- AUTO PLACE EGG LOOP
 local MAX_PLANTED_EGGS = 10
 
 local function GetRandomPlotPosition(Baseplate)
