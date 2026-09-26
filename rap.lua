@@ -2054,6 +2054,8 @@ local function GetPlotPlacementPos(rootPart, index)
 end
 
 local function PlaceBestPets()
+	if AutoSellPet or AutoSellAllPets then return end
+
 	local char = LocalPlayer.Character
 	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
@@ -2086,6 +2088,8 @@ local function PlaceBestPets()
 	end
 
 	for slotIndex, pet in ipairs(bestPetsToPlace) do
+		if AutoSellPet or AutoSellAllPets then break end
+
 		if not pet.Placed then
 			local petTool = pet.Tool
 			if not petTool or not petTool.Parent then
@@ -2114,16 +2118,16 @@ local function PlaceBestPets()
 		end
 	end
 
-	if LocalPlayer:GetAttribute("IsRiding") ~= true then
+	if LocalPlayer:GetAttribute("IsRiding") ~= true and not AutoSellPet and not AutoSellAllPets then
 		humanoid:UnequipTools()
 	end
 end
 
 task.spawn(function()
 	while true do
-		if AutoEquipBestPet then
+		if AutoEquipBestPet and not AutoSellPet and not AutoSellAllPets then
 			pcall(function() PlaceBestPets() end)
-			task.wait(3)
+			task.wait(10)
 		else
 			task.wait(0.5)
 		end
