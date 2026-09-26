@@ -1,4 +1,4 @@
---NEEDS TO FIX ( AUTO PLACE FILTER, SELL FILTER)
+--NEEDS TO FIX ( AUTO FARM w Noclip)
 
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -223,6 +223,41 @@ local function SetUIValue(element, newValue)
 			element.Value = newValue
 		end
 	end)
+end
+
+--==================================================
+-- NO CLIP SYSTEM FOR AUTO FARM
+--==================================================
+local NoclipEnabled = false
+local NoclipConnection = nil
+
+local function SetNoclip(state)
+	NoclipEnabled = state
+	if NoclipEnabled then
+		if not NoclipConnection then
+			NoclipConnection = RunService.Stepped:Connect(function()
+				if NoclipEnabled and LocalPlayer.Character then
+					for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.CanCollide = false
+						end
+					end
+				end
+			end)
+		end
+	else
+		if NoclipConnection then
+			NoclipConnection:Disconnect()
+			NoclipConnection = nil
+		end
+		if LocalPlayer.Character then
+			for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+					part.CanCollide = true
+				end
+			end
+		end
+	end
 end
 
 --==================================================
@@ -523,7 +558,7 @@ local PET_LIST = {
     "Lion", "Ostrich", "Fox", "Boar", "Giraffe",
     "Cheetah", "Monkey", "Unicorn", "Flamingo", "TRex",
     "Phoenix", "Peacock", "Cerberus", "Komodo", "Kitsune",
-    "Dragon", "Griffin"
+    "Dragon", "Griffin", "Volkaris"
 }
 
 
@@ -554,7 +589,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.6",
+	Title = "v.1.0.0.5",
 	Color = "ElementBackground",
 })
 
@@ -650,6 +685,9 @@ UIElements.AutoPickup = EggSection:Toggle({
 		AutoPickup = value
 		ConfigData.AutoPickup = value
 		SaveConfig()
+		if not value then
+			SetNoclip(false)
+		end
 	end,
 })
 
@@ -2685,19 +2723,25 @@ task.spawn(function()
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
+				SetNoclip(true) -- Turn ON Noclip when egg is detected
+				
 				if TeleportToEgg(Egg) then
-					task.wait(0.5)--delay after tp
+					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 0.5)--delay after pick up
+					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
-					task.wait(0.5)--delay to get the next egg
+					task.wait(0.5) -- delay to get the next egg
 				else
 					task.wait(0.1)
 				end
+
+				SetNoclip(false) -- Turn OFF Noclip after returning to plot
 			else
+				SetNoclip(false) -- Turn OFF Noclip if no egg is detected
 				task.wait(0.2)
 			end
 		else
+			SetNoclip(false) -- Turn OFF Noclip if AutoPickup is off
 			task.wait(0.2)
 		end
 		task.wait(0.03)
