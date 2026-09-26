@@ -1,4 +1,4 @@
---NEEDS TO FIX ( AUTO PLACE FILTER, SELL FILTER, ESP (NAMES)
+--NEEDS TO FIX ( AUTO PLACE FILTER, SELL FILTER)
 
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
