@@ -1273,6 +1273,7 @@ end
 
 local SettingsSection = Tab7:Section({
 	Title = "Performance",
+	Icon = "zap",
 	Box = true,
 	BoxBorder = true,
 })
@@ -1291,11 +1292,11 @@ UIElements.FPSBoost = SettingsSection:Toggle({
 })
 
 local SettingsSection1 = Tab7:Section({
-	Title = "Severs",
+	Title = "Servers",
+	Icon = "globe",
 	Box = true,
 	BoxBorder = true,
 })
-
 SettingsSection1:Button({
 	Title = "Rejoin",
 	Justify = "Center",
