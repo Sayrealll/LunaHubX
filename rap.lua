@@ -450,6 +450,7 @@ local EggNames = {
 }
 
 local RarityNames = {
+    "Secret",
 	"Ethereal",
 	"Divine",
 	"Mythic",
@@ -515,12 +516,14 @@ local FoodShop = {
 }
 
 local PET_LIST = {
-    "Axolotl", "Capybara", "Cerberus", "Cheetah", "Chicken",
-    "Crocodile", "Deer", "Dragon", "Elephant", "Fox",
-    "Giraffe", "Gorilla", "Horse", "Kangaroo", "Kitsune",
-    "Koala", "Lion", "Ostrich", "Panda", "Phoenix",
-    "Pig", "Shark", "Sloth", "Snail", "Snake",
-    "Spider", "TRex", "Turtle", "Unicorn", "Wolf"
+    "Snail", "Turtle", "Sloth", "Axolotl", "Koala",
+    "Capybara", "Chicken", "Pig", "Elephant", "Panda",
+    "Kangaroo", "Deer", "Spider", "Crocodile", "Gorilla",
+    "Snake", "Horse", "Wolf", "Shark", "Platypus",
+    "Lion", "Ostrich", "Fox", "Boar", "Giraffe",
+    "Cheetah", "Monkey", "Unicorn", "Flamingo", "TRex",
+    "Phoenix", "Peacock", "Cerberus", "Komodo", "Kitsune",
+    "Dragon", "Griffin"
 }
 
 
