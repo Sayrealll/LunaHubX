@@ -561,7 +561,7 @@ local Tab2 = Window:Tab({ Title = "FARM", Icon = "egg" })
 local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 local Tab5 = Window:Tab({ Title = "Tracker", Icon = "radar" })
-local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "pen" })
+local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "file-cog" })
 local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 --==================================================
@@ -647,9 +647,18 @@ UIElements.AutoPickup = EggSection:Toggle({
 	end,
 })
 
-UIElements.SelectedPlaceRarities = EggSection:Dropdown({
-	Title = "Select Rarities to Auto Place",
-	Desc = "Choose which egg rarities to place in your plot",
+
+
+local EggSection1 = Tab2:Section({
+	Title = "Auto Place & Hatch",
+	Icon = "sparkles",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.SelectedPlaceRarities = EggSection1:Dropdown({
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to place in your plot",
 	Values = RarityNames,
 	Multi = true,
 	Value = ConfigData.SelectedPlaceRarities,
@@ -661,9 +670,9 @@ UIElements.SelectedPlaceRarities = EggSection:Dropdown({
 	end,
 })
 
-UIElements.SelectedPlaceEgg = EggSection:Dropdown({
-	Title = "Select Eggs to Auto Place",
-	Desc = "Choose which eggs to place in your plot",
+UIElements.SelectedPlaceEgg = EggSection1:Dropdown({
+	Title = "Category Filter",
+	Desc = "Choose category to place in your plot",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedPlaceEgg,
@@ -675,7 +684,7 @@ UIElements.SelectedPlaceEgg = EggSection:Dropdown({
 	end,
 })
 
-UIElements.AutoPlaceEgg = EggSection:Toggle({
+UIElements.AutoPlaceEgg = EggSection1:Toggle({
 	Title = "Auto Place Eggs",
 	Desc = "Automatically place the selected eggs in your plot",
 	Value = ConfigData.AutoPlaceEgg,
@@ -687,7 +696,7 @@ UIElements.AutoPlaceEgg = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoHatchEgg = EggSection:Toggle({
+UIElements.AutoHatchEgg = EggSection1:Toggle({
 	Title = "Auto Hatch Egg",
 	Desc = "Automatically hatch ready eggs in your plot",
 	Value = ConfigData.AutoHatchEgg,
@@ -699,7 +708,7 @@ UIElements.AutoHatchEgg = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoEquipBestPet = EggSection:Toggle({
+UIElements.AutoEquipBestPet = EggSection1:Toggle({
 	Title = "Auto Equip Best Pet",
     Desc = "Automatically equip the best pet (go to your plot)",
 	Value = ConfigData.AutoEquipBestPet,
@@ -711,7 +720,15 @@ UIElements.AutoEquipBestPet = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
+
+local EggSection2 = Tab2:Section({
+	Title = "Upgrades",
+	Icon = "trending-up",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.AutoUpgradeHatchLuck = EggSection2:Toggle({
 	Title = "Auto Upgrade Hatch Luck",
 	Desc = "Automatically upgrade hatch luck by 1x",
 	Value = ConfigData.AutoUpgradeHatchLuck,
@@ -723,7 +740,7 @@ UIElements.AutoUpgradeHatchLuck = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
+UIElements.AutoUpgradeHatchLuckMax = EggSection2:Toggle({
 	Title = "Auto Upgrade Hatch Luck (Max)",
 	Desc = "Automatically upgrade hatch luck by max",
 	Value = ConfigData.AutoUpgradeHatchLuckMax,
@@ -735,7 +752,7 @@ UIElements.AutoUpgradeHatchLuckMax = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoRebirth = EggSection:Toggle({
+UIElements.AutoRebirth = EggSection2:Toggle({
 	Title = "Auto Rebirth",
 	Value = ConfigData.AutoRebirth,
 
@@ -746,7 +763,7 @@ UIElements.AutoRebirth = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoClaimIndex = EggSection:Toggle({
+UIElements.AutoClaimIndex = EggSection2:Toggle({
 	Title = "Auto Claim Index Reward",
 	Value = ConfigData.AutoClaimIndex,
 
@@ -757,7 +774,7 @@ UIElements.AutoClaimIndex = EggSection:Toggle({
 	end,
 })
 
-UIElements.AutoClaimOffline = EggSection:Toggle({
+UIElements.AutoClaimOffline = EggSection2:Toggle({
 	Title = "Auto Claim Offline Rewards",
 	Value = ConfigData.AutoClaimOffline,
 
@@ -1002,14 +1019,14 @@ UIElements.ESPEnabled = VisualSection:Toggle({
 --==================================================
 
 local EggsSection = Tab5:Section({
-	Title = "Active Eggs",
-	Icon = "list",
+	Title = "Egg Tracker",
+	Icon = "radar",
 	Box = true,
 	BoxBorder = true,
 })
 
 local LiveEggParagraph = EggsSection:Paragraph({
-	Title = "Spawned Eggs (0)",
+	Title = "Tracked Eggs (0)",
 	Desc = "Scanning workspace for rendered eggs...",
 })
 
