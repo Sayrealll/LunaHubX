@@ -1,3 +1,5 @@
+--NEEDS TO FIX ( AUTO PLACE FILTER, SELL FILTER, ESP (NAMES)
+
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -1008,8 +1010,8 @@ local VisualSection = Tab4:Section({
 })
 
 UIElements.SelectedESPRarities = VisualSection:Dropdown({
-	Title = "Select ESP Rarity",
-	Desc = "Choose which egg rarities to display ESP",
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to display ESP",
 	Values = RarityNames,
 	Multi = true,
 	Value = ConfigData.SelectedESPRarities,
@@ -1023,8 +1025,8 @@ UIElements.SelectedESPRarities = VisualSection:Dropdown({
 })
 
 UIElements.SelectedESPEggs = VisualSection:Dropdown({
-	Title = "Select ESP Egg",
-	Desc = "Choose which eggs to display ESP",
+	Title = "Category Filter",
+	Desc = "Choose category to display ESP",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedESPEggs,
