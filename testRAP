@@ -123,6 +123,7 @@ local isResetting = false
 
 local ConfigData = {
 	SelectedEggs = {},
+	SelectedRarities = {},
 	SelectedPlaceEgg = {},
 	AutoPickup = false,
 	AutoPlaceEgg = false,
@@ -175,6 +176,7 @@ local ThemeName = "Dark"
 
 -- MULTI-SELECT TABLES
 local SelectedEggs = ConfigData.SelectedEggs or {}
+local SelectedRarities = ConfigData.SelectedRarities or {}
 local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
 local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
 local SelectedGear = ConfigData.SelectedGear or {}
@@ -438,6 +440,16 @@ local EggNames = {
 	"White Egg"
 }
 
+local RarityNames = {
+	"Ethereal",
+	"Divine",
+	"Mythic",
+	"Legendary",
+	"Epic",
+	"Rare",
+	"Common"
+}
+
 --==================================================
 -- SHOP STOCK SYSTEM
 --==================================================
@@ -506,6 +518,11 @@ local PET_LIST = {
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
+end
+
+local RarityPriority = {}
+for Index, Name in ipairs(RarityNames) do
+	RarityPriority[Name] = Index
 end
 
 --==================================================
@@ -582,9 +599,24 @@ local EggSection = Tab2:Section({
 	BoxBorder = true,
 })
 
+UIElements.SelectedRarities = EggSection:Dropdown({
+	Title = "Rarity Filter",
+	Desc = "Choose rarities to auto farm",
+	Values = RarityNames,
+	Multi = true,
+	Value = ConfigData.SelectedRarities,
+	AllowNone = true,
+
+	Callback = function(value)
+		SelectedRarities = value
+		ConfigData.SelectedRarities = value
+		SaveConfig()
+	end,
+})
+
 UIElements.SelectedEggs = EggSection:Dropdown({
-	Title = "Select Egg",
-	Desc = "Choose which eggs to auto farm",
+	Title = "Category Filter",
+	Desc = "Choose priority egg names to auto farm",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedEggs,
@@ -1003,6 +1035,7 @@ ConfigSection:Button({
 		end
 
 		SelectedEggs = {}
+		SelectedRarities = {}
 		SelectedPlaceEgg = {}
         SelectedPetToSell = {}
 		SelectedFavPet = {}
@@ -1028,6 +1061,7 @@ ConfigSection:Button({
 
 		ConfigData = {
 			SelectedEggs = {},
+			SelectedRarities = {},
 			SelectedPlaceEgg = {},
 			AutoPickup = false,
 			AutoPlaceEgg = false,
@@ -1052,6 +1086,7 @@ ConfigSection:Button({
 			AutoFavoritePet = false
 		}
 
+		SetUIValue(UIElements.SelectedRarities, {})
 		SetUIValue(UIElements.SelectedEggs, {})
 		SetUIValue(UIElements.AutoPickup, false)
 		SetUIValue(UIElements.SelectedPlaceEgg, {})
@@ -1234,28 +1269,57 @@ end
 
 local function FindSelectedEgg()
 	local BestEgg = nil
-	local HighestPriority = math.huge
+	local HighestRarityPriority = math.huge
+	local HighestEggPriority = math.huge
 
 	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
 		local Name = Egg.Name
-		local IsSelected = false
+		local eggData = Eggs_mData[Name]
+		local Rarity = eggData and eggData.Rarity or "Common"
 
+		local IsNameSelected = false
+		local IsRaritySelected = false
+
+		-- Check if Name selected
 		if type(SelectedEggs) == "table" then
 			for _, SelectedName in ipairs(SelectedEggs) do
 				if SelectedName == Name then
-					IsSelected = true
+					IsNameSelected = true
 					break
 				end
 			end
 		elseif SelectedEggs == Name then
-			IsSelected = true
+			IsNameSelected = true
 		end
 
-		if IsSelected then
-			local Priority = EggPriority[Name] or 999
-			if Priority < HighestPriority then
-				HighestPriority = Priority
+		-- Check if Rarity selected
+		if type(SelectedRarities) == "table" then
+			for _, SelectedRarity in ipairs(SelectedRarities) do
+				if SelectedRarity == Rarity then
+					IsRaritySelected = true
+					break
+				end
+			end
+		elseif SelectedRarities == Rarity then
+			IsRaritySelected = true
+		end
+
+		-- Priority Calculations:
+		-- Priority 1: Selected Rarity
+		-- Priority 2: Selected Egg Name
+		if IsRaritySelected or IsNameSelected then
+			local currentRarityPrio = IsRaritySelected and (RarityPriority[Rarity] or 99) or 999
+			local currentEggPrio = IsNameSelected and (EggPriority[Name] or 999) or 9999
+
+			if currentRarityPrio < HighestRarityPriority then
+				HighestRarityPriority = currentRarityPrio
+				HighestEggPriority = currentEggPrio
 				BestEgg = Egg
+			elseif currentRarityPrio == HighestRarityPriority then
+				if currentEggPrio < HighestEggPriority then
+					HighestEggPriority = currentEggPrio
+					BestEgg = Egg
+				end
 			end
 		end
 	end
@@ -1379,7 +1443,7 @@ local function WaitForEggPickup(Egg, Timeout)
 end
 
 --==================================================
--- ESP SYSTEM
+-- ESP SYSTEM WITH RARITY COLORS
 --==================================================
 
 local ActiveESP = {}
@@ -1749,7 +1813,7 @@ end)
 
 
 
--- Auto Sell All Pets Function
+-- Safe Auto Sell All Pets Function
 local function ForceTeleportAndSellAllPets()
     -- Safety Check kung existing ang NPC at Character
     if not RichieNPC or not RichieNPC.Parent then return end
@@ -1760,6 +1824,7 @@ local function ForceTeleportAndSellAllPets()
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
+    -- 1. Teleport sa harap ni Richie
     local success, err = pcall(function()
         local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
         hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
@@ -1768,6 +1833,7 @@ local function ForceTeleportAndSellAllPets()
 
     task.wait(0.5)
 
+    -- 2. Open Dialogue
     local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
     if prompt and typeof(fireproximityprompt) == "function" then
         fireproximityprompt(prompt)
@@ -1775,22 +1841,26 @@ local function ForceTeleportAndSellAllPets()
 
     task.wait(0.6)
 
+    -- 3. Select Option: "I would like to sell my pets"
     if DialogueSelect then
         DialogueSelect:FireServer(RichieNPC, "I would like to sell my pets")
         
         task.wait(0.6)
 
+        -- 4. Select "Yes" sa confirmation
         DialogueSelect:FireServer(RichieNPC, "Yes")
     end
 
     task.wait(0.5)
 
+    -- 5. Confirm Request Remote (kung may Request ID)
     if latestRequestId and ConfirmRequest then
         ConfirmRequest:FireServer(latestRequestId, true, "Yes")
         latestRequestId = nil
     end
 end
 
+-- Main Auto-Sell All Loop Thread
 task.spawn(function()
     while true do
         if AutoSellAllPets then
@@ -1808,6 +1878,7 @@ end)
 
 
 
+-- AUTO PLACE EGG LOOP
 local MAX_PLANTED_EGGS = 10
 
 local function GetRandomPlotPosition(Baseplate)
