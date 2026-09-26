@@ -1852,72 +1852,89 @@ end)
 
 
 
--- AUTO SELL PET LOOP
-local function EquipTargetPet(petTool)
+--==================================================
+-- AUTO SELL PET LOOP (FIXED TELEPORT)
+--==================================================
+
+-- Helper function para i-equip ang pet nang maayos
+local function EquipTargetPetForSell(petTool)
     if not petTool or not petTool:IsA("Tool") then return false end
 
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
     local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
 
-    if not character or not backpack or not humanoid then return false end
+    if not humanoid or not backpack then return false end
 
+    -- Kung hawak na, okay na
     if petTool.Parent == character then
         return true
     end
 
+    -- Kung nasa backpack, i-equip
     if petTool.Parent == backpack then
         humanoid:EquipTool(petTool)
-        task.wait(0.3)
-        return true
+        
+        -- Maghintay sandali hanggang ma-equip (timeout pagkatapos ng 1 segundo)
+        local startTime = os.clock()
+        while petTool.Parent ~= character and (os.clock() - startTime) < 1 do
+            task.wait(0.05)
+        end
+        
+        return petTool.Parent == character
     end
 
     return false
 end
 
+-- Function para kunin ang mga pets na ibebenta (Pets lang, no Eggs)
 local function GetTargetPetsToSell()
     local targetTools = {}
     local containers = {LocalPlayer:FindFirstChildOfClass("Backpack"), LocalPlayer.Character}
 
-    local targetPets = {}
-    if type(SelectedPetToSell) == "table" then
-        targetPets = SelectedPetToSell
-    elseif type(SelectedPetToSell) == "string" and SelectedPetToSell ~= "" then
-        targetPets = {SelectedPetToSell}
-    end
+    -- Siguraduhing tables ang mga napili
+    local targetPets = type(SelectedPetToSell) == "table" and SelectedPetToSell or {}
+    local targetRarities = type(SelectedSellRarities) == "table" and SelectedSellRarities or {}
 
-    local targetRarities = {}
-    if type(SelectedSellRarities) == "table" then
-        targetRarities = SelectedSellRarities
-    elseif type(SelectedSellRarities) == "string" and SelectedSellRarities ~= "" then
-        targetRarities = {SelectedSellRarities}
-    end
+    -- Gumawa ng set para sa mas mabilis na pag-check
+    local petSet = {}
+    for _, name in ipairs(targetPets) do petSet[string.lower(name)] = true end
+    
+    local raritySet = {}
+    for _, rarity in ipairs(targetRarities) do raritySet[string.lower(rarity)] = true end
 
     for _, container in ipairs(containers) do
         if container then
             for _, child in ipairs(container:GetChildren()) do
                 if child:IsA("Tool") then
+                    -- Kunin ang malinis na pangalan (walang [Level])
                     local rawName = child:GetAttribute("PetName") or child.Name
                     local petName = string.match(rawName, "^(.-) %[") or rawName
+                    
+                    ---------------------------------------------------------
+                    -- FILTER: Check kung valid na Pet ito (gamit ang Pets_m)
+                    ---------------------------------------------------------
                     local petConfig = Pets_m[petName]
-                    local petRarity = petConfig and petConfig.Rarity or child:GetAttribute("Rarity") or "Common"
-
-                    local isPetSelected = false
-                    for _, name in ipairs(targetPets) do
-                        if string.lower(name) == string.lower(petName) then
-                            isPetSelected = true
-                            break
-                        end
+                    
+                    if not petConfig then
+                        continue -- Kung wala sa Pets_m, HINDI ito pet (malamang egg), kaya skip.
                     end
+                    ---------------------------------------------------------
 
-                    local isRaritySelected = false
-                    for _, rarity in ipairs(targetRarities) do
-                        if string.lower(rarity) == string.lower(petRarity) then
-                            isRaritySelected = true
-                            break
-                        end
-                    end
+                    -- Safety: Huwag ibenta kung favorite
+                    if child:GetAttribute("IsFavorite") == true then continue end
 
+                    local petRarity = petConfig.Rarity or child:GetAttribute("Rarity") or "Common"
+
+                    -- Check Category Filter
+                    local isPetSelected = petSet[string.lower(petName)] or false
+
+                    -- Check Rarity Filter
+                    local isRaritySelected = raritySet[string.lower(petRarity)] or false
+
+                    -- Isasama lang kung valid pet AT (tumugma sa category OR rarity filter)
                     if isPetSelected or isRaritySelected then
                         table.insert(targetTools, child)
                     end
@@ -1929,58 +1946,92 @@ local function GetTargetPetsToSell()
     return targetTools
 end
 
+-- Main function para sa pag-teleport at pagbenta
 local function ForceTeleportAndSellPets()
+    -- 1. Kunin muna ang listahan ng ibebenta
     local targetTools = GetTargetPetsToSell()
     if #targetTools == 0 then return end
 
+    -- 2. Safety check para sa NPC at Character
+    if not RichieNPC or not RichieNPC.Parent then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- 3. Loop sa bawat pet na ibebenta
     for _, petTool in ipairs(targetTools) do
+        -- Check kung naka-on pa ang toggle
         if not AutoSellPet then break end
+        
+        -- Double check kung valid pet pa rin (baka nawala habang nasa loop)
+        if not petTool or not petTool.Parent then continue end
+        local rawName = petTool:GetAttribute("PetName") or petTool.Name
+        local petName = string.match(rawName, "^(.-) %[") or rawName
+        if not Pets_m[petName] then continue end
 
-        local isEquipped = EquipTargetPet(petTool)
-        if isEquipped then
-            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local hrp = character:WaitForChild("HumanoidRootPart", 2)
+        -- 4. I-equip ang pet
+        local equipped = EquipTargetPetForSell(petTool)
+        
+        -- 5. Kung na-equip, mag-teleport at ibenta
+        if equipped then
+            -- Refresh HRP reference
+            hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
 
-            if hrp then
+            -- TELEPORT LOGIC (Pinatibay)
+            pcall(function()
                 local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
-                hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
-                task.wait(0.3)
+                -- Mag-tp sa harap ni Richie
+                hrp.CFrame = targetCFrame * CFrame.new(0, 0, -4) 
+            end)
+            
+            -- Maghintay ng kaunti para makarating ang server
+            task.wait(0.3)
 
-                local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
-                if prompt and typeof(fireproximityprompt) == "function" then
-                    fireproximityprompt(prompt)
-                end
-
-                task.wait(0.5)
-
-                DialogueSelect:FireServer(RichieNPC, "I would like to sell this")
-
-                task.wait(0.3)
-
-                if latestRequestId then
-                    ConfirmRequest:FireServer(latestRequestId, true, "Yes")
-                    latestRequestId = nil
-                end
-                
-                task.wait(0.5)
+            -- INTERACT LOGIC
+            local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt and typeof(fireproximityprompt) == "function" then
+                fireproximityprompt(prompt)
+                task.wait(0.4) -- Hintayin bumukas ang dialogue
             end
+
+            -- SELL LOGIC
+            if DialogueSelect then
+                DialogueSelect:FireServer(RichieNPC, "I would like to sell this")
+                task.wait(0.3) -- Hintayin ang request ID
+            end
+
+            -- CONFIRM LOGIC
+            if latestRequestId and ConfirmRequest then
+                ConfirmRequest:FireServer(latestRequestId, true, "Yes")
+                -- Linisin ang request ID para sa susunod
+                latestRequestId = nil 
+            end
+            
+            -- Delay bawat benta para sa stability
+            task.wait(0.4) 
         end
     end
 end
 
+-- Main Loop Thread
 task.spawn(function()
     while true do
         if AutoSellPet then
+            -- Gumamit ng pcall para hindi mag-crash ang buong script kung may error sa isang cycle
             pcall(function()
                 ForceTeleportAndSellPets()
             end)
-            task.wait(4)
+            -- Maghintay bago ang susunod na scan cycle
+            task.wait(2) 
         else
             task.wait(0.5)
         end
     end
 end)
-
 
 
 
@@ -2051,7 +2102,9 @@ end)
 
 
 
--- AUTO PLACE EGG LOOP
+--==================================================
+-- AUTO PLACE EGG LOOP (FIXED)
+--==================================================
 local MAX_PLANTED_EGGS = 10
 
 local function GetRandomPlotPosition(Baseplate)
@@ -2090,6 +2143,15 @@ local function GetTargetEggsToPlace()
                 if child:IsA("Tool") then
                     local eggName = child.Name
                     local eggData = Eggs_mData[eggName]
+                    
+                    ---------------------------------------------------------
+                    -- FIX: Check kung valid na Egg ito bago magpatuloy
+                    ---------------------------------------------------------
+                    if not eggData then 
+                        continue -- Kung wala sa Eggs_mData, hindi ito egg (malamang pet), kaya skip.
+                    end
+                    ---------------------------------------------------------
+
                     local eggRarity = eggData and eggData.Rarity or "Common"
 
                     local isNameSelected = false
@@ -2108,6 +2170,7 @@ local function GetTargetEggsToPlace()
                         end
                     end
 
+                    -- Isasama lang kung valid egg AT tumugma sa filter
                     if isNameSelected or isRaritySelected then
                         table.insert(targetEggTools, child)
                     end
@@ -2170,14 +2233,20 @@ task.spawn(function()
                 if not EggPlacedRemote then return end
 
                 for _, EggTool in ipairs(TargetTools) do
+                    -- Double check bago mag-equip para sa performance
+                    if not AutoPlaceEgg then break end
+                    
                     EggsFolder = MyPlot:FindFirstChild("Eggs")
                     EggCount = EggsFolder and #EggsFolder:GetChildren() or 0
 
                     if EggCount >= MAX_PLANTED_EGGS then break end
 
+                    -- Siguraduhing egg pa rin ang hawak (baka na-sell o nawala habang naghihintay)
+                    if not EggTool or not EggTool.Parent or not Eggs_mData[EggTool.Name] then continue end
+
                     if EggTool.Parent ~= Character then
                         Humanoid:EquipTool(EggTool)
-                        task.wait(0.1)
+                        task.wait(0.15) -- Bahagyang taas ng wait para sa stability
                     end
 
                     if EggTool.Parent == Character then
@@ -2195,7 +2264,6 @@ task.spawn(function()
         end
     end
 end)
-
 
 
 
