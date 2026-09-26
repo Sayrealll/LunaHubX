@@ -582,7 +582,7 @@ Tab1:Paragraph({
 		{
 			Title = "Discord",
 			Callback = function()
-				local DiscordLink = "discord.gg/Ev8k5RAU3"
+				local DiscordLink = "discord.gg/vENCWk39f7"
 
 				if setclipboard then
 					setclipboard(DiscordLink)
