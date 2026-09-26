@@ -601,7 +601,7 @@ local EggSection = Tab2:Section({
 
 UIElements.SelectedRarities = EggSection:Dropdown({
 	Title = "Rarity Filter",
-	Desc = "Choose rarities to auto farm",
+	Desc = "Choose rarity to auto farm",
 	Values = RarityNames,
 	Multi = true,
 	Value = ConfigData.SelectedRarities,
@@ -616,7 +616,7 @@ UIElements.SelectedRarities = EggSection:Dropdown({
 
 UIElements.SelectedEggs = EggSection:Dropdown({
 	Title = "Category Filter",
-	Desc = "Choose priority egg names to auto farm",
+	Desc = "Choose category to auto farm",
 	Values = EggNames,
 	Multi = true,
 	Value = ConfigData.SelectedEggs,
