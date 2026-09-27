@@ -609,7 +609,7 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 -- TAB 1 (HOME)
 --==================================================
 
-Tab1:Paragraph({
+    Tab1:Paragraph({
 	Title = "Discord",
 	Desc = "Join our Discord Community",
 
@@ -633,6 +633,41 @@ Tab1:Paragraph({
 			end,
 		},
 	},
+})
+
+    local HomeSection1 = Tab1:Section({
+	Title = "Teleport",
+	Icon = "compass",
+	Box = true,
+	BoxBorder = true,
+})
+
+    HomeSection1:Button({
+	Title = "TP TO VOLCANO",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char then
+			local volcanoCFrame = CFrame.new(-5342.37891, 40913.4062, -3579.96167, 0.198189646, 1.90688478e-08, 0.980163693, 7.67927375e-08, 1, -3.49822926e-08, -0.980163693, 8.22025825e-08, 0.198189646)
+			char:PivotTo(volcanoCFrame)
+		end
+	end,
+})
+
+   HomeSection1:Button({
+	Title = "TP TO MY PLOT",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local teleportRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") 
+			and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Game") 
+			and game:GetService("ReplicatedStorage").Remotes.Game:FindFirstChild("TeleportToPlot")
+
+		if teleportRemote then
+			teleportRemote:FireServer()
+		end
+	end,
 })
 
 --==================================================
@@ -2649,7 +2684,7 @@ local function CanRebirth()
 	local char = LocalPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local mountJoint = hrp and hrp:FindFirstChild("PetMountJoint")
-	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Part1.Parent)
+	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Parent)
 
 	if mountedPart then
 		local petAttr = mountedPart:GetAttribute("PetName") or mountedPart.Name
