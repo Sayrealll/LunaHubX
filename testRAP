@@ -701,6 +701,18 @@ HomeSection1:Button({
 	end,
 })
 
+HomeSection1:Button({
+	Title = "TP TO VOLCANO",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char then
+			local volcanoEntrance1CFrame = CFrame.new(-4950.80811, 41299.0234, -3670.99902, -0.79130137, -0.00290792645, 0.61141938, 8.83693652e-09, 0.999988675, 0.00475598359, -0.611426294, 0.0037634219, -0.791292429)
+			char:PivotTo(volcanoEntrance1CFrame)
+		end
+	end,
+})
 --==================================================
 -- TAB 2 (FARM)
 --==================================================
