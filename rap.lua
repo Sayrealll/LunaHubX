@@ -589,7 +589,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.0.5",
+	Title = "v.1.0.0.6",
 	Color = "ElementBackground",
 })
 
@@ -609,7 +609,7 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 -- TAB 1 (HOME)
 --==================================================
 
-Tab1:Paragraph({
+    Tab1:Paragraph({
 	Title = "Discord",
 	Desc = "Join our Discord Community",
 
@@ -633,6 +633,55 @@ Tab1:Paragraph({
 			end,
 		},
 	},
+})
+
+    local HomeSection1 = Tab1:Section({
+	Title = "Teleport",
+	Icon = "compass",
+	Box = true,
+	BoxBorder = true,
+})
+
+HomeSection1:Button({
+	Title = "TP TO MARKET",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char then
+			local marketCFrame = CFrame.new(148.190125, 40316.3672, 916.778992, 0.728601754, 4.76895323e-08, -0.684937537, -8.04378715e-08, 1, -1.59396176e-08, 0.684937537, 6.67085516e-08, 0.728601754)
+			char:PivotTo(marketCFrame)
+		end
+	end,
+})
+
+
+HomeSection1:Button({
+	Title = "TP TO VOLCANO ENTRANCE",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char then
+			local volcanoEntranceCFrame = CFrame.new(-4957.11035, 41276.7656, -3664.20776, -0.629430294, 1.86975821e-08, 0.777056992, 1.84999447e-08, 1, -9.07675712e-09, -0.777056992, 8.66232508e-09, -0.629430294)
+			char:PivotTo(volcanoEntranceCFrame)
+		end
+	end,
+})
+
+   HomeSection1:Button({
+	Title = "TP TO MY PLOT",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local teleportRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") 
+			and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Game") 
+			and game:GetService("ReplicatedStorage").Remotes.Game:FindFirstChild("TeleportToPlot")
+
+		if teleportRemote then
+			teleportRemote:FireServer()
+		end
+	end,
 })
 
 --==================================================
@@ -2649,7 +2698,7 @@ local function CanRebirth()
 	local char = LocalPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local mountJoint = hrp and hrp:FindFirstChild("PetMountJoint")
-	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Part1.Parent)
+	local mountedPart = mountJoint and (mountJoint.Part1 and mountJoint.Parent)
 
 	if mountedPart then
 		local petAttr = mountedPart:GetAttribute("PetName") or mountedPart.Name
