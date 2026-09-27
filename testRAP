@@ -69,21 +69,6 @@ local ConfirmRequest = GameRemotes:WaitForChild("ConfirmRequest")
 local RichieNPC = workspace:WaitForChild("Stalls"):WaitForChild("Sell"):WaitForChild("Richie")
 local latestRequestId = nil
 
---no clip
-game:GetService('RunService').Stepped:Connect(function()
-	local char = game.Players.LocalPlayer.Character
-	if char then
-		for _, v in pairs(char:GetDescendants()) do
-			if v:IsA('BasePart') and v.CanCollide then
-				v.CanCollide = false
-			end
-		end
-	end
-end)
-
-
-
-
 -- Dynamic Request ID Sniffer
 for _, remote in ipairs(GameRemotes:GetChildren()) do
     if remote:IsA("RemoteEvent") then
@@ -657,15 +642,36 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 	BoxBorder = true,
 })
 
-    HomeSection1:Button({
+HomeSection1:Button({
 	Title = "TP TO VOLCANO",
 	Justify = "Center",
 	Icon = "",
 	Callback = function()
 		local char = LocalPlayer.Character
 		if char then
+			-- 1. I-turn ON ang temporary noclip
+			local noclipConnection
+			noclipConnection = game:GetService('RunService').Stepped:Connect(function()
+				if char then
+					for _, v in pairs(char:GetDescendants()) do
+						if v:IsA('BasePart') then
+							v.CanCollide = false
+						end
+					end
+				end
+			end)
+
+			-- 2. Mag-teleport papuntang Volcano
 			local volcanoCFrame = CFrame.new(-5342.37891, 40913.4062, -3579.96167, 0.198189646, 1.90688478e-08, 0.980163693, 7.67927375e-08, 1, -3.49822926e-08, -0.980163693, 8.22025825e-08, 0.198189646)
 			char:PivotTo(volcanoCFrame)
+
+			-- 3. Maghintay nang kaunti para makalipat ang character bago i-off ang noclip
+			task.wait(0.5)
+
+			-- 4. I-turn OFF ang noclip
+			if noclipConnection then
+				noclipConnection:Disconnect()
+			end
 		end
 	end,
 })
