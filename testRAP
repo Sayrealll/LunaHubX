@@ -643,35 +643,28 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 })
 
 HomeSection1:Button({
-	Title = "TP TO VOLCANO",
+	Title = "TP TO MARKET",
 	Justify = "Center",
 	Icon = "",
 	Callback = function()
 		local char = LocalPlayer.Character
 		if char then
-			-- 1. I-turn ON ang temporary noclip
-			local noclipConnection
-			noclipConnection = game:GetService('RunService').Stepped:Connect(function()
-				if char then
-					for _, v in pairs(char:GetDescendants()) do
-						if v:IsA('BasePart') then
-							v.CanCollide = false
-						end
-					end
-				end
-			end)
+			local marketCFrame = CFrame.new(148.190125, 40316.3672, 916.778992, 0.728601754, 4.76895323e-08, -0.684937537, -8.04378715e-08, 1, -1.59396176e-08, 0.684937537, 6.67085516e-08, 0.728601754)
+			char:PivotTo(marketCFrame)
+		end
+	end,
+})
 
-			-- 2. Mag-teleport papuntang Volcano
-			local volcanoCFrame = CFrame.new(-5342.37891, 40913.4062, -3579.96167, 0.198189646, 1.90688478e-08, 0.980163693, 7.67927375e-08, 1, -3.49822926e-08, -0.980163693, 8.22025825e-08, 0.198189646)
-			char:PivotTo(volcanoCFrame)
 
-			-- 3. Maghintay nang kaunti para makalipat ang character bago i-off ang noclip
-			task.wait(0.5)
-
-			-- 4. I-turn OFF ang noclip
-			if noclipConnection then
-				noclipConnection:Disconnect()
-			end
+HomeSection1:Button({
+	Title = "TP TO VOLCANO ENTRANCE",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		local char = LocalPlayer.Character
+		if char then
+			local volcanoEntranceCFrame = CFrame.new(-4957.11035, 41276.7656, -3664.20776, -0.629430294, 1.86975821e-08, 0.777056992, 1.84999447e-08, 1, -9.07675712e-09, -0.777056992, 8.66232508e-09, -0.629430294)
+			char:PivotTo(volcanoEntranceCFrame)
 		end
 	end,
 })
@@ -2784,7 +2777,7 @@ task.spawn(function()
 				if TeleportToEgg(Egg) then
 					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1) -- delay after pick up
+					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
