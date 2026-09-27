@@ -226,6 +226,66 @@ local function SetUIValue(element, newValue)
 end
 
 --==================================================
+-- HELPER FUNCTIONS (DEFINED EARLY FOR BUTTONS/LOOPS)
+--==================================================
+
+local function GetCharacter()
+	local Character = Player.Character
+	if not Character then return nil end
+
+	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+
+	if not Humanoid or not HRP then return nil end
+	return Character
+end
+
+local function TeleportToMyPlot()
+	local Character = GetCharacter()
+	if not Character then return false end
+
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	if not HRP then return false end
+
+	local Plots = workspace:FindFirstChild("Plots")
+	if not Plots then return false end
+
+	local MyPlot = nil
+	for _, Plot in ipairs(Plots:GetChildren()) do
+		local NestsOwnerLoaded = Plot:GetAttribute("NestsOwnerLoaded")
+		if NestsOwnerLoaded == Player.UserId then
+			MyPlot = Plot
+			break
+		end
+
+		local Owner = Plot:GetAttribute("Owner")
+		local OwnerUserId = Plot:GetAttribute("OwnerUserId")
+		local UserId = Plot:GetAttribute("UserId")
+
+		if Owner == Player.Name or Owner == Player.UserId or OwnerUserId == Player.UserId or UserId == Player.UserId then
+			MyPlot = Plot
+			break
+		end
+	end
+
+	if not MyPlot then return false end
+
+	local Baseplate = MyPlot:FindFirstChild("Baseplate")
+	if Baseplate and Baseplate:IsA("BasePart") then
+		HRP.CFrame = Baseplate.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	local PlotPart = MyPlot:FindFirstChildWhichIsA("BasePart", true)
+	if PlotPart then
+		HRP.CFrame = PlotPart.CFrame * CFrame.new(0, 3, 0)
+		return true
+	end
+
+	return false
+end
+
+--==================================================
 -- NO CLIP SYSTEM FOR AUTO FARM
 --==================================================
 local NoclipEnabled = false
@@ -669,18 +729,12 @@ HomeSection1:Button({
 	end,
 })
 
-   HomeSection1:Button({
+HomeSection1:Button({
 	Title = "TP TO MY PLOT",
 	Justify = "Center",
 	Icon = "",
 	Callback = function()
-		local teleportRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") 
-			and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Game") 
-			and game:GetService("ReplicatedStorage").Remotes.Game:FindFirstChild("TeleportToPlot")
-
-		if teleportRemote then
-			teleportRemote:FireServer()
-		end
+		TeleportToMyPlot()
 	end,
 })
 
@@ -1443,19 +1497,8 @@ SettingsSection1:Button({
 })
 
 --==================================================
--- HELPER FUNCTIONS
+-- ADDITIONAL HELPER FUNCTIONS
 --==================================================
-
-local function GetCharacter()
-	local Character = Player.Character
-	if not Character then return nil end
-
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
-
-	if not Humanoid or not HRP then return nil end
-	return Character
-end
 
 local function GetEggPart(Egg)
 	if not Egg then return nil end
@@ -1593,51 +1636,6 @@ local function TeleportToEgg(Egg)
 
 	HRP.CFrame = EggPart.CFrame * CFrame.new(0, 1.5, 0)
 	return true
-end
-
-local function TeleportToMyPlot()
-	local Character = GetCharacter()
-	if not Character then return false end
-
-	local HRP = Character:FindFirstChild("HumanoidRootPart")
-	if not HRP then return false end
-
-	local Plots = workspace:FindFirstChild("Plots")
-	if not Plots then return false end
-
-	local MyPlot = nil
-	for _, Plot in ipairs(Plots:GetChildren()) do
-		local NestsOwnerLoaded = Plot:GetAttribute("NestsOwnerLoaded")
-		if NestsOwnerLoaded == Player.UserId then
-			MyPlot = Plot
-			break
-		end
-
-		local Owner = Plot:GetAttribute("Owner")
-		local OwnerUserId = Plot:GetAttribute("OwnerUserId")
-		local UserId = Plot:GetAttribute("UserId")
-
-		if Owner == Player.Name or Owner == Player.UserId or OwnerUserId == Player.UserId or UserId == Player.UserId then
-			MyPlot = Plot
-			break
-		end
-	end
-
-	if not MyPlot then return false end
-
-	local Baseplate = MyPlot:FindFirstChild("Baseplate")
-	if Baseplate and Baseplate:IsA("BasePart") then
-		HRP.CFrame = Baseplate.CFrame * CFrame.new(0, 3, 0)
-		return true
-	end
-
-	local PlotPart = MyPlot:FindFirstChildWhichIsA("BasePart", true)
-	if PlotPart then
-		HRP.CFrame = PlotPart.CFrame * CFrame.new(0, 3, 0)
-		return true
-	end
-
-	return false
 end
 
 local function WaitForEggPickup(Egg, Timeout)
