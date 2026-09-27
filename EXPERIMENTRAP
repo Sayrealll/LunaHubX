@@ -2708,7 +2708,7 @@ task.spawn(function()
 
 					-- 3. Teleport to Volcanic Egg & Pick Up
 					if TeleportToEgg(vEgg) then
-						task.wait(0.2)
+						task.wait(3.5)
 						PickupEgg(vEgg)
 						WaitForEggPickup(vEgg, 0.5)
 						task.wait(0.2)
