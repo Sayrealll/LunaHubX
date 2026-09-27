@@ -2730,13 +2730,13 @@ task.spawn(function()
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
-				task.wait(0.5)
+				task.wait(1)
 				if TeleportToEgg(Egg) then
 					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
 					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
-					task.wait(0.5) -- delay to get the next egg
+					task.wait(1) -- delay to get the next egg
 				else
 					task.wait(0.1)
 				end
