@@ -589,7 +589,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.0.6",
+	Title = "v.1.0.0.5",
 	Color = "ElementBackground",
 })
 
@@ -663,7 +663,7 @@ HomeSection1:Button({
 	Callback = function()
 		local char = LocalPlayer.Character
 		if char then
-			local volcanoEntranceCFrame = CFrame.new(-4957.11035, 41276.7656, -3664.20776, -0.629430294, 1.86975821e-08, 0.777056992, 1.84999447e-08, 1, -9.07675712e-09, -0.777056992, 8.66232508e-09, -0.629430294)
+			local volcanoEntranceCFrame = CFrame.new(-4948.55371, 41320.418, -3669.84229, -0.576323509, 1.14716983e-07, 0.817221642, 4.89400023e-08, 1, -1.05860764e-07, -0.817221642, -2.1015218e-08, -0.576323509)
 			char:PivotTo(volcanoEntranceCFrame)
 		end
 	end,
