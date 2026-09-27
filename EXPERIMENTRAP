@@ -2628,18 +2628,19 @@ task.spawn(function()
 	end
 end)
 
--- STANDARD AUTO FARM LOOP
+-- AUTO FARM LOOP
 task.spawn(function()
 	while true do
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
+				task.wait(1)
 				if TeleportToEgg(Egg) then
-					task.wait(0.5)
+					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 0.5)
+					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
-					task.wait(0.5)
+					task.wait(1) -- delay to get the next egg
 				else
 					task.wait(0.1)
 				end
@@ -2699,25 +2700,25 @@ task.spawn(function()
 				if hrp then
 					-- 1. Turn ON Fly Mode
 					SetFlyMode(true)
-					task.wait(0.1)
+					task.wait(1)
 
 					-- 2. Teleport to Volcano Entrance
-					local volcanoEntranceCFrame = CFrame.new(-4948.55371, 41320.418, -3669.84229, -0.576323509, 1.14716983e-07, 0.817221642, 4.89400023e-08, 1, -1.05860764e-07, -0.817221642, -2.1015218e-08, -0.576323509)
+					local volcanoEntranceCFrame = CFrame.new(-4944.49121, 41300.9727, -3675.78979, -0.722016275, -0.192867771, 0.664450586, 1.9273978e-08, 0.960360646, 0.278760582, -0.691876113, 0.201269686, -0.693395972)
 					hrp.CFrame = volcanoEntranceCFrame
-					task.wait(0.3)
+					task.wait(1.5)
 
 					-- 3. Teleport to Volcanic Egg & Pick Up
 					if TeleportToEgg(vEgg) then
-						task.wait(3.5)
+						task.wait(2)
 						PickupEgg(vEgg)
-						WaitForEggPickup(vEgg, 0.5)
+						WaitForEggPickup(vEgg, 1)
 						task.wait(0.2)
 					end
 
 					-- 4. Teleport to Volcano Exit
 					local volcanoExitCFrame = CFrame.new(-4939.56543, 41278.1875, -3680.62573, 0.753175735, 0.115613975, -0.647579908, -9.45619494e-09, 0.984434247, 0.17575337, 0.65781939, -0.132373169, 0.741451979)
 					hrp.CFrame = volcanoExitCFrame
-					task.wait(0.3)
+					task.wait(1)
 
 					-- 5. Teleport to Plot
 					TeleportToMyPlot()
@@ -2726,7 +2727,7 @@ task.spawn(function()
 					-- 6. Turn OFF Fly Mode
 					SetFlyMode(false)
 
-					task.wait(0.5)
+					task.wait(1)
 				end
 			else
 				-- Kapag walang nahanap na Volcanic Egg, nakatayo / idle lang muna
