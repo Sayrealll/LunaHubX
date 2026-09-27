@@ -69,6 +69,21 @@ local ConfirmRequest = GameRemotes:WaitForChild("ConfirmRequest")
 local RichieNPC = workspace:WaitForChild("Stalls"):WaitForChild("Sell"):WaitForChild("Richie")
 local latestRequestId = nil
 
+--no clip
+game:GetService('RunService').Stepped:Connect(function()
+	local char = game.Players.LocalPlayer.Character
+	if char then
+		for _, v in pairs(char:GetDescendants()) do
+			if v:IsA('BasePart') and v.CanCollide then
+				v.CanCollide = false
+			end
+		end
+	end
+end)
+
+
+
+
 -- Dynamic Request ID Sniffer
 for _, remote in ipairs(GameRemotes:GetChildren()) do
     if remote:IsA("RemoteEvent") then
