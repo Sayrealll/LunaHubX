@@ -57,6 +57,11 @@ local PickupPetRemote = GameRemotes:WaitForChild("PickupPet")
 local ClaimIndexReward = GameRemotes:WaitForChild("ClaimIndexReward")
 local FavoritePetRemote = GameRemotes:WaitForChild("FavoritePet")
 
+-- PINALITAN ANG BASKET DROP REMOTE PATUNGO SA VOLCANO DIP REMOTE
+local VolcanoDipRemote = ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net"):WaitForChild("RE/VolcanoDip")
+
+
+
 --// SELL SHOP REMOTES & REFERENCES
 local DialogueRemotes = ReplicatedStorage:WaitForChild("Dialogue"):WaitForChild("Remotes")
 local DialogueSelect = DialogueRemotes:WaitForChild("DialogueSelect")
@@ -125,6 +130,7 @@ local ConfigData = {
 	SelectedPlaceEgg = {},
 	SelectedPlaceRarities = {},
 	AutoPickup = false,
+	AutoVolcanoDip = false,
 	AutoPlaceEgg = false,
 	AutoHatchEgg = false,
 	AutoUpgradeHatchLuck = false,
@@ -191,6 +197,7 @@ local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
 -- TOGGLES
 local AutoPickup = ConfigData.AutoPickup or false
+local AutoVolcanoDip = ConfigData.AutoVolcanoDip or false
 local HideEggs = ConfigData.HideEggs or false
 local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
 local AutoHatchEgg = ConfigData.AutoHatchEgg or false
@@ -704,7 +711,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.0.5",
+	Title = "v.1.0.0.8",
 	Color = "ElementBackground",
 })
 
@@ -830,6 +837,18 @@ UIElements.SelectedEggs = EggSection:Dropdown({
 	Callback = function(value)
 		SelectedEggs = value
 		ConfigData.SelectedEggs = value
+		SaveConfig()
+	end,
+})
+
+UIElements.AutoVolcanoDip = EggSection:Toggle({
+	Title = "Auto Volcano Dip",
+	Desc = "Dips picked up egg into Volcano Lava before bringing to plot",
+	Value = ConfigData.AutoVolcanoDip,
+
+	Callback = function(value)
+		AutoVolcanoDip = value
+		ConfigData.AutoVolcanoDip = value
 		SaveConfig()
 	end,
 })
@@ -1346,6 +1365,7 @@ ConfigSection:Button({
         SelectedSellRarities = {}
 		SelectedFavPet = {}
 		AutoPickup = false
+		AutoVolcanoDip = false
 		AutoPlaceEgg = false
 		AutoHatchEgg = false
 		AutoUpgradeHatchLuck = false
@@ -1373,6 +1393,7 @@ ConfigSection:Button({
 			SelectedPlaceEgg = {},
 			SelectedPlaceRarities = {},
 			AutoPickup = false,
+			AutoVolcanoDip = false,
 			AutoPlaceEgg = false,
 			AutoHatchEgg = false,
 			AutoUpgradeHatchLuck = false,
@@ -1401,6 +1422,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedRarities, {})
 		SetUIValue(UIElements.SelectedEggs, {})
 		SetUIValue(UIElements.AutoPickup, false)
+		SetUIValue(UIElements.AutoVolcanoDip, false)
 		SetUIValue(UIElements.SelectedPlaceEgg, {})
 		SetUIValue(UIElements.SelectedPlaceRarities, {})
 		SetUIValue(UIElements.AutoPlaceEgg, false)
@@ -2850,18 +2872,45 @@ end)
 
 
 
--- AUTO FARM LOOP
+-- AUTO FARM LOOP WITH AUTO VOLCANO DIP LOGIC
 task.spawn(function()
 	while true do
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
-				if TeleportToEgg(Egg) then
-					task.wait(1.25) -- delay after tp
+				local char = GetCharacter()
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+				if hrp and TeleportToEgg(Egg) then
+					task.wait(1.20) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 0.5) -- delay after pick up
-					TeleportToMyPlot()
-					task.wait(0.5) -- delay to get the next egg
+					WaitForEggPickup(Egg, 1) -- delay after pick up
+
+					if AutoVolcanoDip then
+                    task.wait(0.50)
+						-- 1. Teleport sa Volcano Lava CFrame
+						local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
+						hrp.CFrame = lavaCFrame
+						task.wait(0.5)
+
+						-- 2. Dip Egg sa Lava gamit ang bagong VolcanoDip Remote
+						pcall(function()
+							if VolcanoDipRemote then
+								VolcanoDipRemote:FireServer()
+							end
+						end)
+
+						-- 3. Wait 10 seconds habang nakababad
+						task.wait(10)
+
+						-- 5. Teleport sa plot pagkatapos
+						TeleportToMyPlot()
+						task.wait(0.5)
+					else
+						-- Normal Auto Farm Flow (Teleport Egg -> Pickup -> Teleport Plot)
+						TeleportToMyPlot()
+						task.wait(0.5)
+					end
 				else
 					task.wait(0.1)
 				end
