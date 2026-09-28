@@ -2898,8 +2898,9 @@ task.spawn(function()
 				if hrp and TeleportToEgg(Egg) then
                 task.wait(0.1)
                    PickupEgg(Egg)
+                   task.wait(0.5)
                 
-					WaitForEggPickup(Egg, 0.7) -- delay after pick up
+					
                     
 					if AutoVolcanoDip then
                     task.wait(0.50)
