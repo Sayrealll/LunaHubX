@@ -2626,9 +2626,9 @@ task.spawn(function()
 			local Egg = FindSelectedEgg()
 			if Egg then
 				if TeleportToEgg(Egg) then
-					task.wait(0.5) -- delay after tp
+					task.wait(1.25) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1.25) -- delay after pick up
+					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
@@ -2713,9 +2713,9 @@ task.spawn(function()
 
 					-- 3. Teleport to Volcanic Egg then Pickup Egg
 					if FindVolcanicEgg() and TeleportToEgg(vEgg) then
-						task.wait(0.5)
+						task.wait(1.25)
 						PickupEgg(vEgg)
-						WaitForEggPickup(vEgg, 1.25)
+						WaitForEggPickup(vEgg, 0.5)
 						task.wait(0.5)
 					end
 
