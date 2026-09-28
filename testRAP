@@ -2887,6 +2887,7 @@ task.spawn(function()
 					WaitForEggPickup(Egg, 1) -- delay after pick up
 
 					if AutoVolcanoDip then
+                    task.wait(0.50)
 						-- 1. Teleport sa Volcano Lava CFrame
 						local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
 						hrp.CFrame = lavaCFrame
