@@ -591,7 +591,6 @@ local EggNames = {
 }
 
 local RarityNames = {
-    "Secret",
 	"Ethereal",
 	"Divine",
 	"Mythic",
@@ -664,7 +663,7 @@ local PET_LIST = {
     "Lion", "Ostrich", "Fox", "Boar", "Giraffe",
     "Cheetah", "Monkey", "Unicorn", "Flamingo", "TRex",
     "Phoenix", "Peacock", "Cerberus", "Komodo", "Kitsune",
-    "Dragon", "Griffin", "Volkaris"
+    "Dragon", "Griffin"
 }
 
 
