@@ -1,3 +1,4 @@
+
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -2897,7 +2898,7 @@ task.spawn(function()
 				if hrp and TeleportToEgg(Egg) then
 	                task.wait(0.1)
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1) -- delay after pick up
+					WaitForEggPickup(Egg, 0.1) -- delay after pick up
                     
 					if AutoVolcanoDip then
                     task.wait(0.50)
