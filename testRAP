@@ -223,6 +223,20 @@ local function SetUIValue(element, newValue)
 	end)
 end
 
+
+--NO PROMPT
+for i,v in pairs(game:GetService("Workspace"):GetDescendants()) do
+	if v:IsA("ProximityPrompt") then
+		v["HoldDuration"] = 0
+	end
+end
+
+
+game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(v)
+    v["HoldDuration"] = 0
+end)
+
+
 --==================================================
 -- HELPER FUNCTIONS (DEFINED EARLY FOR BUTTONS/LOOPS)
 --==================================================
