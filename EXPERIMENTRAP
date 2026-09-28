@@ -2707,11 +2707,10 @@ task.spawn(function()
 
 					-- 1. Teleport to Volcano 1 then add a little delay
 					hrp.CFrame = volcano1CFrame
-					task.wait(2)
 
 					-- 2. Tween to Volcano 2
 					TweenToCFrame(volcano2CFrame, 50)
-					task.wait(2)
+					task.wait(0.5)
 
 					-- 3. Teleport to Volcanic Egg then Pickup Egg
 					if FindVolcanicEgg() and TeleportToEgg(vEgg) then
@@ -2731,7 +2730,7 @@ task.spawn(function()
 
 					-- 6. Teleport to Plot
 					TeleportToMyPlot()
-					task.wait(1)
+					task.wait(0.5)
 				end
 			else
 				task.wait(0.5)
