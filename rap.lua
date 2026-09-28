@@ -1,4 +1,4 @@
-
+--ggwp
 
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
