@@ -2625,11 +2625,10 @@ task.spawn(function()
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
-				task.wait(1)
 				if TeleportToEgg(Egg) then
 					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1) -- delay after pick up
+					WaitForEggPickup(Egg, 1.25) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
@@ -2709,14 +2708,14 @@ task.spawn(function()
 					hrp.CFrame = volcano1CFrame
 
 					-- 2. Tween to Volcano 2
-					TweenToCFrame(volcano2CFrame, 50)
+					TweenToCFrame(volcano2CFrame, 100)
 					task.wait(0.5)
 
 					-- 3. Teleport to Volcanic Egg then Pickup Egg
 					if FindVolcanicEgg() and TeleportToEgg(vEgg) then
-						task.wait(1.5)
+						task.wait(0.5)
 						PickupEgg(vEgg)
-						WaitForEggPickup(vEgg, 0.5)
+						WaitForEggPickup(vEgg, 1.25)
 						task.wait(0.5)
 					end
 
