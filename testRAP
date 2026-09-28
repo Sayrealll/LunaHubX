@@ -2747,7 +2747,7 @@ task.spawn(function()
 				if TeleportToEgg(Egg) then
 					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1.25) -- delay after pick up
+					WaitForEggPickup(Egg, 1.75) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
