@@ -2900,7 +2900,7 @@ task.spawn(function()
 						end)
 
 						-- 3. Wait 10 seconds habang nakababad
-						task.wait(9.80)
+						task.wait(10)
 
 						-- 5. Teleport sa plot pagkatapos
 						TeleportToMyPlot()
