@@ -497,7 +497,7 @@ end
 
 
 --==================================================
--- HIDE ALL EGGS FUNCTION
+-- HIDE ALL EGGS FUNCTION (Fixed Version)
 --==================================================
 
 local function ToggleHideEggs(state)
@@ -510,23 +510,30 @@ local function ToggleHideEggs(state)
 			for _, egg in ipairs(eggsFolder:GetChildren()) do
 				if egg:IsA("Model") or egg:IsA("BasePart") then
 					
-					-- 1. Handling ng Parts / Meshes / Decals
-					if egg:IsA("BasePart") then
-						egg.Transparency = state and 1 or 0
-						egg.CanCollide = not state
-					end
-
-					-- 2. Handling ng lahat ng Descendants (Kasama ang Particles at Ilaw)
+					-- Handling ng lahat ng Descendants (Kasama ang Parts, Textures, Particles, atbp.)
 					for _, child in ipairs(egg:GetDescendants()) do
-						if child:IsA("BasePart") or child:IsA("Decal") or child:IsA("Texture") then
+						if child:IsA("BasePart") then
+							if state then
+								-- I-save muna ang original transparency bago itago
+								if not child:GetAttribute("OriginalTransparency") then
+									child:SetAttribute("OriginalTransparency", child.Transparency)
+								end
+								child.Transparency = 1
+								child.CanCollide = false
+							else
+								-- Ibalik sa dati nitong original transparency
+								local origTrans = child:GetAttribute("OriginalTransparency") or 0
+								child.Transparency = origTrans
+								child.CanCollide = true
+							end
+						elseif child:IsA("Decal") or child:IsA("Texture") then
 							child.Transparency = state and 1 or 0
-						elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
-							child.Enabled = not state
-						elseif child:IsA("ParticleEmitter") or child:IsA("Beam") or child:IsA("Trail") or child:IsA("Fire") or child:IsA("Smoke") or child:IsA("Sparkles") then
-							child.Enabled = not state
-						elseif child:IsA("Light") then -- PointLight, SurfaceLight, SpotLight
-							child.Enabled = not state
-						elseif child:IsA("Highlight") or child:IsA("SelectionBox") then
+						elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") or 
+							   child:IsA("ParticleEmitter") or child:IsA("Beam") or 
+							   child:IsA("Trail") or child:IsA("Fire") or 
+							   child:IsA("Smoke") or child:IsA("Sparkles") or 
+							   child:IsA("Light") or child:IsA("Highlight") or 
+							   child:IsA("SelectionBox") then
 							child.Enabled = not state
 						end
 					end
@@ -540,12 +547,12 @@ end
 -- AUTO-HIDE UPON STARTUP (Para sa Saved Config)
 task.spawn(function()
 	task.wait(1.5) -- Hintayin ma-load ang workspace
-	if ConfigData.HideEggs or HideEggs then
+	if (typeof(ConfigData) == "table" and ConfigData.HideEggs) or (HideEggs ~= nil and HideEggs) then
 		ToggleHideEggs(true)
 	end
 end)
 
--- AUTO-HIDE KAPAG MAY BAGONG PLANTED / SPANWED EGG
+-- AUTO-HIDE KAPAG MAY BAGONG PLANTED / SPAWNED EGG
 task.spawn(function()
 	local PlotsFolder = workspace:WaitForChild("Plots", 10)
 	if PlotsFolder then
