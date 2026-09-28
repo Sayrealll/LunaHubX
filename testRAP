@@ -2895,7 +2895,7 @@ task.spawn(function()
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
 				if hrp and TeleportToEgg(Egg) then
-					--task.wait(1.20) -- delay after tp
+	
 					PickupEgg(Egg)
 					WaitForEggPickup(Egg, 1) -- delay after pick up
                     task.wait(0.50)
