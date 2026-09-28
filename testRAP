@@ -146,6 +146,7 @@ local ConfigData = {
 	AutoEquipBestPet = false,
 	ESPEnabled = false,
 	SelectedFavPet = {},
+    HideEggs = false,
 	AutoFavoritePet = false
 }
 
@@ -190,6 +191,7 @@ local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
 -- TOGGLES
 local AutoPickup = ConfigData.AutoPickup or false
+local HideEggs = ConfigData.HideEggs or false
 local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
 local AutoHatchEgg = ConfigData.AutoHatchEgg or false
 local AutoClaimIndex = ConfigData.AutoClaimIndex or false
@@ -485,6 +487,73 @@ if FPSBoost then
 		ApplyFPSBoost(true)
 	end)
 end
+
+
+--==================================================
+-- HIDE ALL EGGS FUNCTION & AUTO-APPLY
+--==================================================
+
+local function ToggleHideEggs(state)
+	local Plots = workspace:FindFirstChild("Plots")
+	if not Plots then return end
+
+	for _, plot in ipairs(Plots:GetChildren()) do
+		local eggsFolder = plot:FindFirstChild("Eggs")
+		if eggsFolder then
+			for _, egg in ipairs(eggsFolder:GetChildren()) do
+				if egg:IsA("Model") or egg:IsA("BasePart") then
+					if egg:IsA("BasePart") then
+						egg.Transparency = state and 1 or 0
+						egg.CanCollide = not state
+					else
+						for _, child in ipairs(egg:GetDescendants()) do
+							if child:IsA("BasePart") or child:IsA("Decal") or child:IsA("Texture") then
+								child.Transparency = state and 1 or 0
+							elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+								child.Enabled = not state
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- AUTO-HIDE SA STARTUP: Awtomatikong itatago ang eggs kapag ON sa config
+task.spawn(function()
+	task.wait(1) -- Maghintay nang kaunti para ma-load ang workspace at plots
+	if ConfigData.HideEggs or HideEggs then
+		ToggleHideEggs(true)
+	end
+end)
+
+-- AUTO-HIDE SA MGA BAGONG EGG NA LALABAS O MA-PLACE
+task.spawn(function()
+	local PlotsFolder = workspace:WaitForChild("Plots", 10)
+	if PlotsFolder then
+		local function AttachEggListener(plot)
+			local eggsFolder = plot:WaitForChild("Eggs", 5)
+			if eggsFolder then
+				eggsFolder.ChildAdded:Connect(function()
+					if HideEggs then
+						task.wait(0.1)
+						ToggleHideEggs(true)
+					end
+				end)
+			end
+		end
+
+		for _, plot in ipairs(PlotsFolder:GetChildren()) do
+			AttachEggListener(plot)
+		end
+
+		PlotsFolder.ChildAdded:Connect(function(plot)
+			AttachEggListener(plot)
+		end)
+	end
+end)
+
 
 --// EGG CONTAINER
 local RenderedEggs = workspace:WaitForChild("RenderedEggs")
@@ -1286,6 +1355,7 @@ ConfigSection:Button({
         AutoSellPet = false
         AutoSellAllPets = false
         AutoEquipBestPet = false
+        HideEggs = false
 		AutoFavoritePet = false
 
 		ConfigData = {
@@ -1315,6 +1385,7 @@ ConfigSection:Button({
             AutoSellAllPets = false,
 			FPSBoost = false,
 			SelectedFavPet = {},
+            HideEggs = false,
 			AutoFavoritePet = false
 		}
 
@@ -1345,6 +1416,8 @@ ConfigSection:Button({
         SetUIValue(UIElements.AutoEquipBestPet, false)
 		SetUIValue(UIElements.SelectedFavPet, {})
 		SetUIValue(UIElements.AutoFavoritePet, false)
+        SetUIValue(UIElements.HideEggs, false)
+        
 
 		WindUI:Notify({
 			Title = "Config Reset",
@@ -1449,6 +1522,20 @@ UIElements.FPSBoost = SettingsSection:Toggle({
 		ApplyFPSBoost(value)
 	end,
 })
+
+UIElements.HideEggs = SettingsSection:Toggle({
+	Title = "Hide All Eggs",
+	Desc = "Hide all eggs in your plot and other players' plots",
+	Value = ConfigData.HideEggs,
+
+	Callback = function(value)
+		HideEggs = value
+		ConfigData.HideEggs = value
+		SaveConfig()
+		ToggleHideEggs(value)
+	end,
+})
+
 
 local SettingsSection1 = Tab7:Section({
 	Title = "Servers",
@@ -1760,6 +1847,22 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
+
+-- Auto-hide kapag may bagong itinanim na egg sa kahit anong plot
+local PlotsFolder = workspace:WaitForChild("Plots", 5)
+if PlotsFolder then
+	for _, plot in ipairs(PlotsFolder:GetChildren()) do
+		local eggsFolder = plot:FindFirstChild("Eggs")
+		if eggsFolder then
+			eggsFolder.ChildAdded:Connect(function(child)
+				if HideEggs then
+					task.wait(0.1) -- Maghintay nang kaunti para ma-render ang buong model
+					ToggleHideEggs(true)
+				end
+			end)
+		end
+	end
+end
 
 --==================================================
 -- AUTOMATION LOOPS
@@ -2747,7 +2850,7 @@ task.spawn(function()
 				if TeleportToEgg(Egg) then
 					task.wait(0.5) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1.75) -- delay after pick up
+					WaitForEggPickup(Egg, 2.20) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
