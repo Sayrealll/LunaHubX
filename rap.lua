@@ -1,4 +1,3 @@
---ggwp
 
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
@@ -499,7 +498,7 @@ end
 
 
 --==================================================
--- HIDE ALL EGGS FUNCTION (Fixed Version)
+-- HIDE ALL EGGS FUNCTION (Collision Fixed)
 --==================================================
 
 local function ToggleHideEggs(state)
@@ -512,21 +511,28 @@ local function ToggleHideEggs(state)
 			for _, egg in ipairs(eggsFolder:GetChildren()) do
 				if egg:IsA("Model") or egg:IsA("BasePart") then
 					
-					-- Handling ng lahat ng Descendants (Kasama ang Parts, Textures, Particles, atbp.)
 					for _, child in ipairs(egg:GetDescendants()) do
 						if child:IsA("BasePart") then
 							if state then
-								-- I-save muna ang original transparency bago itago
+								-- I-save ang original transparency at cancollide bago itago
 								if not child:GetAttribute("OriginalTransparency") then
 									child:SetAttribute("OriginalTransparency", child.Transparency)
 								end
+								if child:GetAttribute("OriginalCanCollide") == nil then
+									child:SetAttribute("OriginalCanCollide", child.CanCollide)
+								end
+								
 								child.Transparency = 1
 								child.CanCollide = false
 							else
-								-- Ibalik sa dati nitong original transparency
+								-- Ibalik sa dati nilang original values
 								local origTrans = child:GetAttribute("OriginalTransparency") or 0
+								local origCollide = child:GetAttribute("OriginalCanCollide")
+								
 								child.Transparency = origTrans
-								child.CanCollide = true
+								if origCollide ~= nil then
+									child.CanCollide = origCollide
+								end
 							end
 						elseif child:IsA("Decal") or child:IsA("Texture") then
 							child.Transparency = state and 1 or 0
@@ -548,7 +554,7 @@ end
 
 -- AUTO-HIDE UPON STARTUP (Para sa Saved Config)
 task.spawn(function()
-	task.wait(1.5) -- Hintayin ma-load ang workspace
+	task.wait(1.5)
 	if (typeof(ConfigData) == "table" and ConfigData.HideEggs) or (HideEggs ~= nil and HideEggs) then
 		ToggleHideEggs(true)
 	end
@@ -579,7 +585,6 @@ task.spawn(function()
 		end)
 	end
 end)
-
 
 --// EGG CONTAINER
 local RenderedEggs = workspace:WaitForChild("RenderedEggs")
@@ -2891,10 +2896,16 @@ task.spawn(function()
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
 				if hrp and TeleportToEgg(Egg) then
-					task.wait(1.20) -- delay after tp
-					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 1) -- delay after pick up
+                    task.wait(0.05)
 
+					for i = 1, 2 do
+						PickupEgg(Egg)
+						task.wait(0.05)
+					end                
+					task.wait(0.3) --DELAY FOR PICK UP
+                
+					
+                    
 					if AutoVolcanoDip then
                     task.wait(0.50)
 						-- 1. Teleport sa Volcano Lava CFrame
