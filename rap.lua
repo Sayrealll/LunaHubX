@@ -490,7 +490,7 @@ end
 
 
 --==================================================
--- HIDE ALL EGGS FUNCTION & AUTO-APPLY
+-- HIDE ALL EGGS FUNCTION
 --==================================================
 
 local function ToggleHideEggs(state)
@@ -502,33 +502,43 @@ local function ToggleHideEggs(state)
 		if eggsFolder then
 			for _, egg in ipairs(eggsFolder:GetChildren()) do
 				if egg:IsA("Model") or egg:IsA("BasePart") then
+					
+					-- 1. Handling ng Parts / Meshes / Decals
 					if egg:IsA("BasePart") then
 						egg.Transparency = state and 1 or 0
 						egg.CanCollide = not state
-					else
-						for _, child in ipairs(egg:GetDescendants()) do
-							if child:IsA("BasePart") or child:IsA("Decal") or child:IsA("Texture") then
-								child.Transparency = state and 1 or 0
-							elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
-								child.Enabled = not state
-							end
+					end
+
+					-- 2. Handling ng lahat ng Descendants (Kasama ang Particles at Ilaw)
+					for _, child in ipairs(egg:GetDescendants()) do
+						if child:IsA("BasePart") or child:IsA("Decal") or child:IsA("Texture") then
+							child.Transparency = state and 1 or 0
+						elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+							child.Enabled = not state
+						elseif child:IsA("ParticleEmitter") or child:IsA("Beam") or child:IsA("Trail") or child:IsA("Fire") or child:IsA("Smoke") or child:IsA("Sparkles") then
+							child.Enabled = not state
+						elseif child:IsA("Light") then -- PointLight, SurfaceLight, SpotLight
+							child.Enabled = not state
+						elseif child:IsA("Highlight") or child:IsA("SelectionBox") then
+							child.Enabled = not state
 						end
 					end
+
 				end
 			end
 		end
 	end
 end
 
--- AUTO-HIDE SA STARTUP: Awtomatikong itatago ang eggs kapag ON sa config
+-- AUTO-HIDE UPON STARTUP (Para sa Saved Config)
 task.spawn(function()
-	task.wait(1) -- Maghintay nang kaunti para ma-load ang workspace at plots
+	task.wait(1.5) -- Hintayin ma-load ang workspace
 	if ConfigData.HideEggs or HideEggs then
 		ToggleHideEggs(true)
 	end
 end)
 
--- AUTO-HIDE SA MGA BAGONG EGG NA LALABAS O MA-PLACE
+-- AUTO-HIDE KAPAG MAY BAGONG PLANTED / SPANWED EGG
 task.spawn(function()
 	local PlotsFolder = workspace:WaitForChild("Plots", 10)
 	if PlotsFolder then
@@ -537,7 +547,7 @@ task.spawn(function()
 			if eggsFolder then
 				eggsFolder.ChildAdded:Connect(function()
 					if HideEggs then
-						task.wait(0.1)
+						task.wait(0.2)
 						ToggleHideEggs(true)
 					end
 				end)
@@ -2847,9 +2857,9 @@ task.spawn(function()
 			local Egg = FindSelectedEgg()
 			if Egg then
 				if TeleportToEgg(Egg) then
-					task.wait(0.5) -- delay after tp
+					task.wait(1.25) -- delay after tp
 					PickupEgg(Egg)
-					WaitForEggPickup(Egg, 2.20) -- delay after pick up
+					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
 					task.wait(0.5) -- delay to get the next egg
 				else
