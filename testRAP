@@ -2900,14 +2900,7 @@ task.spawn(function()
 						end)
 
 						-- 3. Wait 10 seconds habang nakababad
-						task.wait(9)
-
-						-- 4. Re-pickup o kunin ulit ang egg pagkatapos ng dip
-						local LavaEgg = FindSelectedEgg() or Egg
-						if LavaEgg then
-							PickupEgg(LavaEgg)
-							WaitForEggPickup(LavaEgg, 0.5)
-						end
+						task.wait(9.80)
 
 						-- 5. Teleport sa plot pagkatapos
 						TeleportToMyPlot()
