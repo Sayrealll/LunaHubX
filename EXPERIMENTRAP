@@ -20,6 +20,7 @@ local HttpService = cloneref(game:GetService("HttpService"))
 local Lighting = cloneref(game:GetService("Lighting"))
 local MaterialService = cloneref(game:GetService("MaterialService"))
 local TeleportService = cloneref(game:GetService("TeleportService"))
+local TweenService = cloneref(game:GetService("TweenService"))
 
 --// PLAYER REFERENCES
 local Player = Players.LocalPlayer
@@ -682,7 +683,7 @@ HomeSection1:Button({
 
 
 HomeSection1:Button({
-	Title = "TP TO VOLCANO ENTRANCE",
+	Title = "TP TO IDK",
 	Justify = "Center",
 	Icon = "",
 	Callback = function()
@@ -703,18 +704,8 @@ HomeSection1:Button({
 	end,
 })
 
-HomeSection1:Button({
-	Title = "TP TO VOLCANO",
-	Justify = "Center",
-	Icon = "",
-	Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local volcanoEntrance1CFrame = CFrame.new(-4950.80811, 41299.0234, -3670.99902, -0.79130137, -0.00290792645, 0.61141938, 8.83693652e-09, 0.999988675, 0.00475598359, -0.611426294, 0.0037634219, -0.791292429)
-			char:PivotTo(volcanoEntrance1CFrame)
-		end
-	end,
-})
+
+
 --==================================================
 -- TAB 2 (FARM)
 --==================================================
@@ -2636,7 +2627,7 @@ task.spawn(function()
 			if Egg then
 				task.wait(1)
 				if TeleportToEgg(Egg) then
-					task.wait(0.5) -- delay after tp
+					task.wait(1) -- delay after tp
 					PickupEgg(Egg)
 					WaitForEggPickup(Egg, 0.5) -- delay after pick up
 					TeleportToMyPlot()
@@ -2655,7 +2646,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- VOLCANIC EGG AUTO FARM (DEDICATED CUSTOM LOGIC & FLY)
+-- VOLCANIC EGG AUTO FARM (NEW CUSTOM LOGIC)
 --==================================================
 
 local function FindVolcanicEgg()
@@ -2667,67 +2658,26 @@ local function FindVolcanicEgg()
 	return nil
 end
 
--- ADVANCED DYNAMIC FLY SYSTEM
-local isFlying = false
-local flySpeed = 50
-local flyConnection = nil
-
-local function SetFlyMode(enabled)
+-- Helper function para sa Smooth Tweening
+local function TweenToCFrame(targetCFrame, speed)
 	local char = LocalPlayer.Character
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hrp or not hum then return end
+	if not hrp then return end
 
-	if enabled then
-		if isFlying then return end
-		isFlying = true
+	speed = speed or 50
+	local distance = (hrp.Position - targetCFrame.Position).Magnitude
+	local duration = math.max(0.1, distance / speed)
 
-		local camera = workspace.CurrentCamera
-		hum.PlatformStand = true
+	local tweenInfo = TweenInfo.new(
+		duration,
+		Enum.EasingStyle.Linear,
+		Enum.EasingDirection.Out
+	)
 
-		local bv = Instance.new("BodyVelocity")
-		bv.Name = "FlyBodyVelocity"
-		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		bv.Velocity = Vector3.zero
-		bv.Parent = hrp
-
-		local bg = Instance.new("BodyGyro")
-		bg.Name = "FlyBodyGyro"
-		bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-		bg.CFrame = hrp.CFrame
-		bg.Parent = hrp
-
-		flyConnection = RunService.RenderStepped:Connect(function()
-			if not isFlying or not hrp:FindFirstChild("FlyBodyVelocity") then
-				if flyConnection then flyConnection:Disconnect() end
-				return
-			end
-
-			local moveDir = hum.MoveDirection
-			if moveDir.Magnitude > 0 then
-				local camCFrame = camera.CFrame
-				local flyVec = (camCFrame.LookVector * -moveDir.Z) + (camCFrame.RightVector * moveDir.X)
-				bv.Velocity = flyVec * flySpeed
-			else
-				bv.Velocity = Vector3.zero
-			end
-			bg.CFrame = camera.CFrame
-		end)
-	else
-		isFlying = false
-		if flyConnection then
-			flyConnection:Disconnect()
-			flyConnection = nil
-		end
-
-		if hrp:FindFirstChild("FlyBodyVelocity") then hrp.FlyBodyVelocity:Destroy() end
-		if hrp:FindFirstChild("FlyBodyGyro") then hrp.FlyBodyGyro:Destroy() end
-
-		if hum then
-			hum.PlatformStand = false
-		end
-	end
+	local tween = TweenService:Create(hrp, tweenInfo, { CFrame = targetCFrame })
+	tween:Play()
+	tween.Completed:Wait()
 end
 
 task.spawn(function()
@@ -2735,50 +2685,58 @@ task.spawn(function()
 		if AutoPickupVolcano then
 			local vEgg = FindVolcanicEgg()
 			
+			-- HINDI GAGALAW KAPAG WALANG NA-DETECT NA VOLCANIC EGG
 			if vEgg then
 				local char = LocalPlayer.Character
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
 				if hrp then
-					-- 1. TURN ON FLY MODE MUNA
-					SetFlyMode(true)
-					task.wait(1.5)
+					local volcano1CFrame = CFrame.new(
+						-4895.28516, 41278.4492, -3723.92383, 
+						-0.651083589, -0.103715874, 0.751886427, 
+						1.3961988e-08, 0.990619779, 0.136646986, 
+						-0.759006023, 0.0889686197, -0.644976318
+					)
 
-					-- 2. TELEPORT TO VOLCANO ENTRANCE
-					local volcanoEntranceCFrame = CFrame.new(-4944.49121, 41300.9727, -3675.78979, -0.722016275, -0.192867771, 0.664450586, 1.9273978e-08, 0.960360646, 0.278760582, -0.691876113, 0.201269686, -0.693395972)
-					hrp.CFrame = volcanoEntranceCFrame
-					task.wait(1.5)
+					local volcano2CFrame = CFrame.new(
+						-4954.06494, 41279.5938, -3667.03442, 
+						-0.693066597, -0.127887785, 0.709438801, 
+						-1.07656293e-08, 0.984137654, 0.177406669, 
+						-0.720873535, 0.122954629, -0.682072937
+					)
 
-					-- 3. TELEPORT TO VOLCANIC EGG & PICK UP
-					if TeleportToEgg(vEgg) then
-						task.wait(2.5)
+					-- 1. Teleport to Volcano 1 then add a little delay
+					hrp.CFrame = volcano1CFrame
+					task.wait(2)
+
+					-- 2. Tween to Volcano 2
+					TweenToCFrame(volcano2CFrame, 50)
+					task.wait(2)
+
+					-- 3. Teleport to Volcanic Egg then Pickup Egg
+					if FindVolcanicEgg() and TeleportToEgg(vEgg) then
+						task.wait(1.5)
 						PickupEgg(vEgg)
 						WaitForEggPickup(vEgg, 0.5)
-						task.wait(0.2)
+						task.wait(0.5)
 					end
 
-					-- 4. TELEPORT TO VOLCANO EXIT
-					local volcanoExitCFrame = CFrame.new(-4939.56543, 41278.1875, -3680.62573, 0.753175735, 0.115613975, -0.647579908, -9.45619494e-09, 0.984434247, 0.17575337, 0.65781939, -0.132373169, 0.741451979)
-					hrp.CFrame = volcanoExitCFrame
-					task.wait(1)
-
-					-- 5. TELEPORT TO PLOT
-					TeleportToMyPlot()
+					-- 4. Teleport to Volcano 2
+					hrp.CFrame = volcano2CFrame
 					task.wait(0.5)
 
-					-- 6. TURN OFF FLY MODE
-					SetFlyMode(false)
+					-- 5. Tween to Volcano 1
+					TweenToCFrame(volcano1CFrame, 50)
+					task.wait(1)
 
+					-- 6. Teleport to Plot
+					TeleportToMyPlot()
 					task.wait(1)
 				end
 			else
-				-- Kapag walang nahanap na egg, siguraduhing NAKA-OFF ang Fly
-				SetFlyMode(false)
 				task.wait(0.5)
 			end
 		else
-			-- Kapag naka-disable ang toggle, siguraduhing NAKA-OFF din ang Fly
-			SetFlyMode(false)
 			task.wait(0.5)
 		end
 		task.wait(0.03)
