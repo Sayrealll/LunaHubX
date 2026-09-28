@@ -2900,7 +2900,7 @@ task.spawn(function()
 						end)
 
 						-- 3. Wait 10 seconds habang nakababad
-						task.wait(10)
+						task.wait(9)
 
 						-- 4. Re-pickup o kunin ulit ang egg pagkatapos ng dip
 						local LavaEgg = FindSelectedEgg() or Egg
