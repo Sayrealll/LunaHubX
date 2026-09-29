@@ -2905,7 +2905,7 @@ task.spawn(function()
 					end
                 
 					-- Eksaktong 0.3 segundo na delay pagkatapos i-pick up
-					task.wait(0.3)
+					task.wait(0.4)
                 
 					
                     
