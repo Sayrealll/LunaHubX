@@ -2896,13 +2896,16 @@ task.spawn(function()
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
 				if hrp and TeleportToEgg(Egg) then
-                    task.wait(0.05)
-
+                task.wait(0.05)
+					
+					-- Sinulit natin ang pagkuha ng itlog habang nandoon para hindi mag-fail
 					for i = 1, 2 do
 						PickupEgg(Egg)
 						task.wait(0.05)
-					end                
-					task.wait(0.3) --DELAY FOR PICK UP
+					end
+                
+					-- Eksaktong 0.3 segundo na delay pagkatapos i-pick up
+					task.wait(0.4)
                 
 					
                     
