@@ -1,4 +1,3 @@
-
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
@@ -21,6 +20,7 @@ local HttpService = cloneref(game:GetService("HttpService"))
 local Lighting = cloneref(game:GetService("Lighting"))
 local MaterialService = cloneref(game:GetService("MaterialService"))
 local TeleportService = cloneref(game:GetService("TeleportService"))
+local TweenService = cloneref(game:GetService("TweenService"))
 
 --// PLAYER REFERENCES
 local Player = Players.LocalPlayer
@@ -1754,6 +1754,22 @@ local function WaitForEggPickup(Egg, Timeout)
 	end
 end
 
+-- Helper Tween Function
+local function TweenToCFrame(targetCFrame, speedOrTime)
+	local char = GetCharacter()
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local distance = (hrp.Position - targetCFrame.Position).Magnitude
+	local duration = typeof(speedOrTime) == "number" and speedOrTime or (distance / 60)
+	if duration <= 0 then duration = 0.1 end
+
+	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+	local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+	tween:Play()
+	tween.Completed:Wait()
+end
+
 --==================================================
 -- ESP SYSTEM WITH RARITY COLORS
 --==================================================
@@ -2886,7 +2902,7 @@ end)
 
 
 
--- AUTO FARM LOOP WITH AUTO VOLCANO DIP LOGIC
+-- AUTO FARM LOOP
 task.spawn(function()
 	while true do
 		if AutoPickup then
@@ -2895,44 +2911,82 @@ task.spawn(function()
 				local char = GetCharacter()
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-				if hrp and TeleportToEgg(Egg) then
-                task.wait(0.05)
-					
-					-- Sinulit natin ang pagkuha ng itlog habang nandoon para hindi mag-fail
-					for i = 1, 2 do
-						PickupEgg(Egg)
-						task.wait(0.05)
-					end
-                
-					-- Eksaktong 0.3 segundo na delay pagkatapos i-pick up
-					task.wait(0.4)
-                
-					
-                    
-					if AutoVolcanoDip then
-                    task.wait(0.50)
-						-- 1. Teleport sa Volcano Lava CFrame
-						local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
-						hrp.CFrame = lavaCFrame
-						task.wait(0.5)
+				if hrp then
+					if Egg.Name == "Volcanic Egg" then
+						
+						local volcano1CFrame = CFrame.new(
+							-4895.28516, 41278.4492, -3723.92383,
+							-0.651083589, -0.103715874, 0.751886427,
+							1.3961988e-08, 0.990619779, 0.136646986,
+							-0.759006023, 0.0889686197, -0.644976318
+						)
+						hrp.CFrame = volcano1CFrame
+						task.wait(0.1)
 
-						-- 2. Dip Egg sa Lava gamit ang bagong VolcanoDip Remote
-						pcall(function()
-							if VolcanoDipRemote then
-								VolcanoDipRemote:FireServer()
+						local volcano2CFrame = CFrame.new(
+							-4954.06494, 41279.5938, -3667.03442,
+							-0.693066597, -0.127887785, 0.709438801,
+							-1.07656293e-08, 0.984137654, 0.177406669,
+							-0.720873535, 0.122954629, -0.682072937
+						)
+						TweenToCFrame(volcano2CFrame)
+						task.wait(0.1)
+
+						local eggPart = GetEggPart(Egg)
+						if eggPart then
+							hrp.CFrame = eggPart.CFrame * CFrame.new(0, 1.5, 0)
+							task.wait(0.1)
+
+							for i = 1, 2 do
+								PickupEgg(Egg)
+								task.wait(0.05)
 							end
-						end)
+							task.wait(0.4)
+						end
 
-						-- 3. Wait 10 seconds habang nakababad
-						task.wait(10)
+						hrp.CFrame = volcano2CFrame
+						task.wait(0.1)
 
-						-- 5. Teleport sa plot pagkatapos
+						TweenToCFrame(volcano1CFrame)
+						task.wait(0.1)
+
 						TeleportToMyPlot()
 						task.wait(0.5)
+
 					else
-						-- Normal Auto Farm Flow (Teleport Egg -> Pickup -> Teleport Plot)
-						TeleportToMyPlot()
-						task.wait(0.5)
+						if TeleportToEgg(Egg) then
+							task.wait(0.05)
+
+							for i = 1, 2 do
+								PickupEgg(Egg)
+								task.wait(0.05)
+							end
+
+							task.wait(0.4)
+
+							if AutoVolcanoDip then
+								task.wait(0.50)
+								local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
+								hrp.CFrame = lavaCFrame
+								task.wait(0.5)
+
+								pcall(function()
+									if VolcanoDipRemote then
+										VolcanoDipRemote:FireServer()
+									end
+								end)
+
+								task.wait(10)
+
+								TeleportToMyPlot()
+								task.wait(0.5)
+							else
+								TeleportToMyPlot()
+								task.wait(0.5)
+							end
+						else
+							task.wait(0.1)
+						end
 					end
 				else
 					task.wait(0.1)
