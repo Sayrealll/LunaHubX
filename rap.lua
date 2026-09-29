@@ -3028,7 +3028,7 @@ local function VolcanoDip(hrp)
 		return
 	end
 
-	task.wait(1)
+	task.wait(0.5)
 
 	hrp.CFrame = LAVA_CFRAME
 	task.wait(0.5)
@@ -3090,7 +3090,7 @@ task.spawn(function()
 			task.wait(0.1)
 
 			TweenToCFrame(VOLCANO_2_CFRAME)
-			task.wait(0.5)
+			task.wait(1)
 
 			local eggPart = GetEggPart(Egg)
 
@@ -3108,7 +3108,7 @@ task.spawn(function()
 					task.wait(0.5)
 
 					TweenToCFrame(VOLCANO_1_CFRAME)
-					task.wait(1)
+					task.wait(2)
 
 					FinishEgg(eggName, hrp, basketEgg)
 				end
