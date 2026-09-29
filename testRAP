@@ -2941,7 +2941,7 @@ task.spawn(function()
 								PickupEgg(Egg)
 								task.wait(0.05)
 							end
-							task.wait(0.4)
+							task.wait(0.5)
 						end
 
 						hrp.CFrame = volcano2CFrame
@@ -2962,7 +2962,7 @@ task.spawn(function()
 								task.wait(0.05)
 							end
 
-							task.wait(0.4)
+							task.wait(0.5)
 
 							if AutoVolcanoDip then
 								task.wait(0.50)
