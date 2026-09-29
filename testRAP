@@ -2811,120 +2811,185 @@ task.spawn(function()
 	end
 end)
 
--- AUTO FARM LOOP
+--// CONSTANTS
+local VOLCANO_1_CFRAME = CFrame.new(
+	-4895.28516, 41278.4492, -3723.92383,
+	-0.651083589, -0.103715874, 0.751886427,
+	1.3961988e-08, 0.990619779, 0.136646986,
+	-0.759006023, 0.0889686197, -0.644976318
+)
+
+local VOLCANO_2_CFRAME = CFrame.new(
+	-4974.02295, 41275.0195, -3647.97583,
+	-0.736429989, 5.97274452e-09, 0.676513731,
+	3.34177592e-08, 1, 2.75487313e-08,
+	-0.676513731, 4.28952873e-08, -0.736429989
+)
+
+local LAVA_CFRAME = CFrame.new(
+	-5111.86475, 41405.6055, -3470.93066,
+	0.99564749, -5.98519776e-08, 0.0931990221,
+	6.81852583e-08, 1, -8.62295266e-08,
+	-0.0931990221, 9.22090138e-08, 0.99564749
+)
+
+
+--// WAIT UNTIL EGG BASKET HAS CONTENT
+local function WaitForEggBasket(timeout)
+	local LocalPlayer = game:GetService("Players").LocalPlayer
+	local Basket = LocalPlayer:FindFirstChild("Basket")
+
+	if not Basket then
+		return false
+	end
+
+	local start = os.clock()
+	timeout = timeout or 3
+
+	while os.clock() - start < timeout do
+		if #Basket:GetChildren() > 0 then
+			return true
+		end
+
+		task.wait(0.1)
+	end
+
+	return false
+end
+
+
+--// PICKUP EGG + WAIT FOR BASKET CONFIRMATION
+local function PickupAndConfirm(Egg)
+	for i = 1, 2 do
+		PickupEgg(Egg)
+		task.wait(0.05)
+	end
+
+	return WaitForEggBasket(3)
+end
+
+
+--// VOLCANO DIP
+local function VolcanoDip(hrp)
+	if not AutoVolcanoDip then
+		return
+	end
+
+	task.wait(0.50)
+
+	hrp.CFrame = LAVA_CFRAME
+	task.wait(0.5)
+
+	pcall(function()
+		if VolcanoDipRemote then
+			VolcanoDipRemote:FireServer()
+		end
+	end)
+
+	task.wait(10)
+end
+
+
+--// FINISH EGG
+local function FinishEgg(eggName, hrp)
+	VolcanoDip(hrp)
+
+	TeleportToMyPlot()
+	SendWebhookNotification(eggName)
+
+	task.wait(0.5)
+end
+
+
+--// AUTO FARM LOOP
 task.spawn(function()
 	while true do
-		if AutoPickup then
-			local Egg = FindSelectedEgg()
-			if Egg then
-				local eggName = Egg.Name
-				local char = GetCharacter()
-				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-				if hrp then
-					if eggName == "Volcanic Egg" then
-						local volcano1CFrame = CFrame.new(
-							-4895.28516, 41278.4492, -3723.92383,
-							-0.651083589, -0.103715874, 0.751886427,
-							1.3961988e-08, 0.990619779, 0.136646986,
-							-0.759006023, 0.0889686197, -0.644976318
-						)
-						hrp.CFrame = volcano1CFrame
-						task.wait(0.1)
+		if not AutoPickup then
+			task.wait(0.2)
+			continue
+		end
 
-						local volcano2CFrame = CFrame.new(
-							-4974.02295, 41275.0195, -3647.97583,
-							-0.736429989, 5.97274452e-09, 0.676513731,
-							3.34177592e-08, 1, 2.75487313e-08,
-							-0.676513731, 4.28952873e-08, -0.736429989
-						)
-						TweenToCFrame(volcano2CFrame)
-						task.wait(0.1)
+		local Egg = FindSelectedEgg()
 
-						local eggPart = GetEggPart(Egg)
-						if eggPart then
-							hrp.CFrame = eggPart.CFrame * CFrame.new(0, 1.5, 0)
-							task.wait(0.1)
+		if not Egg then
+			task.wait(0.2)
+			continue
+		end
 
-							for i = 1, 2 do
-								PickupEgg(Egg)
-								task.wait(0.05)
-							end
-							task.wait(0.5)
-						end
+		local eggName = Egg.Name
+		local char = GetCharacter()
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-						hrp.CFrame = volcano2CFrame
-						task.wait(0.1)
+		if not hrp then
+			task.wait(0.1)
+			continue
+		end
 
-						TweenToCFrame(volcano1CFrame)
-						task.wait(0.1)
 
-						-- Volcano Dip Execution kapag Volcanic Egg o kapag naka-ON ang Volcano Dip Toggle
-						if AutoVolcanoDip or eggName == "Volcanic Egg" then
-							task.wait(0.50)
-							local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
-							hrp.CFrame = lavaCFrame
-							task.wait(0.5)
+		--==================================================
+		-- VOLCANIC EGG
+		--==================================================
+		if eggName == "Volcanic Egg" then
 
-							pcall(function()
-								if VolcanoDipRemote then
-									VolcanoDipRemote:FireServer()
-								end
-							end)
+			-- Volcano entrance 1
+			hrp.CFrame = VOLCANO_1_CFRAME
+			task.wait(0.1)
 
-							task.wait(10)
-						end
+			-- Volcano entrance 2
+			TweenToCFrame(VOLCANO_2_CFRAME)
+			task.wait(0.1)
 
-						TeleportToMyPlot()
-						SendWebhookNotification(eggName)
-						task.wait(0.5)
+			-- Find egg
+			local eggPart = GetEggPart(Egg)
 
-					else
-						if TeleportToEgg(Egg) then
-							task.wait(0.05)
+			if eggPart then
+				hrp.CFrame = eggPart.CFrame * CFrame.new(0, 1.5, 0)
+				task.wait(0.1)
 
-							for i = 1, 2 do
-								PickupEgg(Egg)
-								task.wait(0.05)
-							end
+				-- Pickup + WAIT until basket actually has egg
+				local secured = PickupAndConfirm(Egg)
 
-							task.wait(0.5)
-
-							if AutoVolcanoDip then
-								task.wait(0.50)
-								local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
-								hrp.CFrame = lavaCFrame
-								task.wait(0.5)
-
-								pcall(function()
-									if VolcanoDipRemote then
-										VolcanoDipRemote:FireServer()
-									end
-								end)
-
-								task.wait(10)
-
-								TeleportToMyPlot()
-								SendWebhookNotification(eggName)
-								task.wait(0.5)
-							else
-								TeleportToMyPlot()
-								SendWebhookNotification(eggName)
-								task.wait(0.5)
-							end
-						else
-							task.wait(0.1)
-						end
-					end
-				else
+				if secured then
 					task.wait(0.1)
+
+					-- Return to volcano entrance
+					hrp.CFrame = VOLCANO_2_CFRAME
+					task.wait(0.1)
+
+					TweenToCFrame(VOLCANO_1_CFRAME)
+					task.wait(0.1)
+
+					-- Optional dip + return to plot + webhook
+					FinishEgg(eggName, hrp)
 				end
 			else
-				task.wait(0.2)
+				task.wait(0.1)
 			end
+
+
+		--==================================================
+		-- NORMAL EGG
+		--==================================================
 		else
-			task.wait(0.2)
+
+			if TeleportToEgg(Egg) then
+				task.wait(0.05)
+
+				-- Pickup + WAIT until basket actually has egg
+				local secured = PickupAndConfirm(Egg)
+
+				if secured then
+					task.wait(0.1)
+
+					-- Optional dip + return to plot + webhook
+					FinishEgg(eggName, hrp)
+				end
+			else
+				task.wait(0.1)
+			end
 		end
+
 		task.wait(0.03)
 	end
 end)
