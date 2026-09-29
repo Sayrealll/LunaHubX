@@ -539,37 +539,116 @@ local function ToggleHideEggs(state)
 
 	for _, plot in ipairs(Plots:GetChildren()) do
 		local eggsFolder = plot:FindFirstChild("Eggs")
+
 		if eggsFolder then
 			for _, egg in ipairs(eggsFolder:GetChildren()) do
+
 				if egg:IsA("Model") or egg:IsA("BasePart") then
+
 					for _, child in ipairs(egg:GetDescendants()) do
+
+						--========================================
+						-- BASEPART
+						--========================================
 						if child:IsA("BasePart") then
+
 							if state then
-								if not child:GetAttribute("OriginalTransparency") then
-									child:SetAttribute("OriginalTransparency", child.Transparency)
+								if child:GetAttribute("HideEgg_Transparency") == nil then
+									child:SetAttribute(
+										"HideEgg_Transparency",
+										child.Transparency
+									)
 								end
-								if child:GetAttribute("OriginalCanCollide") == nil then
-									child:SetAttribute("OriginalCanCollide", child.CanCollide)
+
+								if child:GetAttribute("HideEgg_CanCollide") == nil then
+									child:SetAttribute(
+										"HideEgg_CanCollide",
+										child.CanCollide
+									)
 								end
+
 								child.Transparency = 1
 								child.CanCollide = false
+
 							else
-								local origTrans = child:GetAttribute("OriginalTransparency") or 0
-								local origCollide = child:GetAttribute("OriginalCanCollide")
-								child.Transparency = origTrans
-								if origCollide ~= nil then
-									child.CanCollide = origCollide
+								local originalTransparency =
+									child:GetAttribute("HideEgg_Transparency")
+
+								local originalCanCollide =
+									child:GetAttribute("HideEgg_CanCollide")
+
+								if originalTransparency ~= nil then
+									child.Transparency = originalTransparency
+								end
+
+								if originalCanCollide ~= nil then
+									child.CanCollide = originalCanCollide
 								end
 							end
+
+
+						--========================================
+						-- DECAL / TEXTURE
+						--========================================
 						elseif child:IsA("Decal") or child:IsA("Texture") then
-							child.Transparency = state and 1 or 0
-						elseif child:IsA("BillboardGui") or child:IsA("SurfaceGui") or 
-							   child:IsA("ParticleEmitter") or child:IsA("Beam") or 
-							   child:IsA("Trail") or child:IsA("Fire") or 
-							   child:IsA("Smoke") or child:IsA("Sparkles") or 
-							   child:IsA("Light") or child:IsA("Highlight") or 
-							   child:IsA("SelectionBox") then
-							child.Enabled = not state
+
+							if state then
+
+								if child:GetAttribute("HideEgg_Transparency") == nil then
+									child:SetAttribute(
+										"HideEgg_Transparency",
+										child.Transparency
+									)
+								end
+
+								child.Transparency = 1
+
+							else
+
+								local originalTransparency =
+									child:GetAttribute("HideEgg_Transparency")
+
+								if originalTransparency ~= nil then
+									child.Transparency = originalTransparency
+								end
+							end
+
+
+						--========================================
+						-- VISUAL OBJECTS WITH ENABLED
+						--========================================
+						elseif child:IsA("BillboardGui")
+							or child:IsA("SurfaceGui")
+							or child:IsA("ParticleEmitter")
+							or child:IsA("Beam")
+							or child:IsA("Trail")
+							or child:IsA("Fire")
+							or child:IsA("Smoke")
+							or child:IsA("Sparkles")
+							or child:IsA("Light")
+							or child:IsA("Highlight")
+							or child:IsA("SelectionBox") then
+
+							if state then
+
+								if child:GetAttribute("HideEgg_Enabled") == nil then
+									child:SetAttribute(
+										"HideEgg_Enabled",
+										child.Enabled
+									)
+								end
+
+								child.Enabled = false
+
+							else
+
+								local originalEnabled =
+									child:GetAttribute("HideEgg_Enabled")
+
+								if originalEnabled ~= nil then
+									child.Enabled = originalEnabled
+								end
+							end
 						end
 					end
 				end
@@ -578,36 +657,62 @@ local function ToggleHideEggs(state)
 	end
 end
 
+
+--==================================================
+-- INITIAL HIDE
+--==================================================
+
 task.spawn(function()
 	task.wait(1.5)
-	if (typeof(ConfigData) == "table" and ConfigData.HideEggs) or (HideEggs ~= nil and HideEggs) then
+
+	if (typeof(ConfigData) == "table" and ConfigData.HideEggs)
+		or (HideEggs ~= nil and HideEggs) then
+
 		ToggleHideEggs(true)
 	end
 end)
 
+
+--==================================================
+-- NEW EGGS LISTENER
+--==================================================
+
 task.spawn(function()
+
 	local PlotsFolder = workspace:WaitForChild("Plots", 10)
-	if PlotsFolder then
-		local function AttachEggListener(plot)
-			local eggsFolder = plot:WaitForChild("Eggs", 5)
-			if eggsFolder then
-				eggsFolder.ChildAdded:Connect(function()
-					if HideEggs then
-						task.wait(0.2)
-						ToggleHideEggs(true)
-					end
-				end)
+
+	if not PlotsFolder then
+		return
+	end
+
+	local function AttachEggListener(plot)
+
+		local eggsFolder = plot:WaitForChild("Eggs", 5)
+
+		if not eggsFolder then
+			return
+		end
+
+		eggsFolder.ChildAdded:Connect(function()
+
+			if HideEggs then
+				task.wait(0.2)
+				ToggleHideEggs(true)
 			end
-		end
 
-		for _, plot in ipairs(PlotsFolder:GetChildren()) do
-			AttachEggListener(plot)
-		end
-
-		PlotsFolder.ChildAdded:Connect(function(plot)
-			AttachEggListener(plot)
 		end)
 	end
+
+
+	for _, plot in ipairs(PlotsFolder:GetChildren()) do
+		AttachEggListener(plot)
+	end
+
+
+	PlotsFolder.ChildAdded:Connect(function(plot)
+		AttachEggListener(plot)
+	end)
+
 end)
 
 --// EGG CONTAINER
