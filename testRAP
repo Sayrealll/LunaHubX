@@ -8,7 +8,7 @@ game:GetService("Players").LocalPlayer.Idled:Connect(function()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
---// SERVICES & REFERENCES (PINAGSAMA SA PINAKA-TAAS)
+--// SERVICES & REFERENCES
 local cloneref = (cloneref or clonereference or function(instance)
 	return instance
 end)
@@ -31,7 +31,7 @@ local Rebirths = SavedData:WaitForChild("Rebirths")
 local OwnedPetsIndex = SavedData:WaitForChild("OwnedPets")
 local IndexRewardStage = SavedData:WaitForChild("IndexRewardStage")
 
---// GAME MODULES & REMOTES (PINAGSAMA SA TAAS)
+--// GAME MODULES & REMOTES
 local GameServices = ReplicatedStorage:WaitForChild("GameServices")
 local GameData = ReplicatedStorage:WaitForChild("GameData")
 
@@ -58,10 +58,8 @@ local PickupPetRemote = GameRemotes:WaitForChild("PickupPet")
 local ClaimIndexReward = GameRemotes:WaitForChild("ClaimIndexReward")
 local FavoritePetRemote = GameRemotes:WaitForChild("FavoritePet")
 
--- PINALITAN ANG BASKET DROP REMOTE PATUNGO SA VOLCANO DIP REMOTE
+-- VOLCANO DIP REMOTE
 local VolcanoDipRemote = ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net"):WaitForChild("RE/VolcanoDip")
-
-
 
 --// SELL SHOP REMOTES & REFERENCES
 local DialogueRemotes = ReplicatedStorage:WaitForChild("Dialogue"):WaitForChild("Remotes")
@@ -73,7 +71,6 @@ local ConfirmRequest = GameRemotes:WaitForChild("ConfirmRequest")
 local RichieNPC = workspace:WaitForChild("Stalls"):WaitForChild("Sell"):WaitForChild("Richie")
 local latestRequestId = nil
 
--- Dynamic Request ID Sniffer
 for _, remote in ipairs(GameRemotes:GetChildren()) do
     if remote:IsA("RemoteEvent") then
         remote.OnClientEvent:Connect(function(...)
@@ -87,13 +84,11 @@ for _, remote in ipairs(GameRemotes:GetChildren()) do
     end
 end
 
--- Bypass dialogue typing animation
 DialogueSend.OnClientEvent:Connect(function(data)
     if data and data.Model == RichieNPC and data.AwaitComplete then
         DialogueTypingDone:FireServer(data.Model, data.CompleteToken)
     end
 end)
-
 
 --// WINDUI INITIALIZATION
 local WindUI
@@ -154,7 +149,9 @@ local ConfigData = {
 	ESPEnabled = false,
 	SelectedFavPet = {},
     HideEggs = false,
-	AutoFavoritePet = false
+	AutoFavoritePet = false,
+	WebhookUrl = "",
+	WebhookEnabled = false
 }
 
 local function LoadConfig()
@@ -196,7 +193,7 @@ local SelectedPetToSell = ConfigData.SelectedPetToSell or {}
 local SelectedSellRarities = ConfigData.SelectedSellRarities or {}
 local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
--- TOGGLES
+-- TOGGLES & INPUTS
 local AutoPickup = ConfigData.AutoPickup or false
 local AutoVolcanoDip = ConfigData.AutoVolcanoDip or false
 local HideEggs = ConfigData.HideEggs or false
@@ -215,7 +212,8 @@ local AutoEquipBestPet = ConfigData.AutoEquipBestPet or false
 local AutoSellPet = ConfigData.AutoSellPet or false
 local AutoSellAllPets = ConfigData.AutoSellAllPets or false
 local AutoFavoritePet = ConfigData.AutoFavoritePet or false
-
+local WebhookUrl = ConfigData.WebhookUrl or ""
+local WebhookEnabled = ConfigData.WebhookEnabled or false
 
 -- UI ELEMENT REFERENCES FOR RESET
 local UIElements = {}
@@ -233,22 +231,58 @@ local function SetUIValue(element, newValue)
 	end)
 end
 
-
---NO PROMPT
+-- NO PROMPT
 for i,v in pairs(game:GetService("Workspace"):GetDescendants()) do
 	if v:IsA("ProximityPrompt") then
 		v["HoldDuration"] = 0
 	end
 end
 
-
 game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(v)
     v["HoldDuration"] = 0
 end)
 
+--==================================================
+-- DISCORD WEBHOOK FUNCTION
+--==================================================
+local function SendWebhookNotification(eggName)
+	if not WebhookEnabled or WebhookUrl == "" then return end
+
+	local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+	if not request then return end
+
+	local eggData = Eggs_mData[eggName]
+	local rarity = eggData and eggData.Rarity or "Unknown"
+
+	local embedData = {
+		["title"] = "🥚 Egg Collected!",
+		["color"] = 65280,
+		["fields"] = {
+			{ ["name"] = "Player", ["value"] = Player.Name, ["inline"] = true },
+			{ ["name"] = "Egg Name", ["value"] = eggName, ["inline"] = true },
+			{ ["name"] = "Rarity", ["value"] = rarity, ["inline"] = true }
+		},
+		["footer"] = { ["text"] = "Luna Hub Auto Farm" },
+		["timestamp"] = DateTime.now():ToIsoDate()
+	}
+
+	local payload = HttpService:JSONEncode({
+		["username"] = "Luna Hub Notifier",
+		["embeds"] = { embedData }
+	})
+
+	pcall(function()
+		request({
+			Url = WebhookUrl,
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json" },
+			Body = payload
+		})
+	end)
+end
 
 --==================================================
--- HELPER FUNCTIONS (DEFINED EARLY FOR BUTTONS/LOOPS)
+-- HELPER FUNCTIONS
 --==================================================
 
 local function GetCharacter()
@@ -488,7 +522,6 @@ local function ApplyFPSBoost(state)
 	end
 end
 
--- Init Boost if loaded from config
 if FPSBoost then
 	task.spawn(function()
 		task.wait(1)
@@ -496,9 +529,8 @@ if FPSBoost then
 	end)
 end
 
-
 --==================================================
--- HIDE ALL EGGS FUNCTION (Collision Fixed)
+-- HIDE ALL EGGS FUNCTION
 --==================================================
 
 local function ToggleHideEggs(state)
@@ -510,25 +542,20 @@ local function ToggleHideEggs(state)
 		if eggsFolder then
 			for _, egg in ipairs(eggsFolder:GetChildren()) do
 				if egg:IsA("Model") or egg:IsA("BasePart") then
-					
 					for _, child in ipairs(egg:GetDescendants()) do
 						if child:IsA("BasePart") then
 							if state then
-								-- I-save ang original transparency at cancollide bago itago
 								if not child:GetAttribute("OriginalTransparency") then
 									child:SetAttribute("OriginalTransparency", child.Transparency)
 								end
 								if child:GetAttribute("OriginalCanCollide") == nil then
 									child:SetAttribute("OriginalCanCollide", child.CanCollide)
 								end
-								
 								child.Transparency = 1
 								child.CanCollide = false
 							else
-								-- Ibalik sa dati nilang original values
 								local origTrans = child:GetAttribute("OriginalTransparency") or 0
 								local origCollide = child:GetAttribute("OriginalCanCollide")
-								
 								child.Transparency = origTrans
 								if origCollide ~= nil then
 									child.CanCollide = origCollide
@@ -545,14 +572,12 @@ local function ToggleHideEggs(state)
 							child.Enabled = not state
 						end
 					end
-
 				end
 			end
 		end
 	end
 end
 
--- AUTO-HIDE UPON STARTUP (Para sa Saved Config)
 task.spawn(function()
 	task.wait(1.5)
 	if (typeof(ConfigData) == "table" and ConfigData.HideEggs) or (HideEggs ~= nil and HideEggs) then
@@ -560,7 +585,6 @@ task.spawn(function()
 	end
 end)
 
--- AUTO-HIDE KAPAG MAY BAGONG PLANTED / SPAWNED EGG
 task.spawn(function()
 	local PlotsFolder = workspace:WaitForChild("Plots", 10)
 	if PlotsFolder then
@@ -697,7 +721,6 @@ local PET_LIST = {
     "Dragon", "Griffin"
 }
 
-
 local EggPriority = {}
 for Index, Name in ipairs(EggNames) do
 	EggPriority[Name] = Index
@@ -739,13 +762,14 @@ local Tab3 = Window:Tab({ Title = "SHOP", Icon = "shopping-cart" })
 local Tab4 = Window:Tab({ Title = "VISUAL", Icon = "eye" })
 local Tab5 = Window:Tab({ Title = "Tracker", Icon = "radar" })
 local Tab6 = Window:Tab({ Title = "CONFIG", Icon = "file-cog" })
-local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
+local Tab7 = Window:Tab({ Title = "WEBHOOK", Icon = "send" })
+local Tab8 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 
 --==================================================
 -- TAB 1 (HOME)
 --==================================================
 
-    Tab1:Paragraph({
+Tab1:Paragraph({
 	Title = "Discord",
 	Desc = "Join our Discord Community",
 
@@ -771,7 +795,7 @@ local Tab7 = Window:Tab({ Title = "SETTINGS", Icon = "settings" })
 	},
 })
 
-    local HomeSection1 = Tab1:Section({
+local HomeSection1 = Tab1:Section({
 	Title = "Teleport",
 	Icon = "compass",
 	Box = true,
@@ -790,7 +814,6 @@ HomeSection1:Button({
 		end
 	end,
 })
-
 
 HomeSection1:Button({
 	Title = "TP TO VOLCANO ENTRANCE",
@@ -879,8 +902,6 @@ UIElements.AutoPickup = EggSection:Toggle({
 	end,
 })
 
-
-
 local EggSection1 = Tab2:Section({
 	Title = "Auto Place & Hatch",
 	Icon = "sparkles",
@@ -952,7 +973,6 @@ UIElements.AutoEquipBestPet = EggSection1:Toggle({
 	end,
 })
 
-
 local EggSection2 = Tab2:Section({
 	Title = "Upgrades",
 	Icon = "trending-up",
@@ -1015,7 +1035,6 @@ UIElements.AutoClaimOffline = EggSection2:Toggle({
 		ConfigData.AutoClaimOffline = value
 		SaveConfig()
 
-		-- One-time execution pag na-toggle sa ON
 		if value then
 			task.spawn(function()
 				pcall(function()
@@ -1024,11 +1043,9 @@ UIElements.AutoClaimOffline = EggSection2:Toggle({
 						and ReplicatedStorage.Remotes.Game:FindFirstChild("OfflineEarnings")
 
 					if OfflineEarnings then
-						-- 1. I-fire ang server para ma-claim ang reward
 						OfflineEarnings:FireServer()
 						task.wait(0.3)
 						
-						-- 2. Isara/Itago ang Pop-up UI sa screen
 						local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 2)
 						if PlayerGui then
 							for _, gui in ipairs(PlayerGui:GetChildren()) do
@@ -1400,6 +1417,8 @@ ConfigSection:Button({
         AutoEquipBestPet = false
         HideEggs = false
 		AutoFavoritePet = false
+		WebhookUrl = ""
+		WebhookEnabled = false
 
 		ConfigData = {
 			SelectedEggs = {},
@@ -1430,7 +1449,9 @@ ConfigSection:Button({
 			FPSBoost = false,
 			SelectedFavPet = {},
             HideEggs = false,
-			AutoFavoritePet = false
+			AutoFavoritePet = false,
+			WebhookUrl = "",
+			WebhookEnabled = false
 		}
 
 		SetUIValue(UIElements.SelectedRarities, {})
@@ -1462,7 +1483,8 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedFavPet, {})
 		SetUIValue(UIElements.AutoFavoritePet, false)
         SetUIValue(UIElements.HideEggs, false)
-        
+        SetUIValue(UIElements.WebhookUrlInput, "")
+        SetUIValue(UIElements.WebhookEnabled, false)
 
 		WindUI:Notify({
 			Title = "Config Reset",
@@ -1478,8 +1500,109 @@ ConfigSection:Button({
 })
 
 --==================================================
--- SERVER FUNCTIONS
+-- TAB 7 (WEBHOOK)
 --==================================================
+
+local WebhookSection = Tab7:Section({
+	Title = "Discord Webhook",
+	Icon = "send",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.WebhookUrlInput = WebhookSection:Input({
+	Title = "Webhook URL",
+	Desc = "Paste your Discord Webhook URL here",
+	Value = ConfigData.WebhookUrl or "",
+	Placeholder = "https://discord.com/api/webhooks/...",
+	Callback = function(text)
+		WebhookUrl = text
+		ConfigData.WebhookUrl = text
+		SaveConfig()
+	end,
+})
+
+UIElements.WebhookEnabled = WebhookSection:Toggle({
+	Title = "Enable Webhook Notifications",
+	Desc = "Send Discord notification whenever an egg is collected",
+	Value = ConfigData.WebhookEnabled,
+
+	Callback = function(value)
+		WebhookEnabled = value
+		ConfigData.WebhookEnabled = value
+		SaveConfig()
+	end,
+})
+
+WebhookSection:Button({
+	Title = "Test Webhook",
+	Justify = "Center",
+	Icon = "",
+	Callback = function()
+		if WebhookUrl ~= "" then
+			SendWebhookNotification("Test Egg")
+			WindUI:Notify({
+				Title = "Webhook Test",
+				Content = "Sent test message to Discord!",
+				Icon = "solar:bell-bold",
+				Duration = 3,
+				CanClose = true,
+			})
+		else
+			WindUI:Notify({
+				Title = "Webhook Error",
+				Content = "Please enter a valid Webhook URL first.",
+				Icon = "solar:bell-bold",
+				Duration = 3,
+				CanClose = true,
+			})
+		end
+	end,
+})
+
+--==================================================
+-- TAB 8 (SETTINGS)
+--==================================================
+
+local SettingsSection = Tab8:Section({
+	Title = "Performance",
+	Icon = "zap",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.FPSBoost = SettingsSection:Toggle({
+	Title = "FPS Boost",
+	Desc = "Lower graphics quality to increase FPS performance",
+	Value = ConfigData.FPSBoost,
+
+	Callback = function(value)
+		FPSBoost = value
+		ConfigData.FPSBoost = value
+		SaveConfig()
+		ApplyFPSBoost(value)
+	end,
+})
+
+UIElements.HideEggs = SettingsSection:Toggle({
+	Title = "Hide All Eggs",
+	Desc = "Hide all eggs in your plot and other players' plots",
+	Value = ConfigData.HideEggs,
+
+	Callback = function(value)
+		HideEggs = value
+		ConfigData.HideEggs = value
+		SaveConfig()
+		ToggleHideEggs(value)
+	end,
+})
+
+local SettingsSection1 = Tab8:Section({
+	Title = "Servers",
+	Icon = "globe",
+	Box = true,
+	BoxBorder = true,
+})
 
 local function RejoinServer()
 	pcall(function()
@@ -1544,50 +1667,6 @@ local function ServerHop()
 	end)
 end
 
---==================================================
--- TAB 7 (SETTINGS)
---==================================================
-
-local SettingsSection = Tab7:Section({
-	Title = "Performance",
-	Icon = "zap",
-	Box = true,
-	BoxBorder = true,
-})
-
-UIElements.FPSBoost = SettingsSection:Toggle({
-	Title = "FPS Boost",
-	Desc = "Lower graphics quality to increase FPS performance",
-	Value = ConfigData.FPSBoost,
-
-	Callback = function(value)
-		FPSBoost = value
-		ConfigData.FPSBoost = value
-		SaveConfig()
-		ApplyFPSBoost(value)
-	end,
-})
-
-UIElements.HideEggs = SettingsSection:Toggle({
-	Title = "Hide All Eggs",
-	Desc = "Hide all eggs in your plot and other players' plots",
-	Value = ConfigData.HideEggs,
-
-	Callback = function(value)
-		HideEggs = value
-		ConfigData.HideEggs = value
-		SaveConfig()
-		ToggleHideEggs(value)
-	end,
-})
-
-
-local SettingsSection1 = Tab7:Section({
-	Title = "Servers",
-	Icon = "globe",
-	Box = true,
-	BoxBorder = true,
-})
 SettingsSection1:Button({
 	Title = "Rejoin",
 	Justify = "Center",
@@ -1637,7 +1716,6 @@ local function FindSelectedEgg()
 		local IsNameSelected = false
 		local IsRaritySelected = false
 
-		-- Check if Name selected
 		if type(SelectedEggs) == "table" then
 			for _, SelectedName in ipairs(SelectedEggs) do
 				if SelectedName == Name then
@@ -1649,7 +1727,6 @@ local function FindSelectedEgg()
 			IsNameSelected = true
 		end
 
-		-- Check if Rarity selected
 		if type(SelectedRarities) == "table" then
 			for _, SelectedRarity in ipairs(SelectedRarities) do
 				if SelectedRarity == Rarity then
@@ -1661,9 +1738,6 @@ local function FindSelectedEgg()
 			IsRaritySelected = true
 		end
 
-		-- Priority Calculations:
-		-- Priority 1: Selected Rarity
-		-- Priority 2: Selected Egg Name
 		if IsRaritySelected or IsNameSelected then
 			local currentRarityPrio = IsRaritySelected and (RarityPriority[Rarity] or 99) or 999
 			local currentEggPrio = IsNameSelected and (EggPriority[Name] or 999) or 9999
@@ -1744,17 +1818,6 @@ local function TeleportToEgg(Egg)
 	return true
 end
 
-local function WaitForEggPickup(Egg, Timeout)
-	Timeout = Timeout or 5
-	local StartTime = os.clock()
-
-	while Egg and Egg.Parent == RenderedEggs do
-		if (os.clock() - StartTime) >= Timeout then break end
-		task.wait(0.1)
-	end
-end
-
--- Helper Tween Function
 local function TweenToCFrame(targetCFrame, speedOrTime)
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -1776,28 +1839,27 @@ end
 
 local ActiveESP = {}
 
--- Function para makuha ang color batay sa rarity
 local function GetEggColor(eggName)
 	local eggData = Eggs_mData[eggName]
 	local rarity = eggData and eggData.Rarity or "Common"
 
 	if rarity == "Common" then
-		return Color3.fromRGB(255, 255, 255) -- White
+		return Color3.fromRGB(255, 255, 255)
 	elseif rarity == "Rare" then
-		return Color3.fromRGB(85, 170, 255) -- Blue
+		return Color3.fromRGB(85, 170, 255)
 	elseif rarity == "Epic" then
-		return Color3.fromRGB(170, 85, 255) -- Purple
+		return Color3.fromRGB(170, 85, 255)
 	elseif rarity == "Legendary" then
-		return Color3.fromRGB(255, 215, 0) -- Gold / Yellow
+		return Color3.fromRGB(255, 215, 0)
 	elseif rarity == "Mythic" then
-		return Color3.fromRGB(255, 50, 50) -- Red
+		return Color3.fromRGB(255, 50, 50)
 	elseif rarity == "Divine" then
-		return Color3.fromRGB(255, 255, 153) -- Light Yellow
+		return Color3.fromRGB(255, 255, 153)
 	elseif rarity == "Ethereal" or rarity == "Eternal" then
-		return Color3.fromRGB(255, 0, 127) -- Neon Pink/Eternal
+		return Color3.fromRGB(255, 0, 127)
 	end
 
-	return Color3.fromRGB(255, 255, 255) -- Default White
+	return Color3.fromRGB(255, 255, 255)
 end
 
 local function RemoveESP(Egg)
@@ -1909,29 +1971,12 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Auto-hide kapag may bagong itinanim na egg sa kahit anong plot
-local PlotsFolder = workspace:WaitForChild("Plots", 5)
-if PlotsFolder then
-	for _, plot in ipairs(PlotsFolder:GetChildren()) do
-		local eggsFolder = plot:FindFirstChild("Eggs")
-		if eggsFolder then
-			eggsFolder.ChildAdded:Connect(function(child)
-				if HideEggs then
-					task.wait(0.1) -- Maghintay nang kaunti para ma-render ang buong model
-					ToggleHideEggs(true)
-				end
-			end)
-		end
-	end
-end
-
 --==================================================
 -- AUTOMATION LOOPS
 --==================================================
 
---AUTO FAVORITE PET 
+-- AUTO FAVORITE PET
 function ProcessAutoFavorite()
-	-- Gagawin ang loop habang NAKA-ON ang toggle
 	while AutoFavoritePet do
 		local favList = type(SelectedFavPet) == "table" and SelectedFavPet or (SelectedFavPet ~= "" and {SelectedFavPet} or {})
 		
@@ -2012,10 +2057,6 @@ function ProcessAutoFavorite()
 	end
 end
 
-
-
-
-
 -- AUTO BUY GEAR LOOP
 task.spawn(function()
 	while true do
@@ -2043,11 +2084,6 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
-
-
-
-
-
 
 -- AUTO BUY FOOD LOOP
 task.spawn(function()
@@ -2077,15 +2113,7 @@ task.spawn(function()
 	end
 end)
 
-
-
-
-
---==================================================
--- AUTO SELL PET LOOP (FIXED TELEPORT)
---==================================================
-
--- Helper function para i-equip ang pet nang maayos
+-- AUTO SELL PET LOGIC
 local function EquipTargetPetForSell(petTool)
     if not petTool or not petTool:IsA("Tool") then return false end
 
@@ -2097,16 +2125,13 @@ local function EquipTargetPetForSell(petTool)
 
     if not humanoid or not backpack then return false end
 
-    -- Kung hawak na, okay na
     if petTool.Parent == character then
         return true
     end
 
-    -- Kung nasa backpack, i-equip
     if petTool.Parent == backpack then
         humanoid:EquipTool(petTool)
         
-        -- Maghintay sandali hanggang ma-equip (timeout pagkatapos ng 1 segundo)
         local startTime = os.clock()
         while petTool.Parent ~= character and (os.clock() - startTime) < 1 do
             task.wait(0.05)
@@ -2118,16 +2143,13 @@ local function EquipTargetPetForSell(petTool)
     return false
 end
 
--- Function para kunin ang mga pets na ibebenta (Pets lang, no Eggs)
 local function GetTargetPetsToSell()
     local targetTools = {}
     local containers = {LocalPlayer:FindFirstChildOfClass("Backpack"), LocalPlayer.Character}
 
-    -- Siguraduhing tables ang mga napili
     local targetPets = type(SelectedPetToSell) == "table" and SelectedPetToSell or {}
     local targetRarities = type(SelectedSellRarities) == "table" and SelectedSellRarities or {}
 
-    -- Gumawa ng set para sa mas mabilis na pag-check
     local petSet = {}
     for _, name in ipairs(targetPets) do petSet[string.lower(name)] = true end
     
@@ -2138,32 +2160,18 @@ local function GetTargetPetsToSell()
         if container then
             for _, child in ipairs(container:GetChildren()) do
                 if child:IsA("Tool") then
-                    -- Kunin ang malinis na pangalan (walang [Level])
                     local rawName = child:GetAttribute("PetName") or child.Name
                     local petName = string.match(rawName, "^(.-) %[") or rawName
                     
-                    ---------------------------------------------------------
-                    -- FILTER: Check kung valid na Pet ito (gamit ang Pets_m)
-                    ---------------------------------------------------------
                     local petConfig = Pets_m[petName]
-                    
-                    if not petConfig then
-                        continue -- Kung wala sa Pets_m, HINDI ito pet (malamang egg), kaya skip.
-                    end
-                    ---------------------------------------------------------
+                    if not petConfig then continue end
 
-                    -- Safety: Huwag ibenta kung favorite
                     if child:GetAttribute("IsFavorite") == true then continue end
 
                     local petRarity = petConfig.Rarity or child:GetAttribute("Rarity") or "Common"
-
-                    -- Check Category Filter
                     local isPetSelected = petSet[string.lower(petName)] or false
-
-                    -- Check Rarity Filter
                     local isRaritySelected = raritySet[string.lower(petRarity)] or false
 
-                    -- Isasama lang kung valid pet AT (tumugma sa category OR rarity filter)
                     if isPetSelected or isRaritySelected then
                         table.insert(targetTools, child)
                     end
@@ -2175,13 +2183,10 @@ local function GetTargetPetsToSell()
     return targetTools
 end
 
--- Main function para sa pag-teleport at pagbenta
 local function ForceTeleportAndSellPets()
-    -- 1. Kunin muna ang listahan ng ibebenta
     local targetTools = GetTargetPetsToSell()
     if #targetTools == 0 then return end
 
-    -- 2. Safety check para sa NPC at Character
     if not RichieNPC or not RichieNPC.Parent then return end
     
     local character = LocalPlayer.Character
@@ -2190,71 +2195,51 @@ local function ForceTeleportAndSellPets()
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- 3. Loop sa bawat pet na ibebenta
     for _, petTool in ipairs(targetTools) do
-        -- Check kung naka-on pa ang toggle
         if not AutoSellPet then break end
-        
-        -- Double check kung valid pet pa rin (baka nawala habang nasa loop)
         if not petTool or not petTool.Parent then continue end
         local rawName = petTool:GetAttribute("PetName") or petTool.Name
         local petName = string.match(rawName, "^(.-) %[") or rawName
         if not Pets_m[petName] then continue end
 
-        -- 4. I-equip ang pet
         local equipped = EquipTargetPetForSell(petTool)
         
-        -- 5. Kung na-equip, mag-teleport at ibenta
         if equipped then
-            -- Refresh HRP reference
             hrp = character:FindFirstChild("HumanoidRootPart")
             if not hrp then continue end
 
-            -- TELEPORT LOGIC (Pinatibay)
             pcall(function()
                 local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
-                -- Mag-tp sa harap ni Richie
                 hrp.CFrame = targetCFrame * CFrame.new(0, 0, -4) 
             end)
             
-            -- Maghintay ng kaunti para makarating ang server
             task.wait(0.3)
 
-            -- INTERACT LOGIC
             local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
             if prompt and typeof(fireproximityprompt) == "function" then
                 fireproximityprompt(prompt)
-                task.wait(0.4) -- Hintayin bumukas ang dialogue
+                task.wait(0.4)
             end
 
-            -- SELL LOGIC
             if DialogueSelect then
                 DialogueSelect:FireServer(RichieNPC, "I would like to sell this")
-                task.wait(0.3) -- Hintayin ang request ID
+                task.wait(0.3)
             end
 
-            -- CONFIRM LOGIC
             if latestRequestId and ConfirmRequest then
                 ConfirmRequest:FireServer(latestRequestId, true, "Yes")
-                -- Linisin ang request ID para sa susunod
                 latestRequestId = nil 
             end
             
-            -- Delay bawat benta para sa stability
             task.wait(0.4) 
         end
     end
 end
 
--- Main Loop Thread
 task.spawn(function()
     while true do
         if AutoSellPet then
-            -- Gumamit ng pcall para hindi mag-crash ang buong script kung may error sa isang cycle
-            pcall(function()
-                ForceTeleportAndSellPets()
-            end)
-            -- Maghintay bago ang susunod na scan cycle
+            pcall(function() ForceTeleportAndSellPets() end)
             task.wait(2) 
         else
             task.wait(0.5)
@@ -2262,31 +2247,20 @@ task.spawn(function()
     end
 end)
 
-
-
-
-
--- Safe Auto Sell All Pets Function
 local function ForceTeleportAndSellAllPets()
-    -- Safety Check kung existing ang NPC at Character
     if not RichieNPC or not RichieNPC.Parent then return end
-    
     local character = LocalPlayer.Character
     if not character then return end
-    
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- 1. Teleport sa harap ni Richie
-    local success, err = pcall(function()
+    pcall(function()
         local targetCFrame = RichieNPC:IsA("Model") and RichieNPC:GetPivot() or RichieNPC.CFrame
         hrp.CFrame = targetCFrame * CFrame.new(0, 0, -3.5)
     end)
-    if not success then return end
 
     task.wait(0.5)
 
-    -- 2. Open Dialogue
     local prompt = RichieNPC:FindFirstChildWhichIsA("ProximityPrompt", true)
     if prompt and typeof(fireproximityprompt) == "function" then
         fireproximityprompt(prompt)
@@ -2294,32 +2268,24 @@ local function ForceTeleportAndSellAllPets()
 
     task.wait(0.6)
 
-    -- 3. Select Option: "I would like to sell my pets"
     if DialogueSelect then
         DialogueSelect:FireServer(RichieNPC, "I would like to sell my pets")
-        
         task.wait(0.6)
-
-        -- 4. Select "Yes" sa confirmation
         DialogueSelect:FireServer(RichieNPC, "Yes")
     end
 
     task.wait(0.5)
 
-    -- 5. Confirm Request Remote (kung may Request ID)
     if latestRequestId and ConfirmRequest then
         ConfirmRequest:FireServer(latestRequestId, true, "Yes")
         latestRequestId = nil
     end
 end
 
--- Main Auto-Sell All Loop Thread
 task.spawn(function()
     while true do
         if AutoSellAllPets then
-            pcall(function()
-                ForceTeleportAndSellAllPets()
-            end)
+            pcall(function() ForceTeleportAndSellAllPets() end)
             task.wait(5) 
         else
             task.wait(0.5)
@@ -2327,13 +2293,7 @@ task.spawn(function()
     end
 end)
 
-
-
-
-
---==================================================
--- AUTO PLACE EGG LOOP (FIXED)
---==================================================
+-- AUTO PLACE EGG LOOP
 local MAX_PLANTED_EGGS = 10
 
 local function GetRandomPlotPosition(Baseplate)
@@ -2372,14 +2332,7 @@ local function GetTargetEggsToPlace()
                 if child:IsA("Tool") then
                     local eggName = child.Name
                     local eggData = Eggs_mData[eggName]
-                    
-                    ---------------------------------------------------------
-                    -- FIX: Check kung valid na Egg ito bago magpatuloy
-                    ---------------------------------------------------------
-                    if not eggData then 
-                        continue -- Kung wala sa Eggs_mData, hindi ito egg (malamang pet), kaya skip.
-                    end
-                    ---------------------------------------------------------
+                    if not eggData then continue end
 
                     local eggRarity = eggData and eggData.Rarity or "Common"
 
@@ -2399,7 +2352,6 @@ local function GetTargetEggsToPlace()
                         end
                     end
 
-                    -- Isasama lang kung valid egg AT tumugma sa filter
                     if isNameSelected or isRaritySelected then
                         table.insert(targetEggTools, child)
                     end
@@ -2462,7 +2414,6 @@ task.spawn(function()
                 if not EggPlacedRemote then return end
 
                 for _, EggTool in ipairs(TargetTools) do
-                    -- Double check bago mag-equip para sa performance
                     if not AutoPlaceEgg then break end
                     
                     EggsFolder = MyPlot:FindFirstChild("Eggs")
@@ -2470,12 +2421,11 @@ task.spawn(function()
 
                     if EggCount >= MAX_PLANTED_EGGS then break end
 
-                    -- Siguraduhing egg pa rin ang hawak (baka na-sell o nawala habang naghihintay)
                     if not EggTool or not EggTool.Parent or not Eggs_mData[EggTool.Name] then continue end
 
                     if EggTool.Parent ~= Character then
                         Humanoid:EquipTool(EggTool)
-                        task.wait(0.15) -- Bahagyang taas ng wait para sa stability
+                        task.wait(0.15)
                     end
 
                     if EggTool.Parent == Character then
@@ -2493,9 +2443,6 @@ task.spawn(function()
         end
     end
 end)
-
-
-
 
 -- AUTO HATCH EGG LOOP
 local function IsEggReadyToHatch(eggModel)
@@ -2550,11 +2497,6 @@ task.spawn(function()
         end
     end
 end)
-
-
-
-
-
 
 -- AUTO PLACE BEST PETS
 local function GetMaxPetCapacity()
@@ -2720,11 +2662,6 @@ task.spawn(function()
 	end
 end)
 
-
-
-
-
-
 -- AUTO UPGRADE HATCH LUCK
 task.spawn(function()
 	while true do
@@ -2745,11 +2682,6 @@ task.spawn(function()
 		end
 	end
 end)
-
-
-
-
-
 
 -- AUTO UPGRADE HATCH LUCK MAX
 task.spawn(function()
@@ -2772,26 +2704,18 @@ task.spawn(function()
 	end
 end)
 
-
-
-
-
-
 -- AUTO REBIRTH LOOP
 local function CanRebirth()
-	-- 1. Cap Check
 	local maxCap = tonumber(Rebirths_m.Cap)
 	if maxCap and Rebirths.Value >= maxCap then 
 		return false 
 	end
 
-	-- 2. Cost Check
 	local currentCost = Rebirths_m.GetCost(Rebirths.Value)
 	if Cash.Value < currentCost then 
 		return false 
 	end
 
-	-- 3. Pet Requirement Check
 	local nextIndex = Rebirths.Value + 1
 	local reqList = General_m.RebirthRequirements
 	
@@ -2801,12 +2725,10 @@ local function CanRebirth()
 
 	local requiredPet = reqList[math.clamp(nextIndex, 1, math.max(#reqList, 1))]
 
-	-- Kung walang pet requirement sa level na 'to
 	if not requiredPet then 
 		return true 
 	end
 
-	-- Check Pet via PetRenderer
 	if PetRenderer_m and PetRenderer_m.GetAll then
 		for _, val in pairs(PetRenderer_m.GetAll()) do
 			if val.OwnerUserId == LocalPlayer.UserId and (val.Model and val.Model.Parent and val.Model.Name == requiredPet) then
@@ -2815,7 +2737,6 @@ local function CanRebirth()
 		end
 	end
 
-	-- Check Container (Backpack & Character)
 	local function ScanContainer(container)
 		if not container then return false end
 		for _, child in ipairs(container:GetChildren()) do
@@ -2830,7 +2751,6 @@ local function CanRebirth()
 		return true
 	end
 
-	-- Check Mount / Mounted Part
 	local char = LocalPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local mountJoint = hrp and hrp:FindFirstChild("PetMountJoint")
@@ -2846,7 +2766,6 @@ local function CanRebirth()
 	return false
 end
 
--- MAIN LOOP
 task.spawn(function()
 	while true do
 		if AutoRebirth then
@@ -2868,11 +2787,6 @@ task.spawn(function()
 		end
 	end
 end)
-
-
-
-
-
 
 -- AUTO CLAIM INDEX REWARD
 local function CanClaimIndexReward()
@@ -2897,23 +2811,18 @@ task.spawn(function()
 	end
 end)
 
-
-
-
-
-
 -- AUTO FARM LOOP
 task.spawn(function()
 	while true do
 		if AutoPickup then
 			local Egg = FindSelectedEgg()
 			if Egg then
+				local eggName = Egg.Name
 				local char = GetCharacter()
 				local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
 				if hrp then
-					if Egg.Name == "Volcanic Egg" then
-						
+					if eggName == "Volcanic Egg" then
 						local volcano1CFrame = CFrame.new(
 							-4895.28516, 41278.4492, -3723.92383,
 							-0.651083589, -0.103715874, 0.751886427,
@@ -2924,10 +2833,10 @@ task.spawn(function()
 						task.wait(0.1)
 
 						local volcano2CFrame = CFrame.new(
-						 -4974.02295, 41275.0195, -3647.97583,
-                        -0.736429989, 5.97274452e-09, 0.676513731,
-                        3.34177592e-08, 1, 2.75487313e-08,
-                       -0.676513731, 4.28952873e-08, -0.736429989
+							-4974.02295, 41275.0195, -3647.97583,
+							-0.736429989, 5.97274452e-09, 0.676513731,
+							3.34177592e-08, 1, 2.75487313e-08,
+							-0.676513731, 4.28952873e-08, -0.736429989
 						)
 						TweenToCFrame(volcano2CFrame)
 						task.wait(0.1)
@@ -2950,7 +2859,24 @@ task.spawn(function()
 						TweenToCFrame(volcano1CFrame)
 						task.wait(0.1)
 
+						-- Volcano Dip Execution kapag Volcanic Egg o kapag naka-ON ang Volcano Dip Toggle
+						if AutoVolcanoDip or eggName == "Volcanic Egg" then
+							task.wait(0.50)
+							local lavaCFrame = CFrame.new(-5111.86475, 41405.6055, -3470.93066, 0.99564749, -5.98519776e-08, 0.0931990221, 6.81852583e-08, 1, -8.62295266e-08, -0.0931990221, 9.22090138e-08, 0.99564749)
+							hrp.CFrame = lavaCFrame
+							task.wait(0.5)
+
+							pcall(function()
+								if VolcanoDipRemote then
+									VolcanoDipRemote:FireServer()
+								end
+							end)
+
+							task.wait(10)
+						end
+
 						TeleportToMyPlot()
+						SendWebhookNotification(eggName)
 						task.wait(0.5)
 
 					else
@@ -2979,9 +2905,11 @@ task.spawn(function()
 								task.wait(10)
 
 								TeleportToMyPlot()
+								SendWebhookNotification(eggName)
 								task.wait(0.5)
 							else
 								TeleportToMyPlot()
+								SendWebhookNotification(eggName)
 								task.wait(0.5)
 							end
 						else
