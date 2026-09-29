@@ -3028,7 +3028,7 @@ local function VolcanoDip(hrp)
 		return
 	end
 
-	task.wait(0.50)
+	task.wait(1)
 
 	hrp.CFrame = LAVA_CFRAME
 	task.wait(0.5)
