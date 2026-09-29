@@ -3090,13 +3090,13 @@ task.spawn(function()
 			task.wait(0.1)
 
 			TweenToCFrame(VOLCANO_2_CFRAME)
-			task.wait(0.1)
+			task.wait(0.5)
 
 			local eggPart = GetEggPart(Egg)
 
 			if eggPart then
 				hrp.CFrame = eggPart.CFrame * CFrame.new(0, 1.5, 0)
-				task.wait(0.1)
+				task.wait(0.5)
 
 				-- Pickup + GET ACTUAL BASKET EGG
 				local basketEgg = PickupAndConfirm(Egg)
@@ -3105,10 +3105,10 @@ task.spawn(function()
 					task.wait(0.1)
 
 					hrp.CFrame = VOLCANO_2_CFRAME
-					task.wait(0.1)
+					task.wait(0.5)
 
 					TweenToCFrame(VOLCANO_1_CFRAME)
-					task.wait(0.1)
+					task.wait(1)
 
 					FinishEgg(eggName, hrp, basketEgg)
 				end
