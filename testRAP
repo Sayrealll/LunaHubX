@@ -242,27 +242,69 @@ game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function
     v["HoldDuration"] = 0
 end)
 
+
 --==================================================
 -- DISCORD WEBHOOK FUNCTION
 --==================================================
-local function SendWebhookNotification(eggName)
+local function SendWebhookNotification(eggName, basketEgg)
 	if not WebhookEnabled or WebhookUrl == "" then return end
 
-	local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+	local request = (syn and syn.request)
+		or (http and http.request)
+		or http_request
+		or (fluxus and fluxus.request)
+		or request
+
 	if not request then return end
 
 	local eggData = Eggs_mData[eggName]
 	local rarity = eggData and eggData.Rarity or "Unknown"
 
+	-- GET MUTATION + WEIGHT FROM ACTUAL BASKET EGG
+	local mutation = "None"
+	local weight = "Unknown"
+
+	if basketEgg then
+		mutation = basketEgg:GetAttribute("Mutation") or "None"
+		weight = basketEgg:GetAttribute("Weight") or "Unknown"
+	end
+
 	local embedData = {
 		["title"] = "🥚 Egg Collected!",
 		["color"] = 65280,
+
 		["fields"] = {
-			{ ["name"] = "Player", ["value"] = Player.Name, ["inline"] = true },
-			{ ["name"] = "Egg Name", ["value"] = eggName, ["inline"] = true },
-			{ ["name"] = "Rarity", ["value"] = rarity, ["inline"] = true }
+			{
+				["name"] = "Player",
+				["value"] = Player.Name,
+				["inline"] = true
+			},
+			{
+				["name"] = "Egg Name",
+				["value"] = tostring(eggName),
+				["inline"] = true
+			},
+			{
+				["name"] = "Rarity",
+				["value"] = tostring(rarity),
+				["inline"] = true
+			},
+			{
+				["name"] = "Mutation",
+				["value"] = tostring(mutation),
+				["inline"] = true
+			},
+			{
+				["name"] = "Weight",
+				["value"] = tostring(weight) .. " KG",
+				["inline"] = true
+			}
 		},
-		["footer"] = { ["text"] = "Luna Hub Auto Farm" },
+
+		["footer"] = {
+			["text"] = "Luna Hub Auto Farm"
+		},
+
 		["timestamp"] = DateTime.now():ToIsoDate()
 	}
 
@@ -275,11 +317,15 @@ local function SendWebhookNotification(eggName)
 		request({
 			Url = WebhookUrl,
 			Method = "POST",
-			Headers = { ["Content-Type"] = "application/json" },
+			Headers = {
+				["Content-Type"] = "application/json"
+			},
 			Body = payload
 		})
 	end)
 end
+
+
 
 --==================================================
 -- HELPER FUNCTIONS
@@ -2934,7 +2980,7 @@ local VOLCANO_2_CFRAME = CFrame.new(
 local LAVA_CFRAME = CFrame.new(
 	-5111.86475, 41405.6055, -3470.93066,
 	0.99564749, -5.98519776e-08, 0.0931990221,
-	6.81852583e-08, 1, -8.62295266e-08,
+	6.81852583e-08, 1, -8.62295266,
 	-0.0931990221, 9.22090138e-08, 0.99564749
 )
 
@@ -2945,21 +2991,23 @@ local function WaitForEggBasket(timeout)
 	local Basket = LocalPlayer:FindFirstChild("Basket")
 
 	if not Basket then
-		return false
+		return nil
 	end
 
 	local start = os.clock()
 	timeout = timeout or 3
 
 	while os.clock() - start < timeout do
-		if #Basket:GetChildren() > 0 then
-			return true
+		local children = Basket:GetChildren()
+
+		if #children > 0 then
+			return children[1]
 		end
 
 		task.wait(0.1)
 	end
 
-	return false
+	return nil
 end
 
 
@@ -2996,11 +3044,12 @@ end
 
 
 --// FINISH EGG
-local function FinishEgg(eggName, hrp)
+local function FinishEgg(eggName, hrp, basketEgg)
 	VolcanoDip(hrp)
 
 	TeleportToMyPlot()
-	SendWebhookNotification(eggName)
+
+	SendWebhookNotification(eggName, basketEgg)
 
 	task.wait(0.5)
 end
@@ -3037,36 +3086,31 @@ task.spawn(function()
 		--==================================================
 		if eggName == "Volcanic Egg" then
 
-			-- Volcano entrance 1
 			hrp.CFrame = VOLCANO_1_CFRAME
 			task.wait(0.1)
 
-			-- Volcano entrance 2
 			TweenToCFrame(VOLCANO_2_CFRAME)
 			task.wait(0.1)
 
-			-- Find egg
 			local eggPart = GetEggPart(Egg)
 
 			if eggPart then
 				hrp.CFrame = eggPart.CFrame * CFrame.new(0, 1.5, 0)
 				task.wait(0.1)
 
-				-- Pickup + WAIT until basket actually has egg
-				local secured = PickupAndConfirm(Egg)
+				-- Pickup + GET ACTUAL BASKET EGG
+				local basketEgg = PickupAndConfirm(Egg)
 
-				if secured then
+				if basketEgg then
 					task.wait(0.1)
 
-					-- Return to volcano entrance
 					hrp.CFrame = VOLCANO_2_CFRAME
 					task.wait(0.1)
 
 					TweenToCFrame(VOLCANO_1_CFRAME)
 					task.wait(0.1)
 
-					-- Optional dip + return to plot + webhook
-					FinishEgg(eggName, hrp)
+					FinishEgg(eggName, hrp, basketEgg)
 				end
 			else
 				task.wait(0.1)
@@ -3081,14 +3125,13 @@ task.spawn(function()
 			if TeleportToEgg(Egg) then
 				task.wait(0.05)
 
-				-- Pickup + WAIT until basket actually has egg
-				local secured = PickupAndConfirm(Egg)
+				-- Pickup + GET ACTUAL BASKET EGG
+				local basketEgg = PickupAndConfirm(Egg)
 
-				if secured then
+				if basketEgg then
 					task.wait(0.1)
 
-					-- Optional dip + return to plot + webhook
-					FinishEgg(eggName, hrp)
+					FinishEgg(eggName, hrp, basketEgg)
 				end
 			else
 				task.wait(0.1)
