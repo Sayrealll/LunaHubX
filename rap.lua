@@ -125,10 +125,13 @@ local ConfigData = {
 	SelectedRarities = {},
 	SelectedPlaceEgg = {},
 	SelectedPlaceRarities = {},
+	SelectedHatchRarities = {},
+	SelectedHatchEggs = {},
 	AutoPickup = false,
 	AutoVolcanoDip = false,
 	AutoPlaceEgg = false,
 	AutoHatchEgg = false,
+	AutoHatchSelectedEggs = false,
 	AutoUpgradeHatchLuck = false,
 	AutoUpgradeHatchLuckMax = false,
 	AutoRebirth = false,
@@ -185,6 +188,8 @@ local SelectedEggs = ConfigData.SelectedEggs or {}
 local SelectedRarities = ConfigData.SelectedRarities or {}
 local SelectedPlaceEgg = ConfigData.SelectedPlaceEgg or {}
 local SelectedPlaceRarities = ConfigData.SelectedPlaceRarities or {}
+local SelectedHatchRarities = ConfigData.SelectedHatchRarities or {}
+local SelectedHatchEggs = ConfigData.SelectedHatchEggs or {}
 local SelectedESPEggs = ConfigData.SelectedESPEggs or {}
 local SelectedESPRarities = ConfigData.SelectedESPRarities or {}
 local SelectedGear = ConfigData.SelectedGear or {}
@@ -199,6 +204,7 @@ local AutoVolcanoDip = ConfigData.AutoVolcanoDip or false
 local HideEggs = ConfigData.HideEggs or false
 local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
 local AutoHatchEgg = ConfigData.AutoHatchEgg or false
+local AutoHatchSelectedEggs = ConfigData.AutoHatchSelectedEggs or false
 local AutoClaimIndex = ConfigData.AutoClaimIndex or false
 local AutoClaimOffline = ConfigData.AutoClaimOffline or false
 local AutoUpgradeHatchLuck = ConfigData.AutoUpgradeHatchLuck or false
@@ -1100,9 +1106,49 @@ UIElements.AutoPlaceEgg = EggSection1:Toggle({
 	end,
 })
 
+UIElements.SelectedHatchRarities = EggSection1:Dropdown({
+	Title = "Rarity Filter",
+	Desc = "Choose rarity to hatch eggs",
+	Values = RarityNames,
+	Multi = true,
+	Value = ConfigData.SelectedHatchRarities,
+	AllowNone = true,
+	Callback = function(value)
+		SelectedHatchRarities = value
+		ConfigData.SelectedHatchRarities = value
+		SaveConfig()
+	end,
+})
+
+UIElements.SelectedHatchEggs = EggSection1:Dropdown({
+	Title = "Category Filter",
+	Desc = "Choose category to hatch eggs",
+	Values = EggNames,
+	Multi = true,
+	Value = ConfigData.SelectedHatchEggs,
+	AllowNone = true,
+	Callback = function(value)
+		SelectedHatchEggs = value
+		ConfigData.SelectedHatchEggs = value
+		SaveConfig()
+	end,
+})
+
+UIElements.AutoHatchSelectedEggs = EggSection1:Toggle({
+	Title = "Auto Hatch Eggs",
+	Desc = "Automatically hatch selected eggs",
+	Value = ConfigData.AutoHatchSelectedEggs,
+
+	Callback = function(value)
+		AutoHatchSelectedEggs = value
+		ConfigData.AutoHatchSelectedEggs = value
+		SaveConfig()
+	end,
+})
+
 UIElements.AutoHatchEgg = EggSection1:Toggle({
-	Title = "Auto Hatch Egg",
-	Desc = "Automatically hatch ready eggs in your plot",
+	Title = "Auto Hatch All Eggs",
+	Desc = "Automatically hatch all ready eggs in your plot",
 	Value = ConfigData.AutoHatchEgg,
 
 	Callback = function(value)
@@ -1543,6 +1589,8 @@ ConfigSection:Button({
 		SelectedRarities = {}
 		SelectedPlaceEgg = {}
 		SelectedPlaceRarities = {}
+		SelectedHatchRarities = {}
+		SelectedHatchEggs = {}
         SelectedPetToSell = {}
         SelectedSellRarities = {}
 		SelectedFavPet = {}
@@ -1550,6 +1598,7 @@ ConfigSection:Button({
 		AutoVolcanoDip = false
 		AutoPlaceEgg = false
 		AutoHatchEgg = false
+		AutoHatchSelectedEggs = false
 		AutoUpgradeHatchLuck = false
 		AutoUpgradeHatchLuckMax = false
 		AutoRebirth = false
@@ -1576,10 +1625,13 @@ ConfigSection:Button({
 			SelectedRarities = {},
 			SelectedPlaceEgg = {},
 			SelectedPlaceRarities = {},
+			SelectedHatchRarities = {},
+			SelectedHatchEggs = {},
 			AutoPickup = false,
 			AutoVolcanoDip = false,
 			AutoPlaceEgg = false,
 			AutoHatchEgg = false,
+			AutoHatchSelectedEggs = false,
 			AutoUpgradeHatchLuck = false,
 			AutoUpgradeHatchLuckMax = false,
 			AutoRebirth = false,
@@ -1611,8 +1663,11 @@ ConfigSection:Button({
 		SetUIValue(UIElements.AutoVolcanoDip, false)
 		SetUIValue(UIElements.SelectedPlaceEgg, {})
 		SetUIValue(UIElements.SelectedPlaceRarities, {})
+		SetUIValue(UIElements.SelectedHatchRarities, {})
+		SetUIValue(UIElements.SelectedHatchEggs, {})
 		SetUIValue(UIElements.AutoPlaceEgg, false)
 		SetUIValue(UIElements.AutoHatchEgg, false)
+		SetUIValue(UIElements.AutoHatchSelectedEggs, false)
 		SetUIValue(UIElements.AutoUpgradeHatchLuck, false)
 		SetUIValue(UIElements.AutoUpgradeHatchLuckMax, false)
 		SetUIValue(UIElements.AutoRebirth, false)
@@ -2595,7 +2650,7 @@ task.spawn(function()
     end
 end)
 
--- AUTO HATCH EGG LOOP
+-- AUTO HATCH EGG LOOP (ALL & FILTERED)
 local function IsEggReadyToHatch(eggModel)
     local eggConfig = Eggs_mData[eggModel.Name]
     local eggData = eggModel:FindFirstChild("EggData")
@@ -2617,9 +2672,41 @@ local function IsEggReadyToHatch(eggModel)
     return timeLeft <= 0
 end
 
+local function IsEggMatchingHatchFilter(eggModel)
+	local eggName = eggModel.Name
+	local eggConfig = Eggs_mData[eggName]
+	local rarity = eggConfig and eggConfig.Rarity or "Common"
+
+	local isNameSelected = false
+	if type(SelectedHatchEggs) == "table" then
+		for _, selectedName in ipairs(SelectedHatchEggs) do
+			if selectedName == eggName then
+				isNameSelected = true
+				break
+			end
+		end
+	elseif SelectedHatchEggs == eggName then
+		isNameSelected = true
+	end
+
+	local isRaritySelected = false
+	if type(SelectedHatchRarities) == "table" then
+		for _, selectedRarity in ipairs(SelectedHatchRarities) do
+			if selectedRarity == rarity then
+				isRaritySelected = true
+				break
+			end
+		end
+	elseif SelectedHatchRarities == rarity then
+		isRaritySelected = true
+	end
+
+	return isNameSelected or isRaritySelected
+end
+
 task.spawn(function()
     while true do
-        if AutoHatchEgg then
+        if AutoHatchEgg or AutoHatchSelectedEggs then
             pcall(function()
                 local HatchRemote = ReplicatedStorage:FindFirstChild("Remotes")
                     and ReplicatedStorage.Remotes:FindFirstChild("Game")
@@ -2635,8 +2722,18 @@ task.spawn(function()
                                 or (eggModel:FindFirstChild("EggKey") and eggModel.EggKey.Value)
 
                             if eggKey and IsEggReadyToHatch(eggModel) then
-                                HatchRemote:FireServer({ EggKey = tostring(eggKey) })
-                                task.wait(0.2)
+								local shouldHatch = false
+
+								if AutoHatchEgg then
+									shouldHatch = true
+								elseif AutoHatchSelectedEggs and IsEggMatchingHatchFilter(eggModel) then
+									shouldHatch = true
+								end
+
+								if shouldHatch then
+									HatchRemote:FireServer({ EggKey = tostring(eggKey) })
+									task.wait(0.2)
+								end
                             end
                         end
                     end
