@@ -1124,6 +1124,7 @@ local EggSection = Tab2:Section({
 	Icon = "egg",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 UIElements.SelectedRarities = EggSection:Dropdown({
@@ -1575,6 +1576,7 @@ local VisualSection = Tab4:Section({
 	Icon = "eye",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 UIElements.SelectedESPRarities = VisualSection:Dropdown({
@@ -1628,6 +1630,7 @@ local EggsSection = Tab5:Section({
 	Icon = "radar",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 local LiveEggParagraph = EggsSection:Paragraph({
@@ -1688,6 +1691,7 @@ local ConfigSection = Tab6:Section({
 	Icon = "file-cog",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 ConfigSection:Button({
@@ -1835,6 +1839,7 @@ local WebhookSection = Tab7:Section({
 	Icon = "send",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 UIElements.WebhookUrlInput = WebhookSection:Input({
