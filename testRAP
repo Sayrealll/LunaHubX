@@ -1,9 +1,23 @@
+--// LUNA HUB LIFECYCLE (fresh start / full cleanup)
+local LH = { Alive = true, Conns = {} }
+do
+	local ok, env = pcall(function() return getgenv() end)
+	if ok and type(env) == "table" and type(env.LunaHubCleanup) == "function" then
+		pcall(env.LunaHubCleanup) -- patayin muna ang lumang instance bago mag-load ng bago
+	end
+end
+local function Bind(signal, fn)
+	local c = signal:Connect(fn)
+	table.insert(LH.Conns, c)
+	return c
+end
+
 --// ANTI AFK & AUTO LOAD CHECK
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
 local VirtualUser = game:GetService("VirtualUser")
 
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
+Bind(game:GetService("Players").LocalPlayer.Idled, function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
@@ -21,6 +35,7 @@ local Lighting = cloneref(game:GetService("Lighting"))
 local MaterialService = cloneref(game:GetService("MaterialService"))
 local TeleportService = cloneref(game:GetService("TeleportService"))
 local TweenService = cloneref(game:GetService("TweenService"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
 
 --// PLAYER REFERENCES
 local Player = Players.LocalPlayer
@@ -73,7 +88,7 @@ local latestRequestId = nil
 
 for _, remote in ipairs(GameRemotes:GetChildren()) do
     if remote:IsA("RemoteEvent") then
-        remote.OnClientEvent:Connect(function(...)
+        Bind(remote.OnClientEvent, function(...)
             local args = {...}
             for i = 1, #args do
                 if type(args[i]) == "string" and #args[i] >= 30 then
@@ -84,7 +99,7 @@ for _, remote in ipairs(GameRemotes:GetChildren()) do
     end
 end
 
-DialogueSend.OnClientEvent:Connect(function(data)
+Bind(DialogueSend.OnClientEvent, function(data)
     if data and data.Model == RichieNPC and data.AwaitComplete then
         DialogueTypingDone:FireServer(data.Model, data.CompleteToken)
     end
@@ -244,7 +259,7 @@ for i,v in pairs(game:GetService("Workspace"):GetDescendants()) do
 	end
 end
 
-game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(v)
+Bind(game:GetService("ProximityPromptService").PromptButtonHoldBegan, function(v)
     v["HoldDuration"] = 0
 end)
 
@@ -745,7 +760,7 @@ task.spawn(function()
 			return
 		end
 
-		eggsFolder.ChildAdded:Connect(function()
+		Bind(eggsFolder.ChildAdded, function()
 
 			if HideEggs then
 				task.wait(0.2)
@@ -761,7 +776,7 @@ task.spawn(function()
 	end
 
 
-	PlotsFolder.ChildAdded:Connect(function(plot)
+	Bind(PlotsFolder.ChildAdded, function(plot)
 		AttachEggListener(plot)
 	end)
 
@@ -819,7 +834,7 @@ local RarityNames = {
 local ShopStockData = {}
 local ShopStockReady = false
 
-RestockRemote.OnClientEvent:Connect(function(stockData)
+Bind(RestockRemote.OnClientEvent, function(stockData)
 	if type(stockData) ~= "table" then return end
 	ShopStockData = stockData
 	ShopStockReady = true
@@ -922,7 +937,7 @@ local Window = WindUI:CreateWindow({
 
 	ToggleKey = Enum.KeyCode.F,
 	OpenButton = {
-		Enabled = true,
+		Enabled = false, -- Disabled standard button to use custom floating logo
 		OnlyMobile = false
 	},
 })
@@ -931,6 +946,89 @@ Window:Tag({
 	Title = "v.1.0.0.8",
 	Color = "ElementBackground",
 })
+
+--==================================================
+-- CUSTOM FLOATING LOGO BUTTON
+--==================================================
+
+local FloatingGui = Instance.new("ScreenGui")
+FloatingGui.Name = "LunaHubFloatingGui"
+FloatingGui.ResetOnSpawn = false
+
+if gethui then
+    FloatingGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(FloatingGui)
+    FloatingGui.Parent = game:GetService("CoreGui")
+else
+    FloatingGui.Parent = Player:WaitForChild("PlayerGui")
+end
+
+local FloatingButton = Instance.new("ImageButton")
+FloatingButton.Name = "FloatingLogo"
+FloatingButton.Size = UDim2.new(0, 50, 0, 50)
+FloatingButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+FloatingButton.Image = "rbxassetid://74259115123500"
+
+-- 1. BLACK BACKGROUND (Tinanggal ang transparency para walang space na lumabas)
+FloatingButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+FloatingButton.BackgroundTransparency = 0 
+
+FloatingButton.Parent = FloatingGui
+
+-- GANAP NA BILOG
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = FloatingButton
+
+-- 2. BOLD BLACK STROKE
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 0, 0)
+UIStroke.Thickness = 2.5 -- Mas makapal/bold na border
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+UIStroke.Parent = FloatingButton
+
+-- DRAGGABLE LOGIC FOR FLOATING LOGO
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    FloatingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+FloatingButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = FloatingButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+FloatingButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+Bind(UserInputService.InputChanged, function(input)
+    if input == dragInput and dragging then
+        updateInput(input)
+    end
+end)
+
+-- TOGGLE WINDOW DISPLAY ON CLICK
+FloatingButton.MouseButton1Click:Connect(function()
+    if Window then
+        Window:Toggle()
+    end
+end)
 
 --==================================================
 -- TABS
@@ -1573,8 +1671,8 @@ local function UpdateRenderedEggList()
 	end
 end
 
-RenderedEggs.ChildAdded:Connect(function() task.defer(UpdateRenderedEggList) end)
-RenderedEggs.ChildRemoved:Connect(function() task.defer(UpdateRenderedEggList) end)
+Bind(RenderedEggs.ChildAdded, function() task.defer(UpdateRenderedEggList) end)
+Bind(RenderedEggs.ChildRemoved, function() task.defer(UpdateRenderedEggList) end)
 
 task.spawn(function()
 	task.wait(1)
@@ -2140,7 +2238,7 @@ local function CreateESP(Egg)
 	}
 end
 
-RunService.RenderStepped:Connect(function()
+Bind(RunService.RenderStepped, function()
 	if not ESPEnabled then
 		ClearAllESP()
 		return
@@ -2288,7 +2386,7 @@ end
 
 -- AUTO BUY GEAR LOOP
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if Autobuygear and ShopStockReady then
 			pcall(function()
 				if type(SelectedGear) == "table" then
@@ -2316,7 +2414,7 @@ end)
 
 -- AUTO BUY FOOD LOOP
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if Autobuyfood and ShopStockReady then
 			pcall(function()
 				if type(SelectedFood) == "table" then
@@ -2466,7 +2564,7 @@ local function ForceTeleportAndSellPets()
 end
 
 task.spawn(function()
-    while true do
+    while LH.Alive do
         if AutoSellPet then
             pcall(function() ForceTeleportAndSellPets() end)
             task.wait(2) 
@@ -2512,7 +2610,7 @@ local function ForceTeleportAndSellAllPets()
 end
 
 task.spawn(function()
-    while true do
+    while LH.Alive do
         if AutoSellAllPets then
             pcall(function() ForceTeleportAndSellAllPets() end)
             task.wait(5) 
@@ -2593,7 +2691,7 @@ local function GetTargetEggsToPlace()
 end
 
 task.spawn(function()
-    while true do
+    while LH.Alive do
         if AutoPlaceEgg then
             pcall(function()
                 local TargetTools = GetTargetEggsToPlace()
@@ -2728,7 +2826,7 @@ local function IsEggMatchingHatchFilter(eggModel)
 end
 
 task.spawn(function()
-    while true do
+    while LH.Alive do
         if AutoHatchEgg or AutoHatchSelectedEggs then
             pcall(function()
                 local HatchRemote = ReplicatedStorage:FindFirstChild("Remotes")
@@ -2923,7 +3021,7 @@ local function PlaceBestPets()
 end
 
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if AutoEquipBestPet and not AutoSellPet and not AutoSellAllPets then
 			pcall(function() PlaceBestPets() end)
 			task.wait(10)
@@ -2935,7 +3033,7 @@ end)
 
 -- AUTO UPGRADE HATCH LUCK
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if AutoUpgradeHatchLuck then
 			pcall(function()
 				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -2956,7 +3054,7 @@ end)
 
 -- AUTO UPGRADE HATCH LUCK MAX
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if AutoUpgradeHatchLuckMax then
 			pcall(function()
 				local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -3038,7 +3136,7 @@ local function CanRebirth()
 end
 
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if AutoRebirth then
 			pcall(function()
 				if CanRebirth() then
@@ -3071,7 +3169,7 @@ local function CanClaimIndexReward()
 end
 
 task.spawn(function()
-	while true do
+	while LH.Alive do
 		if AutoClaimIndex then
 			if CanClaimIndexReward() then
 				pcall(function() ClaimIndexReward:FireServer() end)
@@ -3173,7 +3271,7 @@ end
 
 --// AUTO FARM LOOP
 task.spawn(function()
-	while true do
+	while LH.Alive do
 
 		if not AutoPickup then
 			task.wait(0.2)
@@ -3255,5 +3353,55 @@ task.spawn(function()
 		end
 
 		task.wait(0.03)
+	end
+end)
+
+--==================================================
+-- FULL CLEANUP + WINDOW CLOSE HOOKS
+--==================================================
+local function FullCleanup()
+	if not LH.Alive then return end
+	LH.Alive = false -- humihinto lahat ng while LH.Alive loops
+
+	-- patayin ang lahat ng toggles
+	AutoPickup, AutoVolcanoDip, AutoPlaceEgg, AutoHatchEgg = false, false, false, false
+	AutoHatchSelectedEggs, AutoClaimIndex, AutoClaimOffline = false, false, false
+	AutoUpgradeHatchLuck, AutoUpgradeHatchLuckMax, AutoRebirth = false, false, false
+	Autobuygear, Autobuyfood, AutoEquipBestPet = false, false, false
+	AutoSellPet, AutoSellAllPets, AutoFavoritePet = false, false, false
+	WebhookEnabled, ESPEnabled = false, false
+
+	-- ibalik ang mga binago (hindi nito binabago ang saved config file)
+	if FPSBoost then FPSBoost = false; pcall(ApplyFPSBoost, false) end
+	if HideEggs then HideEggs = false; pcall(ToggleHideEggs, false) end
+	pcall(ClearAllESP)
+
+	-- idisconnect ang lahat ng tracked connections
+	for _, c in ipairs(LH.Conns) do pcall(function() c:Disconnect() end) end
+	table.clear(LH.Conns)
+
+	-- burahin ang floating logo, platform, at window
+	pcall(function() FloatingGui:Destroy() end)
+	pcall(function() platform:Destroy() end)
+	pcall(function() Window:Destroy() end)
+
+	pcall(function() getgenv().LunaHubCleanup = nil end)
+end
+
+pcall(function() getgenv().LunaHubCleanup = FullCleanup end)
+
+-- hook sa X button lang (Destroy). HINDI isinama ang OnClose dahil minimize rin ang nagti-trigger nito
+pcall(function() if Window.OnDestroy then Window:OnDestroy(FullCleanup) end end)
+
+-- backup watcher: kung nawala na ang window pero hindi nag-fire ang callback
+task.spawn(function()
+	task.wait(2)
+	while LH.Alive do
+		local gone = false
+		pcall(function()
+			if Window.Destroyed == true then gone = true end
+		end)
+		if gone then FullCleanup() break end
+		task.wait(0.5)
 	end
 end)
