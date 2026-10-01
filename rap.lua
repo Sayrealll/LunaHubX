@@ -888,6 +888,25 @@ for Index, Name in ipairs(RarityNames) do
 	RarityPriority[Name] = Index
 end
 
+
+local platformCFrame = CFrame.new(
+	-4895.28516, 41278.4492, -3723.92383,
+	-0.651083589, -0.103715874, 0.751886427,
+	1.3961988e-08, 0.990619779, 0.136646986,
+	-0.759006023, 0.0889686197, -0.644976318
+)
+
+local platform = Instance.new("Part")
+platform.Name = "ClientPlatform"
+platform.Size = Vector3.new(10, 1, 10)
+platform.CFrame = platformCFrame
+platform.Anchored = true
+platform.CanCollide = true
+platform.Transparency = 0
+platform.Color = Color3.fromRGB(255, 0, 0)
+platform.Material = Enum.Material.SmoothPlastic
+platform.Parent = workspace
+
 --==================================================
 -- WINDOW
 --==================================================
@@ -979,7 +998,7 @@ HomeSection1:Button({
 	Callback = function()
 		local char = LocalPlayer.Character
 		if char then
-			local volcanoEntranceCFrame = CFrame.new(-4948.55371, 41320.418, -3669.84229, -0.576323509, 1.14716983e-07, 0.817221642, 4.89400023e-08, 1, -1.05860764e-07, -0.817221642, -2.1015218e-08, -0.576323509)
+			local volcanoEntranceCFrame = CFrame.new(-4895.31396, 41282.3867, -3724.65332, -0.692454576, -8.35981524e-08, 0.721461475, -5.34351585e-08, 1, 6.45865796e-08, -0.721461475, 6.17186569e-09, -0.692454576)
 			char:PivotTo(volcanoEntranceCFrame)
 		end
 	end,
@@ -3061,10 +3080,7 @@ end)
 
 --// CONSTANTS
 local VOLCANO_1_CFRAME = CFrame.new(
-	-4895.28516, 41278.4492, -3723.92383,
-	-0.651083589, -0.103715874, 0.751886427,
-	1.3961988e-08, 0.990619779, 0.136646986,
-	-0.759006023, 0.0889686197, -0.644976318
+-4895.31396, 41282.3867, -3724.65332, -0.692454576, -8.35981524e-08, 0.721461475, -5.34351585e-08, 1, 6.45865796e-08, -0.721461475, 6.17186569e-09, -0.692454576
 )
 
 local VOLCANO_2_CFRAME = CFrame.new(
