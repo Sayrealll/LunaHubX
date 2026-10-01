@@ -2171,137 +2171,138 @@ end
 local ActiveESP = {}
 
 local function GetEggColor(eggName)
-	local eggData = Eggs_mData[eggName]
-	local rarity = eggData and eggData.Rarity or "Common"
+    local eggData = Eggs_mData[eggName]
+    local rarity = eggData and eggData.Rarity or "Common"
 
-	if rarity == "Common" then
-		return Color3.fromRGB(255, 255, 255)
-	elseif rarity == "Rare" then
-		return Color3.fromRGB(85, 170, 255)
-	elseif rarity == "Epic" then
-		return Color3.fromRGB(170, 85, 255)
-	elseif rarity == "Legendary" then
-		return Color3.fromRGB(255, 215, 0)
-	elseif rarity == "Mythic" then
-		return Color3.fromRGB(255, 50, 50)
-	elseif rarity == "Divine" then
-		return Color3.fromRGB(255, 255, 153)
-	elseif rarity == "Ethereal" or rarity == "Eternal" then
-		return Color3.fromRGB(255, 0, 127)
-	end
+    if rarity == "Common" then
+        return Color3.fromRGB(255, 255, 255)
+    elseif rarity == "Rare" then
+        return Color3.fromRGB(85, 170, 255)
+    elseif rarity == "Epic" then
+        return Color3.fromRGB(170, 85, 255)
+    elseif rarity == "Legendary" then
+        return Color3.fromRGB(255, 215, 0)
+    elseif rarity == "Mythic" then
+        return Color3.fromRGB(255, 50, 50)
+    elseif rarity == "Divine" then
+        return Color3.fromRGB(255, 255, 153)
+    elseif rarity == "Ethereal" or rarity == "Eternal" then
+        return Color3.fromRGB(255, 0, 127)
+    end
 
-	return Color3.fromRGB(255, 255, 255)
+    return Color3.fromRGB(255, 255, 255)
 end
 
 local function RemoveESP(Egg)
-	if ActiveESP[Egg] then
-		if ActiveESP[Egg].Billboard then
-			ActiveESP[Egg].Billboard:Destroy()
-		end
-		ActiveESP[Egg] = nil
-	end
+    if ActiveESP[Egg] then
+        if ActiveESP[Egg].Billboard then
+            ActiveESP[Egg].Billboard:Destroy()
+        end
+        ActiveESP[Egg] = nil
+    end
 end
 
 local function ClearAllESP()
-	for Egg, _ in pairs(ActiveESP) do
-		RemoveESP(Egg)
-	end
+    for Egg, _ in pairs(ActiveESP) do
+        RemoveESP(Egg)
+    end
 end
 
 local function CreateESP(Egg)
-	if ActiveESP[Egg] then return end
+    if ActiveESP[Egg] then return end
 
-	local EggPart = GetEggPart(Egg)
-	if not EggPart then return end
+    local EggPart = GetEggPart(Egg)
+    if not EggPart then return end
 
-	local textColor = GetEggColor(Egg.Name)
+    local textColor = GetEggColor(Egg.Name)
 
-	local Billboard = Instance.new("BillboardGui")
-	Billboard.Name = "LunaEggESP"
-	Billboard.Adornee = EggPart
-	Billboard.Size = UDim2.new(0, 200, 0, 50)
-	Billboard.StudsOffset = Vector3.new(0, 3, 0)
-	Billboard.AlwaysOnTop = true
-	Billboard.Parent = EggPart
+    local Billboard = Instance.new("BillboardGui")
+    Billboard.Name = "LunaEggESP"
+    Billboard.Adornee = EggPart
+    Billboard.Size = UDim2.new(0, 200, 0, 50)
+    Billboard.StudsOffset = Vector3.new(0, 3, 0)
+    Billboard.AlwaysOnTop = true
+    Billboard.Parent = EggPart
 
-	local TextLabel = Instance.new("TextLabel")
-	TextLabel.Size = UDim2.new(1, 0, 1, 0)
-	TextLabel.BackgroundTransparency = 1
-	TextLabel.TextColor3 = textColor
-	TextLabel.TextStrokeTransparency = 0
-	TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	TextLabel.Font = Enum.Font.SourceSansBold
-	TextLabel.TextSize = 16
-	TextLabel.Text = Egg.Name .. "\n[0m]"
-	TextLabel.Parent = Billboard
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.TextColor3 = textColor
+    TextLabel.TextStrokeTransparency = 0
+    TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.TextSize = 16
+    local eggInfo = Eggs_mData[Egg.Name]
+    local eggRarity = eggInfo and eggInfo.Rarity or "Common"
+    TextLabel.Text = string.format("%s (%s)\n0m", Egg.Name, eggRarity)
+    TextLabel.Parent = Billboard
 
-	ActiveESP[Egg] = {
-		Billboard = Billboard,
-		TextLabel = TextLabel,
-		Part = EggPart
-	}
+    ActiveESP[Egg] = {
+        Billboard = Billboard,
+        TextLabel = TextLabel,
+        Part = EggPart
+    }
 end
 
 Bind(RunService.RenderStepped, function()
-	if not ESPEnabled then
-		ClearAllESP()
-		return
-	end
+    if not ESPEnabled then
+        ClearAllESP()
+        return
+    end
 
-	local Character = GetCharacter()
-	local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+    local Character = GetCharacter()
+    local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
 
-	for Egg, _ in pairs(ActiveESP) do
-		if not Egg or not Egg.Parent or Egg.Parent ~= RenderedEggs then
-			RemoveESP(Egg)
-		end
-	end
+    for Egg, _ in pairs(ActiveESP) do
+        if not Egg or not Egg.Parent or Egg.Parent ~= RenderedEggs then
+            RemoveESP(Egg)
+        end
+    end
 
-	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
-		local Name = Egg.Name
-		local eggData = Eggs_mData[Name]
-		local Rarity = eggData and eggData.Rarity or "Common"
+    for _, Egg in ipairs(RenderedEggs:GetChildren()) do
+        local Name = Egg.Name
+        local eggData = Eggs_mData[Name]
+        local Rarity = eggData and eggData.Rarity or "Common"
 
-		local IsNameSelected = false
-		local IsRaritySelected = false
+        local IsNameSelected = false
+        local IsRaritySelected = false
 
-		if type(SelectedESPEggs) == "table" then
-			for _, SelectedName in ipairs(SelectedESPEggs) do
-				if SelectedName == Name then
-					IsNameSelected = true
-					break
-				end
-			end
-		elseif SelectedESPEggs == Name then
-			IsNameSelected = true
-		end
+        if type(SelectedESPEggs) == "table" then
+            for _, SelectedName in ipairs(SelectedESPEggs) do
+                if SelectedName == Name then
+                    IsNameSelected = true
+                    break
+                end
+            end
+        elseif SelectedESPEggs == Name then
+            IsNameSelected = true
+        end
 
-		if type(SelectedESPRarities) == "table" then
-			for _, SelectedRarity in ipairs(SelectedESPRarities) do
-				if SelectedRarity == Rarity then
-					IsRaritySelected = true
-					break
-				end
-			end
-		elseif SelectedESPRarities == Rarity then
-			IsRaritySelected = true
-		end
+        if type(SelectedESPRarities) == "table" then
+            for _, SelectedRarity in ipairs(SelectedESPRarities) do
+                if SelectedRarity == Rarity then
+                    IsRaritySelected = true
+                    break
+                end
+            end
+        elseif SelectedESPRarities == Rarity then
+            IsRaritySelected = true
+        end
 
-		if IsNameSelected or IsRaritySelected then
-			if not ActiveESP[Egg] then
-				CreateESP(Egg)
-			end
+        if IsNameSelected or IsRaritySelected then
+            if not ActiveESP[Egg] then
+                CreateESP(Egg)
+            end
 
-			if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
-				local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
-				ActiveESP[Egg].TextLabel.Text = string.format("%s\n[%dm]", Name, Dist)
-			end
-		else
-			RemoveESP(Egg)
-		end
-	end
+            if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
+                local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
+                ActiveESP[Egg].TextLabel.Text = string.format("%s (%s)\n%dm", Name, Rarity, Dist)
+            end
+        else
+            RemoveESP(Egg)
+        end
+    end
 end)
-
 --==================================================
 -- AUTOMATION LOOPS
 --==================================================
