@@ -914,6 +914,10 @@ platform.Parent = workspace
 local Window = WindUI:CreateWindow({
 	Title = "LUNA HUB",
 	Author = "RIDE A PET",
+    Icon = "rbxassetid://74259115123500",
+    IconSize = 40,
+    IconRadius = 10,
+
 	Theme = ThemeName,
 
 	ToggleKey = Enum.KeyCode.F,
