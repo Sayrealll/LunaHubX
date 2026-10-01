@@ -151,7 +151,6 @@ local ConfigData = {
 	AutoUpgradeHatchLuckMax = false,
 	AutoRebirth = false,
 	AutoClaimIndex = false,
-	AutoClaimOffline = false,
 	SelectedGear = {},
 	Autobuygear = false,
 	SelectedFood = {},
@@ -221,7 +220,6 @@ local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
 local AutoHatchEgg = ConfigData.AutoHatchEgg or false
 local AutoHatchSelectedEggs = ConfigData.AutoHatchSelectedEggs or false
 local AutoClaimIndex = ConfigData.AutoClaimIndex or false
-local AutoClaimOffline = ConfigData.AutoClaimOffline or false
 local AutoUpgradeHatchLuck = ConfigData.AutoUpgradeHatchLuck or false
 local AutoUpgradeHatchLuckMax = ConfigData.AutoUpgradeHatchLuckMax or false
 local AutoRebirth = ConfigData.AutoRebirth or false
@@ -1344,59 +1342,6 @@ UIElements.AutoClaimIndex = EggSection2:Toggle({
 	end,
 })
 
-UIElements.AutoClaimOffline = EggSection2:Toggle({
-	Title = "Auto Claim Offline Rewards",
-	Value = ConfigData.AutoClaimOffline,
-
-	Callback = function(value)
-		AutoClaimOffline = value
-		ConfigData.AutoClaimOffline = value
-		SaveConfig()
-
-		if value then
-			task.spawn(function()
-				pcall(function()
-					local OfflineEarnings = ReplicatedStorage:FindFirstChild("Remotes") 
-						and ReplicatedStorage.Remotes:FindFirstChild("Game") 
-						and ReplicatedStorage.Remotes.Game:FindFirstChild("OfflineEarnings")
-
-					if OfflineEarnings then
-						OfflineEarnings:FireServer()
-						task.wait(0.3)
-						
-						local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 2)
-						if PlayerGui then
-							for _, gui in ipairs(PlayerGui:GetChildren()) do
-								if gui:IsA("ScreenGui") then
-									local guiName = string.lower(gui.Name)
-									if string.find(guiName, "offline") or string.find(guiName, "away") or string.find(guiName, "reward") then
-										gui.Enabled = false
-									end
-									
-									for _, desc in ipairs(gui:GetDescendants()) do
-										if desc:IsA("TextLabel") or desc:IsA("TextButton") then
-											local text = string.lower(desc.Text)
-											if string.find(text, "while you're away") or string.find(text, "your pets made you") then
-												local targetFrame = desc:FindFirstAncestorOfClass("Frame") or desc:FindFirstAncestorOfClass("ScreenGui")
-												if targetFrame then
-													if targetFrame:IsA("ScreenGui") then
-														targetFrame.Enabled = false
-													else
-														targetFrame.Visible = false
-													end
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					end
-				end)
-			end)
-		end
-	end,
-})
 
 --==================================================
 -- TAB 3 (SHOP)
@@ -1727,7 +1672,6 @@ ConfigSection:Button({
 		AutoUpgradeHatchLuckMax = false
 		AutoRebirth = false
 		AutoClaimIndex = false
-		AutoClaimOffline = false
 		SelectedGear = {}
 		Autobuygear = false
 		SelectedFood = {}
@@ -1760,7 +1704,6 @@ ConfigSection:Button({
 			AutoUpgradeHatchLuckMax = false,
 			AutoRebirth = false,
 			AutoClaimIndex = false,
-			AutoClaimOffline = false,
 			SelectedGear = {},
 			Autobuygear = false,
 			SelectedFood = {},
@@ -1796,7 +1739,6 @@ ConfigSection:Button({
 		SetUIValue(UIElements.AutoUpgradeHatchLuckMax, false)
 		SetUIValue(UIElements.AutoRebirth, false)
 		SetUIValue(UIElements.AutoClaimIndex, false)
-		SetUIValue(UIElements.AutoClaimOffline, false)
 		SetUIValue(UIElements.SelectedGear, {})
 		SetUIValue(UIElements.Autobuygear, false)
 		SetUIValue(UIElements.SelectedFood, {})
@@ -3370,7 +3312,7 @@ local function FullCleanup()
 
 	-- patayin ang lahat ng toggles
 	AutoPickup, AutoVolcanoDip, AutoPlaceEgg, AutoHatchEgg = false, false, false, false
-	AutoHatchSelectedEggs, AutoClaimIndex, AutoClaimOffline = false, false, false
+	AutoHatchSelectedEggs, AutoClaimIndex = false, false
 	AutoUpgradeHatchLuck, AutoUpgradeHatchLuckMax, AutoRebirth = false, false, false
 	Autobuygear, Autobuyfood, AutoEquipBestPet = false, false, false
 	AutoSellPet, AutoSellAllPets, AutoFavoritePet = false, false, false
