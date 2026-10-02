@@ -2240,6 +2240,95 @@ local function GetEggColor(eggName)
     return Color3.fromRGB(255, 255, 255)
 end
 
+--// ESP WEIGHT HELPERS (idinagdag)
+-- Binabasa ang real weight ng egg, tapos kino-convert sa kg na ipinapakita ng game
+LH.GetEggWeight = function(Egg)
+	local function fromInst(inst)
+		if not inst then return nil end
+		local v = tonumber(inst:GetAttribute("Weight"))
+		if v then return v end
+		local child = inst:FindFirstChild("Weight")
+		if child and (child:IsA("NumberValue") or child:IsA("IntValue")) then
+			return tonumber(child.Value)
+		end
+		return nil
+	end
+
+	local w = fromInst(Egg)
+	if w then return w end
+
+	local handle = Egg:FindFirstChild("Handle")
+	w = fromInst(handle) or fromInst(handle and handle:FindFirstChild("EggBase"))
+	if w then return w end
+
+	w = fromInst(Egg:FindFirstChild("EggData"))
+	if w then return w end
+
+	for _, d in ipairs(Egg:GetDescendants()) do
+		w = fromInst(d)
+		if w then return w end
+	end
+
+	-- WALANG Weight attribute sa RenderedEggs: kunin sa laki ng model
+	-- (WorldEggScaleFor: scale = weight, pero kapag weight >= 1.5 ay x2)
+	local scale
+	local okScale, modelScale = pcall(function() return Egg:GetScale() end)
+	if okScale and type(modelScale) == "number" and math.abs(modelScale - 1) > 1e-3 then
+		scale = modelScale
+	end
+
+	if not scale and handle and handle:IsA("BasePart") then
+		LH.EggTemplates = LH.EggTemplates or {}
+		local template = LH.EggTemplates[Egg.Name]
+		if template == nil then
+			template = false
+			for _, d in ipairs(ReplicatedStorage:GetDescendants()) do
+				if d.Name == Egg.Name and d:IsA("Model") and d ~= Egg and d:FindFirstChild("Handle") then
+					template = d
+					break
+				end
+			end
+			LH.EggTemplates[Egg.Name] = template
+		end
+		local tHandle = template and template:FindFirstChild("Handle")
+		if tHandle and tHandle:IsA("BasePart") and tHandle.Size.X > 0 then
+			scale = handle.Size.X / tHandle.Size.X
+		end
+	end
+
+	if scale then
+		local from = tonumber(General_mData.EggInflateFrom) or 1.5
+		local factor = tonumber(General_mData.EggInflateFactor) or 2
+		if scale > (from + from * factor) / 2 then
+			scale = scale / factor
+		end
+		return scale, true -- true = estimate galing sa laki
+	end
+
+	return nil
+end
+
+LH.FormatKG = function(n)
+	n = tonumber(n) or 0
+	local units = { { 1e15, "Qa" }, { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } }
+	for _, u in ipairs(units) do
+		if n >= u[1] then
+			return string.format("%.2f%s kg", n / u[1], u[2])
+		end
+	end
+	return string.format("%.2f kg", n)
+end
+
+LH.GetEggWeightText = function(Egg)
+	local real = LH.GetEggWeight(Egg)
+	if not real then return nil end
+	local ok, kg = pcall(function() return General_mData.ShownEggKG(real) end)
+	if ok and type(kg) == "number" then
+		return LH.FormatKG(kg)
+	end
+	return string.format("%.2f", real)
+end
+
 local function RemoveESP(Egg)
     if ActiveESP[Egg] then
         if ActiveESP[Egg].Billboard then
@@ -2343,13 +2432,19 @@ Bind(RunService.RenderStepped, function()
 
             if ActiveESP[Egg] and HRP and ActiveESP[Egg].Part then
                 local Dist = math.floor((HRP.Position - ActiveESP[Egg].Part.Position).Magnitude)
-                ActiveESP[Egg].TextLabel.Text = string.format("%s (%s)\n%dm", Name, Rarity, Dist)
+                local entry = ActiveESP[Egg]
+                if not entry.WeightText and os.clock() >= (entry.NextWeightTry or 0) then
+                    entry.NextWeightTry = os.clock() + 2 -- retry every 2s lang para hindi mabigat
+                    entry.WeightText = LH.GetEggWeightText(Egg)
+                end
+                entry.TextLabel.Text = string.format("%s (%s)\n%dm | %s", Name, Rarity, Dist, entry.WeightText or "? kg")
             end
         else
             RemoveESP(Egg)
         end
     end
 end)
+
 --==================================================
 -- AUTOMATION LOOPS
 --==================================================
