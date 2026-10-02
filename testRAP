@@ -1074,6 +1074,7 @@ local HomeSection1 = Tab1:Section({
 	Icon = "compass",
 	Box = true,
 	BoxBorder = true,
+    Opened = true,
 })
 
 local TeleportDestinations = {
