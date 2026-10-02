@@ -1657,40 +1657,97 @@ local LiveEggParagraph = EggsSection:Paragraph({
 	Desc = "Scanning workspace for rendered eggs...",
 })
 
-local function UpdateRenderedEggList()
-	local CountMap = {}
-	local TotalCount = 0
+-- Rarity colors (same as ESP / GetEggColor)
+local TrackerRarityColors = {
+	Common    = Color3.fromRGB(255, 255, 255),
+	Rare      = Color3.fromRGB(85, 170, 255),
+	Epic      = Color3.fromRGB(170, 85, 255),
+	Legendary = Color3.fromRGB(255, 215, 0),
+	Mythic    = Color3.fromRGB(255, 50, 50),
+	Divine    = Color3.fromRGB(255, 255, 153),
+	Ethereal  = Color3.fromRGB(255, 0, 127),
+	Eternal   = Color3.fromRGB(255, 0, 127),
+}
 
-	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
-		local Name = Egg.Name
-		CountMap[Name] = (CountMap[Name] or 0) + 1
-		TotalCount = TotalCount + 1
-	end
+local TrackerWeightCache = setmetatable({}, { __mode = "k" })
+local TrackerMissingWeight = false
+
+-- siguraduhing naka-ON ang RichText sa labels ng paragraph para gumana ang kulay
+local function EnableParagraphRichText()
+	pcall(function()
+		local frame = LiveEggParagraph.ElementFrame
+		if not frame then return end
+		for _, d in ipairs(frame:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				d.RichText = true
+			end
+		end
+	end)
+end
+
+local function UpdateRenderedEggList()
+	local Eggs = RenderedEggs:GetChildren()
+	local TotalCount = #Eggs
 
 	if TotalCount == 0 then
+		TrackerMissingWeight = false
 		LiveEggParagraph:SetTitle("Tracked Eggs (0)")
 		LiveEggParagraph:SetDesc("No eggs currently rendered on map.")
-	else
-		local SpawnedEggNames = {}
-		for Name, _ in pairs(CountMap) do
-			table.insert(SpawnedEggNames, Name)
-		end
-
-		table.sort(SpawnedEggNames, function(a, b)
-			local priorityA = EggPriority[a] or 999
-			local priorityB = EggPriority[b] or 999
-			return priorityA < priorityB
-		end)
-
-		local DescriptionText = ""
-		for _, Name in ipairs(SpawnedEggNames) do
-			local Count = CountMap[Name]
-			DescriptionText = DescriptionText .. string.format("• %s (x%d)\n", Name, Count)
-		end
-
-		LiveEggParagraph:SetTitle(string.format("Tracked Eggs (%d)", TotalCount))
-		LiveEggParagraph:SetDesc(DescriptionText)
+		return
 	end
+
+	TrackerMissingWeight = false
+	local Entries = {}
+
+	for _, Egg in ipairs(Eggs) do
+		local Name = Egg.Name
+		local EggInfo = Eggs_mData[Name]
+		local Rarity = EggInfo and EggInfo.Rarity or "Common"
+
+		-- weight (same helper ng ESP: converted na sa kg na ipinapakita ng game)
+		local WeightText = TrackerWeightCache[Egg]
+		if not WeightText then
+			local ok, text = pcall(function()
+				return LH.GetEggWeightText(Egg)
+			end)
+			if ok and text then
+				TrackerWeightCache[Egg] = text
+				WeightText = text
+			end
+		end
+		if not WeightText then
+			TrackerMissingWeight = true -- retry later (ESP style)
+		end
+
+		table.insert(Entries, {
+			Name = Name,
+			Rarity = Rarity,
+			Weight = WeightText or "? kg",
+		})
+	end
+
+	table.sort(Entries, function(a, b)
+		local priorityA = EggPriority[a.Name] or 999
+		local priorityB = EggPriority[b.Name] or 999
+		if priorityA ~= priorityB then
+			return priorityA < priorityB
+		end
+		return a.Name < b.Name
+	end)
+
+	local Lines = {}
+	for _, Entry in ipairs(Entries) do
+		local Color = TrackerRarityColors[Entry.Rarity] or Color3.fromRGB(255, 255, 255)
+		-- format: Bloom Egg [Divine] 2.95 kg  (rarity lang ang may kulay)
+		table.insert(Lines, string.format(
+			'%s <font color="#%s">[%s]</font> %s',
+			Entry.Name, Color:ToHex(), Entry.Rarity, Entry.Weight
+		))
+	end
+
+	LiveEggParagraph:SetTitle(string.format("Tracked Eggs (%d)", TotalCount))
+	LiveEggParagraph:SetDesc(table.concat(Lines, "\n"))
+	EnableParagraphRichText()
 end
 
 Bind(RenderedEggs.ChildAdded, function() task.defer(UpdateRenderedEggList) end)
@@ -1699,6 +1756,14 @@ Bind(RenderedEggs.ChildRemoved, function() task.defer(UpdateRenderedEggList) end
 task.spawn(function()
 	task.wait(1)
 	UpdateRenderedEggList()
+
+	-- kung may egg na wala pang weight, ulitin kada 2s hanggang makuha
+	while LH.Alive do
+		task.wait(1)
+		if TrackerMissingWeight then
+			UpdateRenderedEggList()
+		end
+	end
 end)
 
 --==================================================
