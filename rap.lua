@@ -168,7 +168,9 @@ local ConfigData = {
     HideEggs = false,
 	AutoFavoritePet = false,
 	WebhookUrl = "",
-	WebhookEnabled = false
+	WebhookEnabled = false,
+	ThemeName = "Dark",
+	ThemeEnabled = false
 }
 
 local function LoadConfig()
@@ -195,7 +197,49 @@ end
 
 LoadConfig()
 
-local ThemeName = "Dark"
+--// THEME SYSTEM
+local ThemeEnabled = ConfigData.ThemeEnabled == true
+local SelectedTheme = type(ConfigData.ThemeName) == "string" and ConfigData.ThemeName or "Dark"
+
+local function MakeTheme(name, accent, background, dialog, button, outline)
+	return {
+		Name = name,
+		Accent = Color3.fromHex(accent),
+		Dialog = Color3.fromHex(dialog),
+		Outline = Color3.fromHex(outline),
+		Text = Color3.fromHex("#FFFFFF"),
+		Placeholder = Color3.fromHex("#9A9A9A"),
+		Background = Color3.fromHex(background),
+		Button = Color3.fromHex(button),
+		Icon = Color3.fromHex(accent),
+	}
+end
+
+local CustomThemes = {
+	MakeTheme("Crimson",       "#E5383B", "#140808", "#1E0D0D", "#2C1313", "#4A1F1F"),
+	MakeTheme("Ocean Blue",    "#3A86FF", "#07101E", "#0C1A2E", "#12253F", "#1F3C66"),
+	MakeTheme("Forest Green",  "#2ECC71", "#07130C", "#0C1F13", "#12301D", "#1F5233"),
+	MakeTheme("Royal Purple",  "#9B5DE5", "#0F0818", "#180D26", "#241338", "#3E2362"),
+	MakeTheme("Sunset Orange", "#FF7B00", "#160B05", "#22110A", "#331A0D", "#5C3015"),
+	MakeTheme("Sakura Pink",   "#FF5DA2", "#170811", "#240D1B", "#361429", "#5E2347"),
+	MakeTheme("Cyber Cyan",    "#00E5FF", "#041316", "#081F24", "#0D2F36", "#14525C"),
+	MakeTheme("Golden",        "#FFC300", "#151006", "#21190A", "#33250F", "#5C4515"),
+	MakeTheme("Midnight",      "#6C7BFF", "#05060F", "#0A0C1A", "#10132A", "#1C2150"),
+	MakeTheme("Mint",          "#5EF2C0", "#06130F", "#0B201A", "#11332A", "#1C5A49"),
+}
+
+local ThemeNames = { "Dark", "Light" }
+for _, theme in ipairs(CustomThemes) do
+	pcall(function() WindUI:AddTheme(theme) end)
+	table.insert(ThemeNames, theme.Name)
+end
+
+if not table.find(ThemeNames, SelectedTheme) then
+	SelectedTheme = "Dark"
+end
+
+-- default is Dark; the chosen theme only applies when the toggle is ON
+local ThemeName = ThemeEnabled and SelectedTheme or "Dark"
 
 -- MULTI-SELECT TABLES
 local SelectedEggs = ConfigData.SelectedEggs or {}
@@ -1969,6 +2013,50 @@ SettingsSection1:Button({
 	Justify = "Center",
 	Icon = "",
 	Callback = function() ServerHop() end,
+})
+
+local ThemeSection = Tab8:Section({
+	Title = "Theme",
+	Icon = "palette",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.ThemeSelect = ThemeSection:Dropdown({
+	Title = "Select Theme",
+	Desc = "Choose a color theme for the UI",
+	Values = ThemeNames,
+	Multi = false,
+	Value = SelectedTheme,
+	AllowNone = false,
+
+	Callback = function(value)
+		if type(value) == "table" then
+			value = value[1]
+		end
+		if not value then return end
+		SelectedTheme = value
+		ConfigData.ThemeName = value
+		SaveConfig()
+		if ThemeEnabled then
+			pcall(function() WindUI:SetTheme(value) end)
+		end
+	end,
+})
+
+UIElements.ThemeEnabled = ThemeSection:Toggle({
+	Title = "Activate Theme",
+	Desc = "ON = use the selected theme, OFF = default Dark theme",
+	Value = ThemeEnabled,
+
+	Callback = function(value)
+		ThemeEnabled = value
+		ConfigData.ThemeEnabled = value
+		SaveConfig()
+		pcall(function()
+			WindUI:SetTheme(value and SelectedTheme or "Dark")
+		end)
+	end,
 })
 
 --==================================================
