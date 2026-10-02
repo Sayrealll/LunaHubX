@@ -3127,6 +3127,53 @@ task.spawn(function()
 	end
 end)
 
+--AUTO CLAIM OFFLINE
+task.spawn(function()
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+
+        local OfflineEarnings = ReplicatedStorage:FindFirstChild("Remotes") 
+            and ReplicatedStorage.Remotes:FindFirstChild("Game") 
+            and ReplicatedStorage.Remotes.Game:FindFirstChild("OfflineEarnings")
+
+        if OfflineEarnings then
+            OfflineEarnings:FireServer()
+            task.wait(0.3)
+            
+            local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 2)
+            if PlayerGui then
+                for _, gui in ipairs(PlayerGui:GetChildren()) do
+                    if gui:IsA("ScreenGui") then
+                        local guiName = string.lower(gui.Name)
+                        if string.find(guiName, "offline") or string.find(guiName, "away") or string.find(guiName, "reward") then
+                            gui.Enabled = false
+                        end
+                        
+                        for _, desc in ipairs(gui:GetDescendants()) do
+                            if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+                                local text = string.lower(desc.Text)
+                                if string.find(text, "while you're away") or string.find(text, "your pets made you") then
+                                    local targetFrame = desc:FindFirstAncestorOfClass("Frame") or desc:FindFirstAncestorOfClass("ScreenGui")
+                                    if targetFrame then
+                                        if targetFrame:IsA("ScreenGui") then
+                                            targetFrame.Enabled = false
+                                        else
+                                            targetFrame.Visible = false
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+
 --// CONSTANTS
 local VOLCANO_1_CFRAME = CFrame.new(
 -4917.03369, 41286.2031, -3704.17529, -0.76919955, 5.31099609e-08, 0.639008641, 1.79985058e-08, 1, -6.14475582e-08, -0.639008641, -3.57642307e-08, -0.76919955
