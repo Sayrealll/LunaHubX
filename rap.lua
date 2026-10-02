@@ -329,7 +329,21 @@ local function SendWebhookNotification(eggName, basketEgg)
 
 	if basketEgg then
 		mutation = basketEgg:GetAttribute("Mutation") or "None"
-		weight = basketEgg:GetAttribute("Weight") or "Unknown"
+
+		-- Same logic as ESP: raw weight -> General_mData.ShownEggKG -> formatted kg
+		-- (raw attribute lang yung dating kinukuha kaya mali; kailangan i-convert)
+		local okW, text = pcall(function()
+			return LH.GetEggWeightText and LH.GetEggWeightText(basketEgg)
+		end)
+		if okW and text then
+			weight = text
+		else
+			local raw = tonumber(basketEgg:GetAttribute("Weight"))
+			if raw then
+				local okK, kg = pcall(function() return General_mData.ShownEggKG(raw) end)
+				weight = string.format("%.2f kg", (okK and type(kg) == "number") and kg or raw)
+			end
+		end
 	end
 
 	local embedData = {
@@ -359,7 +373,7 @@ local function SendWebhookNotification(eggName, basketEgg)
 			},
 			{
 				["name"] = "Weight",
-				["value"] = tostring(weight) .. " KG",
+				["value"] = tostring(weight),
 				["inline"] = true
 			}
 		},
@@ -983,7 +997,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.0.8",
+	Title = "v.1.0.1.1",
 	Color = "ElementBackground",
 })
 
@@ -3549,6 +3563,25 @@ task.spawn(function()
 		task.wait(0.03)
 	end
 end)
+
+
+
+
+ocal function OpenHomeTab()
+    local ok = pcall(function() Tab1:Select() end)
+    if not ok then
+        pcall(function() Window:SelectTab(1) end)
+    end
+end
+
+OpenHomeTab()
+task.spawn(function()
+    task.wait(0.5)
+    if LH.Alive then OpenHomeTab() end
+end)
+
+
+
 
 --==================================================
 -- FULL CLEANUP + WINDOW CLOSE HOOKS
