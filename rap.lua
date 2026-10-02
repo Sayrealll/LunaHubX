@@ -3565,9 +3565,7 @@ task.spawn(function()
 end)
 
 
-
-
-ocal function OpenHomeTab()
+local function OpenHomeTab()
     local ok = pcall(function() Tab1:Select() end)
     if not ok then
         pcall(function() Window:SelectTab(1) end)
@@ -3579,10 +3577,6 @@ task.spawn(function()
     task.wait(0.5)
     if LH.Alive then OpenHomeTab() end
 end)
-
-
-
-
 --==================================================
 -- FULL CLEANUP + WINDOW CLOSE HOOKS
 --==================================================
