@@ -1076,39 +1076,45 @@ local HomeSection1 = Tab1:Section({
 	BoxBorder = true,
 })
 
-HomeSection1:Button({
-	Title = "TP TO MARKET",
-	Justify = "Center",
-	Icon = "",
-	Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local marketCFrame = CFrame.new(148.190125, 40316.3672, 916.778992, 0.728601754, 4.76895323e-08, -0.684937537, -8.04378715e-08, 1, -1.59396176e-08, 0.684937537, 6.67085516e-08, 0.728601754)
-			char:PivotTo(marketCFrame)
+local TeleportDestinations = {
+	["Market"] = CFrame.new(148.190125, 40316.3672, 916.778992, 0.728601754, 4.76895323e-08, -0.684937537, -8.04378715e-08, 1, -1.59396176e-08, 0.684937537, 6.67085516e-08, 0.728601754),
+	["Volcano Entrance"] = CFrame.new(-4917.03369, 41286.2031, -3704.17529, -0.76919955, 5.31099609e-08, 0.639008641, 1.79985058e-08, 1, -6.14475582e-08, -0.639008641, -3.57642307e-08, -0.76919955),
+    ["Volcano Lava"] = CFrame.new( -5072.89453, 41405.6055, -3427.5437, 0.977811277, -6.61095925e-08, 0.209487602, 8.22212627e-08, 1, -6.82011105e-08, -0.209487602, 8.39121483e-08, 0.977811277),
+}
+
+local TeleportDestinationNames = { "My Plot", "Market", "Volcano Entrance", "Volcano Lava" }
+local SelectedTeleportDestination = "Market"
+
+HomeSection1:Dropdown({
+	Title = "Teleportation",
+	Desc = "Choose a destination to teleport to",
+	Values = TeleportDestinationNames,
+	Multi = false,
+	Value = "My Plot",
+	AllowNone = false,
+
+	Callback = function(value)
+		if type(value) == "table" then
+			value = value[1]
 		end
+		SelectedTeleportDestination = value
 	end,
 })
 
 HomeSection1:Button({
-	Title = "TP TO VOLCANO ENTRANCE",
+	Title = "TP to Destination",
 	Justify = "Center",
-	Icon = "",
 	Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local volcanoEntranceCFrame = CFrame.new(-4917.03369, 41286.2031, -3704.17529, -0.76919955, 5.31099609e-08, 0.639008641, 1.79985058e-08, 1, -6.14475582e-08, -0.639008641, -3.57642307e-08, -0.76919955
-)
-			char:PivotTo(volcanoEntranceCFrame)
+		if SelectedTeleportDestination == "My Plot" then
+			TeleportToMyPlot()
+			return
 		end
-	end,
-})
 
-HomeSection1:Button({
-	Title = "TP TO MY PLOT",
-	Justify = "Center",
-	Icon = "",
-	Callback = function()
-		TeleportToMyPlot()
+		local char = LocalPlayer.Character
+		local destination = TeleportDestinations[SelectedTeleportDestination]
+		if char and destination then
+			char:PivotTo(destination)
+		end
 	end,
 })
 
