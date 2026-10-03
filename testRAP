@@ -1,9 +1,13 @@
 --// LUNA HUB LIFECYCLE (fresh start / full cleanup)
 local LH = { Alive = true, Conns = {} }
 
--- tanggalin ang trailing zeros: 73.00 -> 73, 2.50 -> 2.5, 2.95 -> 2.95
 LH.TrimNum = function(n)
 	return (string.format("%.2f", n):gsub("%.?0+$", ""))
+end
+
+LH.ParseKG = function(text)
+	text = tostring(text or ""):gsub("[%s,]", "")
+	return tonumber(text:match("^%d*%.?%d+$")) or 0
 end
 do
 	local ok, env = pcall(function() return getgenv() end)
@@ -148,6 +152,7 @@ local ConfigData = {
 	SelectedHatchRarities = {},
 	SelectedHatchEggs = {},
 	AutoPickup = false,
+	MinWeightText = "0",
 	AutoVolcanoDip = false,
 	AutoPlaceEgg = false,
 	AutoHatchEgg = false,
@@ -263,6 +268,7 @@ local SelectedFavPet = ConfigData.SelectedFavPet or {}
 
 -- TOGGLES & INPUTS
 local AutoPickup = ConfigData.AutoPickup or false
+LH.MinKG = LH.ParseKG(ConfigData.MinWeightText) -- minimum kg threshold ng Auto Farm (0 = off)
 local AutoVolcanoDip = ConfigData.AutoVolcanoDip or false
 local HideEggs = ConfigData.HideEggs or false
 local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
@@ -989,7 +995,7 @@ local Window = WindUI:CreateWindow({
 	Title = "LUNA HUB",
 	Author = "RIDE A PET",
     Icon = "rbxassetid://74259115123500",
-    IconSize = 40,
+    IconSize = 35,
     IconRadius = 10,
 
 	Theme = ThemeName,
@@ -1002,7 +1008,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.1.1",
+	Title = "v.1.0.1.2",
 	Color = "ElementBackground",
 })
 
@@ -1225,6 +1231,25 @@ UIElements.SelectedEggs = EggSection:Dropdown({
 	Callback = function(value)
 		SelectedEggs = value
 		ConfigData.SelectedEggs = value
+		SaveConfig()
+	end,
+})
+
+UIElements.MinWeightInput = EggSection:Input({
+	Title = "Minimum KG",
+	Desc = "Skip eggs below minimum kg (e.g.100) ",
+	Value = (ConfigData.MinWeightText and ConfigData.MinWeightText ~= "") and ConfigData.MinWeightText or "0",
+	Placeholder = "0",
+
+	Callback = function(text)
+		LH.MinKG = LH.ParseKG(text)
+		
+		local clean = tostring(text or "")
+		if LH.MinKG <= 0 and clean ~= "0" then
+			clean = "0"
+			SetUIValue(UIElements.MinWeightInput, "0")
+		end
+		ConfigData.MinWeightText = clean
 		SaveConfig()
 	end,
 })
@@ -1809,6 +1834,7 @@ ConfigSection:Button({
         SelectedSellRarities = {}
 		SelectedFavPet = {}
 		AutoPickup = false
+		LH.MinKG = 0
 		AutoVolcanoDip = false
 		AutoPlaceEgg = false
 		AutoHatchEgg = false
@@ -1841,6 +1867,7 @@ ConfigSection:Button({
 			SelectedHatchRarities = {},
 			SelectedHatchEggs = {},
 			AutoPickup = false,
+			MinWeightText = "0",
 			AutoVolcanoDip = false,
 			AutoPlaceEgg = false,
 			AutoHatchEgg = false,
@@ -1872,6 +1899,7 @@ ConfigSection:Button({
 		SetUIValue(UIElements.SelectedRarities, {})
 		SetUIValue(UIElements.SelectedEggs, {})
 		SetUIValue(UIElements.AutoPickup, false)
+		SetUIValue(UIElements.MinWeightInput, "0")
 		SetUIValue(UIElements.AutoVolcanoDip, false)
 		SetUIValue(UIElements.SelectedPlaceEgg, {})
 		SetUIValue(UIElements.SelectedPlaceRarities, {})
@@ -2170,6 +2198,15 @@ local function FindSelectedEgg()
 	local HighestRarityPriority = math.huge
 	local HighestEggPriority = math.huge
 
+	-- weight threshold (0 = off)
+	local minKG = LH.MinKG or 0
+	local function CountSel(v)
+		if type(v) == "table" then return #v end
+		return (v ~= nil and v ~= "") and 1 or 0
+	end
+	-- walang rarity/category na naka-select -> weight lang ang basehan
+	local NoFilters = CountSel(SelectedEggs) == 0 and CountSel(SelectedRarities) == 0
+
 	for _, Egg in ipairs(RenderedEggs:GetChildren()) do
 		local Name = Egg.Name
 		local eggData = Eggs_mData[Name]
@@ -2200,8 +2237,21 @@ local function FindSelectedEgg()
 			IsRaritySelected = true
 		end
 
-		if IsRaritySelected or IsNameSelected then
-			local currentRarityPrio = IsRaritySelected and (RarityPriority[Rarity] or 99) or 999
+		local Qualifies = IsRaritySelected or IsNameSelected
+
+		if minKG > 0 then
+			if NoFilters then Qualifies = true end
+			if Qualifies then
+				local kg = LH.GetEggKG(Egg)
+				-- walang weight pa o mas mababa sa minimum -> ignore
+				if not kg or kg < minKG - 1e-9 then
+					Qualifies = false
+				end
+			end
+		end
+
+		if Qualifies then
+			local currentRarityPrio = (IsRaritySelected or NoFilters) and (RarityPriority[Rarity] or 99) or 999
 			local currentEggPrio = IsNameSelected and (EggPriority[Name] or 999) or 9999
 
 			if currentRarityPrio < HighestRarityPriority then
@@ -2394,13 +2444,28 @@ end
 
 LH.FormatKG = function(n)
 	n = tonumber(n) or 0
-	local units = { { 1e15, "Qa" }, { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } }
-	for _, u in ipairs(units) do
-		if n >= u[1] then
-			return LH.TrimNum(n / u[1]) .. u[2] .. " kg"
-		end
+	-- mas mababa sa 1,000: may decimal (trimmed). 1,000 pataas: whole number may comma, walang K
+	if n < 1000 then
+		return LH.TrimNum(n) .. " kg"
 	end
-	return LH.TrimNum(n) .. " kg"
+	local str = string.format("%.0f", n)
+	local k
+	repeat
+		str, k = str:gsub("^(%d+)(%d%d%d)", "%1,%2")
+	until k == 0
+	return str .. " kg"
+end
+
+LH.EggKGCache = setmetatable({}, { __mode = "k" })
+LH.GetEggKG = function(Egg)
+	local cached = LH.EggKGCache[Egg]
+	if cached then return cached end
+	local real = LH.GetEggWeight(Egg)
+	if not real then return nil end
+	local ok, kg = pcall(function() return General_mData.ShownEggKG(real) end)
+	kg = (ok and type(kg) == "number") and kg or real
+	LH.EggKGCache[Egg] = kg
+	return kg
 end
 
 LH.GetEggWeightText = function(Egg)
@@ -3647,6 +3712,8 @@ task.spawn(function()
     task.wait(0.5)
     if LH.Alive then OpenHomeTab() end
 end)
+
+
 --==================================================
 -- FULL CLEANUP + WINDOW CLOSE HOOKS
 --==================================================
@@ -3654,7 +3721,6 @@ local function FullCleanup()
 	if not LH.Alive then return end
 	LH.Alive = false -- humihinto lahat ng while LH.Alive loops
 
-	-- patayin ang lahat ng toggles
 	AutoPickup, AutoVolcanoDip, AutoPlaceEgg, AutoHatchEgg = false, false, false, false
 	AutoHatchSelectedEggs, AutoClaimIndex = false, false
 	AutoUpgradeHatchLuck, AutoUpgradeHatchLuckMax, AutoRebirth = false, false, false
@@ -3662,16 +3728,13 @@ local function FullCleanup()
 	AutoSellPet, AutoSellAllPets, AutoFavoritePet = false, false, false
 	WebhookEnabled, ESPEnabled = false, false
 
-	-- ibalik ang mga binago (hindi nito binabago ang saved config file)
 	if FPSBoost then FPSBoost = false; pcall(ApplyFPSBoost, false) end
 	if HideEggs then HideEggs = false; pcall(ToggleHideEggs, false) end
 	pcall(ClearAllESP)
 
-	-- idisconnect ang lahat ng tracked connections
 	for _, c in ipairs(LH.Conns) do pcall(function() c:Disconnect() end) end
 	table.clear(LH.Conns)
 
-	-- burahin ang floating logo, platform, at window
 	pcall(function() FloatingGui:Destroy() end)
 	pcall(function() platform:Destroy() end)
 	pcall(function() Window:Destroy() end)
@@ -3681,10 +3744,10 @@ end
 
 pcall(function() getgenv().LunaHubCleanup = FullCleanup end)
 
--- hook sa X button lang (Destroy). HINDI isinama ang OnClose dahil minimize rin ang nagti-trigger nito
+
+
 pcall(function() if Window.OnDestroy then Window:OnDestroy(FullCleanup) end end)
 
--- backup watcher: kung nawala na ang window pero hindi nag-fire ang callback
 task.spawn(function()
 	task.wait(2)
 	while LH.Alive do
