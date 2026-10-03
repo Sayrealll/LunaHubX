@@ -1,5 +1,10 @@
 --// LUNA HUB LIFECYCLE (fresh start / full cleanup)
 local LH = { Alive = true, Conns = {} }
+
+-- tanggalin ang trailing zeros: 73.00 -> 73, 2.50 -> 2.5, 2.95 -> 2.95
+LH.TrimNum = function(n)
+	return (string.format("%.2f", n):gsub("%.?0+$", ""))
+end
 do
 	local ok, env = pcall(function() return getgenv() end)
 	if ok and type(env) == "table" and type(env.LunaHubCleanup) == "function" then
@@ -341,7 +346,7 @@ local function SendWebhookNotification(eggName, basketEgg)
 			local raw = tonumber(basketEgg:GetAttribute("Weight"))
 			if raw then
 				local okK, kg = pcall(function() return General_mData.ShownEggKG(raw) end)
-				weight = string.format("%.2f kg", (okK and type(kg) == "number") and kg or raw)
+				weight = LH.FormatKG((okK and type(kg) == "number") and kg or raw)
 			end
 		end
 	end
@@ -2392,10 +2397,10 @@ LH.FormatKG = function(n)
 	local units = { { 1e15, "Qa" }, { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } }
 	for _, u in ipairs(units) do
 		if n >= u[1] then
-			return string.format("%.2f%s kg", n / u[1], u[2])
+			return LH.TrimNum(n / u[1]) .. u[2] .. " kg"
 		end
 	end
-	return string.format("%.2f kg", n)
+	return LH.TrimNum(n) .. " kg"
 end
 
 LH.GetEggWeightText = function(Egg)
@@ -2405,7 +2410,7 @@ LH.GetEggWeightText = function(Egg)
 	if ok and type(kg) == "number" then
 		return LH.FormatKG(kg)
 	end
-	return string.format("%.2f", real)
+	return LH.TrimNum(real) .. " kg"
 end
 
 local function RemoveESP(Egg)
