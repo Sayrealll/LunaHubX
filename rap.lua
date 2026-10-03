@@ -1,3 +1,4 @@
+
 --// LUNA HUB LIFECYCLE (fresh start / full cleanup)
 local LH = { Alive = true, Conns = {} }
 
@@ -994,7 +995,7 @@ platform.Parent = workspace
 local Window = WindUI:CreateWindow({
 	Title = "LUNA HUB",
 	Author = "RIDE A PET",
-    Icon = "rbxassetid://74259115123500",
+    Icon = "rbxassetid://130686992475603",
     IconSize = 35,
     IconRadius = 10,
 
@@ -1033,7 +1034,7 @@ local FloatingButton = Instance.new("ImageButton")
 FloatingButton.Name = "FloatingLogo"
 FloatingButton.Size = UDim2.new(0, 50, 0, 50)
 FloatingButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-FloatingButton.Image = "rbxassetid://74259115123500"
+FloatingButton.Image = "rbxassetid://130686992475603"
 
 -- 1. BLACK BACKGROUND (Tinanggal ang transparency para walang space na lumabas)
 FloatingButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
