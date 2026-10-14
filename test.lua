@@ -2,10 +2,6 @@
 local LH = { Alive = true, Conns = {} }
 local Svc, Mods, Rem, PD, Tabs, Secs = {}, {}, {}, {}, {}, {} -- grouped para hindi lumampas sa 200 local limit
 
---// AUTO RELOAD (queue_on_teleport)
-LH.ScriptURL = "https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/test.lua"
-LH.ScriptFile = "" -- optional fallback: file sa workspace folder ng executor (hal. "LUNA HUB/Ride A Pet/LunaHub.lua")
-
 LH.TrimNum = function(n)
 	return (string.format("%.2f", n):gsub("%.?0+$", ""))
 end
@@ -172,9 +168,6 @@ local function NewDefaultConfig()
 		WebhookUrl = "",
 		WebhookEnabled = false,
 
-		-- RELOAD
-		AutoReconnect = true,
-
 		-- SETTINGS
 		FPSBoost = false,
 		HideEggs = false,
@@ -221,106 +214,6 @@ local function SaveConfig()
 end
 
 LoadConfig()
-
---==================================================
--- AUTO RELOAD (queue_on_teleport) + AUTO RECONNECT
--- Kusang magloload ulit ang script pagkatapos ng Rejoin / Server Hop / Reconnect
---==================================================
-LH.AutoReconnect = ConfigData.AutoReconnect ~= false
-LH.Queued = false              -- isang beses lang mag-queue kada teleport (para hindi mag-double load)
-LH.Reconnecting = false
-LH.ReconnectMaxTries = 5       -- max na subok ng auto reconnect
-LH.ReconnectRetryDelay = 8     -- segundo sa pagitan ng bawat subok
-
-function LH.GetQueueFn()
-	return queue_on_teleport
-		or queueonteleport
-		or (syn and syn.queue_on_teleport)
-		or (fluxus and fluxus.queue_on_teleport)
-end
-
--- code na tatakbo sa bagong server (kukunin ang script sa URL, kung wala o pumalya, sa file)
-function LH.BuildReloadPayload()
-	local url = tostring(LH.ScriptURL or "")
-	local file = tostring(LH.ScriptFile or "")
-
-	return table.concat({
-		"repeat task.wait() until game:IsLoaded()",
-		"task.wait(1)",
-		string.format("local url, file = %q, %q", url, file),
-		"local src",
-		"if url ~= '' then",
-		"\tlocal okGet, body = pcall(function() return game:HttpGet(url) end)",
-		"\tif okGet and type(body) == 'string' and #body > 0 then src = body end",
-		"end",
-		"if not src and file ~= '' and isfile and isfile(file) then",
-		"\tlocal okRead, body = pcall(readfile, file)",
-		"\tif okRead and type(body) == 'string' and #body > 0 then src = body end",
-		"end",
-		"if not src then warn('[Luna Hub] Auto reload: walang mahanap na script (URL / file).') return end",
-		"local fn, err = loadstring(src)",
-		"if not fn then warn('[Luna Hub] Auto reload compile error:', err) return end",
-		"task.spawn(fn)",
-	}, "\n")
-end
-
-function LH.QueueReload()
-	if LH.Queued then return true end
-	local fn = LH.GetQueueFn()
-	if not fn then return false end
-	local ok = pcall(fn, LH.BuildReloadPayload())
-	if ok then LH.Queued = true end
-	return ok
-end
-
--- kahit anong teleport (rejoin, server hop, game teleport, reconnect) = i-queue ang script
-Bind(Player.OnTeleport, function(state)
-	if not LH.Alive then return end
-	if state == Enum.TeleportState.Started
-			or state == Enum.TeleportState.RequestedFromServer
-			or state == Enum.TeleportState.InProgress then
-		LH.QueueReload()
-	end
-end)
-
--- Auto Reconnect: kapag na-disconnect (lumabas ang ErrorPrompt), mag-rejoin tapos auto load ulit
-function LH.Reconnect()
-	if LH.Reconnecting or not LH.Alive then return end
-	LH.Reconnecting = true
-
-	task.spawn(function()
-		LH.QueueReload()
-
-		for attempt = 1, LH.ReconnectMaxTries do
-			if not LH.Alive or not LH.AutoReconnect then break end
-			pcall(function()
-				if attempt == 1 and game.JobId ~= "" then
-					Svc.TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player) -- balik sa parehong server
-				else
-					Svc.TeleportService:Teleport(game.PlaceId, Player) -- kung wala na ang server, kahit anong server
-				end
-			end)
-			task.wait(LH.ReconnectRetryDelay)
-		end
-
-		LH.Reconnecting = false
-	end)
-end
-
-task.spawn(function()
-	pcall(function()
-		local promptGui = game:GetService("CoreGui"):WaitForChild("RobloxPromptGui", 30)
-		local overlay = promptGui and promptGui:WaitForChild("promptOverlay", 30)
-		if not overlay then return end
-
-		Bind(overlay.ChildAdded, function(child)
-			if child.Name == "ErrorPrompt" and LH.Alive and LH.AutoReconnect then
-				task.wait(1) -- hayaang lumabas ang buong prompt
-				LH.Reconnect()
-			end
-		end)
-	end)
-end)
 
 --// THEME SYSTEM
 local ThemeEnabled = ConfigData.ThemeEnabled == true
@@ -401,6 +294,41 @@ function LH.BgRun(fn, ...)
 	LH.BgBusy = math.max(0, LH.BgBusy - 1)
 	return ok, err
 end
+
+--==================================================
+-- PRIORITY ORDER (pinakamataas -> pinakamababa)
+--  1) AUTO FARM
+--  2) AUTO FUSE + AUTO CLAIM FUSED PETS
+--  3) AUTO BUY HALLOWEEN EGG > AUTO RITUAL > AUTO KNOCK DOORS > AUTO COLLECT CANDY
+-- Ang mas mababang priority ay naka-HOLD hangga't may trabaho ang mas mataas.
+--==================================================
+LH.FuseLockN = 0       -- >0 habang may tumatakbong Fuse/Claim cycle
+LH.FuseHasWorkNow = nil -- itatakda sa AUTO FUSE section
+LH.BuyActing = false   -- true habang tumatakbo ang bili ng Halloween Egg
+
+-- Priority 2: Auto Fuse / Auto Claim Fused Pets ay active kapag may trabaho
+function LH.FuseActive()
+	if LH.FuseLockN > 0 then return true end
+	if LH.FuseHasWorkNow then
+		local ok, res = pcall(LH.FuseHasWorkNow)
+		return ok and res == true
+	end
+	return false
+end
+
+-- Priority 3 group (Halloween) ay naka-pause kapag Farm O Fuse ang active
+function LH.HallPaused()
+	return LH.FarmPaused() or LH.FuseActive()
+end
+
+-- hintayin munang tumigil ang Halloween actions bago mag-TP ang Fuse (para walang mag-overwrite ng position)
+function LH.FuseYield()
+	local started = os.clock()
+	while LH.Alive and (LH.CandyActing or LH.KnockActing or LH.BuyActing or LH.Tweening)
+		and os.clock() - started < 3 do
+		task.wait(0.05)
+	end
+end
 local AutoPlaceEgg = ConfigData.AutoPlaceEgg or false
 local AutoHatchSelectedEggs = ConfigData.AutoHatchSelectedEggs or false
 local AutoHatchEgg = ConfigData.AutoHatchEgg or false
@@ -418,34 +346,12 @@ LH.RitualLock = false   -- true habang tumatakbo ang BUONG ritual cycle (pickup 
 LH.CandyActing = false  -- true habang may ginagawang galaw ang Candy loop
 LH.KnockActing = false  -- true habang may ginagawang galaw ang Knock loop
 LH.KnockHasDoor = false -- true habang may lit door na kakatukin ang Auto Knock
-LH.BuyActing = false    -- true habang may ginagawang galaw ang Auto Buy Halloween Egg
-
---// PRIORITY NG LAHAT NG AUTO (mataas -> mababa)
---   1) Auto Farm
---   2) Auto Fuse + Auto Claim Fused Pets
---   3) Auto Buy Halloween Egg  >  Auto Ritual  >  Auto Knock Doors  >  Auto Collect Candy
-function LH.FuseActive() return false end -- stub lang; papalitan sa AUTO FUSE section
-
--- true kapag may mas mataas na priority kaysa sa lahat ng Halloween auto (Farm o Fuse/Claim)
-function LH.HigherBusy()
-	return LH.FarmPaused() or LH.FuseActive()
-end
-
--- Auto Farm: hintayin sandali na tumigil ang ibang auto bago kumuha ng egg (iwas agawan ng TP)
-LH.FarmYieldWait = 1.5
-function LH.FarmWaitYield()
-	local started = os.clock()
-	while LH.Alive and AutoPickup == true and (LH.BgBusy > 0 or LH.Tweening == true)
-			and os.clock() - started < LH.FarmYieldWait do
-		task.wait(0.05)
-	end
-end
 -- Auto Knock ang priority: naka-hold ang Auto Collect Candy hangga't may door na kakatukin
 function LH.KnockActive()
 	return LH.AutoKnock == true and LH.KnockHasDoor == true
 end
 
--- (tingnan ang PRIORITY NG LAHAT NG AUTO sa taas: Farm > Fuse/Claim > Halloween autos)
+-- PRIORITY (Halloween group, nasa ilalim ng Auto Farm at Auto Fuse): 1) Auto Buy Halloween Egg  2) Auto Ritual  3) Auto Knock  4) Auto Collect Candy
 -- Auto Ritual ay active kapag naka-ON at may Yin/Yang piece na kukunin / ilalagay (naka-hold ang Knock at Candy)
 function LH.RitualActive()
 	if LH.AutoRitual ~= true then return false end
@@ -457,8 +363,7 @@ function LH.RitualActive()
 	return false
 end
 
--- Auto Buy Halloween Egg ang pinakamataas sa Halloween autos (higit sa Ritual, Knock at Candy)
--- Mas mababa lang ito sa Auto Farm at Auto Fuse / Claim
+-- Auto Buy Halloween Egg ang PINAKAMATAAS na priority (higit sa Auto Knock at Auto Collect Candy)
 -- Active kapag naka-ON, sapat ang token, at hindi paulit-ulit na pumapalya ang bili
 LH.HalloweenEggPrice = 350
 LH.HaEggFails = 0
@@ -2765,7 +2670,6 @@ Secs.ConfigSection:Button({
 		ThemeEnabled = false
 
 		ConfigData = NewDefaultConfig()
-		LH.AutoReconnect = true
 
 		-- ibalik ang laman ng UI sa default
 		-- FARM
@@ -2818,7 +2722,6 @@ Secs.ConfigSection:Button({
 		SetUIValue(UIElements.WebhookEnabled, false)
 
 		-- SETTINGS
-		SetUIValue(UIElements.AutoReconnect, true)
 		SetUIValue(UIElements.FPSBoost, false)
 		SetUIValue(UIElements.HideEggs, false)
 		SetUIValue(UIElements.ThemeSelect, "Dark")
@@ -2947,7 +2850,6 @@ Secs.SettingsSection1 = Tabs.Tab9:Section({
 })
 
 local function RejoinServer()
-	LH.QueueReload()
 	pcall(function()
 		Svc.TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
 	end)
@@ -2995,7 +2897,6 @@ local function ServerHop()
 				CanClose = true,
 			})
 			task.wait(0.5)
-			LH.QueueReload()
 			pcall(function()
 				Svc.TeleportService:TeleportToPlaceInstance(game.PlaceId, result.id, Player)
 			end)
@@ -3023,25 +2924,6 @@ Secs.SettingsSection1:Button({
 	Justify = "Center",
 	Icon = "",
 	Callback = function() ServerHop() end,
-})
-
-Secs.ReloadSection = Tabs.Tab9:Section({
-	Title = "Auto Reload",
-	Icon = "refresh-cw",
-	Box = true,
-	BoxBorder = true,
-})
-
-UIElements.AutoReconnect = Secs.ReloadSection:Toggle({
-	Title = "Auto Reconnect",
-	Desc = "Rejoin automatically when disconnected, then the script loads again",
-	Value = ConfigData.AutoReconnect ~= false,
-
-	Callback = function(value)
-		LH.AutoReconnect = value == true
-		ConfigData.AutoReconnect = value == true
-		SaveConfig()
-	end,
 })
 
 Secs.ThemeSection = Tabs.Tab9:Section({
@@ -4387,26 +4269,7 @@ local FuseMachineCFrame = CFrame.new(
 	-0.105180927, -1.04602044e-07, 0.994453132
 )
 
--- AUTO FUSE  (PRIORITY #2: mas mababa lang sa Auto Farm, mas mataas sa lahat ng Halloween auto)
-LH.FuseBusy = false          -- true habang tumatakbo ang Auto Fuse
-LH.ClaimBusy = false         -- true habang tumatakbo ang Auto Claim Fused Pets
-LH.FuseBackoffUntil = 0      -- pahinga ng Auto Fuse kapag paulit-ulit na bigo (para hindi ma-block ang Halloween)
-LH.ClaimBackoffUntil = 0     -- pahinga ng Auto Claim kapag hindi ma-claim
-LH.FuseHoldUntil = 0         -- hawak ang posisyon sa machine habang may reveal / claim
-LH.FuseYieldWait = 4         -- max segundo na hihintayin para tumigil ang Halloween bago mag-TP sa machine
-LH.FusePlaceFails = 0
-LH.ClaimTries, LH.ClaimLastKey = 0, nil
-
--- hintayin munang tumigil ang Halloween autos bago mag-TP sa machine (para walang mag-overwrite ng position)
-function LH.FuseWaitYield()
-	local started = os.clock()
-	while LH.Alive
-			and (LH.CandyActing or LH.KnockActing or LH.Tweening or LH.RitualBusyCave or LH.RitualLock or LH.BuyActing)
-			and os.clock() - started < LH.FuseYieldWait do
-		task.wait(0.05)
-	end
-end
-
+-- AUTO FUSE
 do
 	local function FuseNormName(name)
 		return (string.lower(tostring(name or "")):gsub("grizlly", "grizzly"))
@@ -4485,35 +4348,43 @@ do
 
 	local FusePlaced = {}
 	local FuseStartTries = 0
+	local FuseRetryAt = 0
 
-	-- alin ang kulang na slot (local record + nakita sa FusionSlots)
-	local function GetMissingSlots()
-		local detected = DetectFilledSlots()
-		local missing = {}
+	-- may trabaho ba ang Auto Fuse? (ilagay ang pets / pindutin ang Start)
+	function LH.FuseJobPending()
+		if not AutoFuse or AutoSellPet or AutoSellAllPets then return false end
+		if IsFusionBusy() then return false end
+		-- ayaw mag-start (kulang cash?): huwag hawakan ang priority, subukan ulit kada 15s
+		if FuseStartTries >= 3 and os.clock() < FuseRetryAt then return false end
+
+		local det = DetectFilledSlots()
+		local filled = 0
 		for slot = 1, 4 do
-			if not (FusePlaced[slot] or detected[slot]) then
-				table.insert(missing, slot)
-			end
+			if FusePlaced[slot] or det[slot] then filled += 1 end
 		end
-		return missing
+		if filled >= 4 then return true end
+		return #GetFuseCandidates() >= (4 - filled)
 	end
 
-	-- may magagawa ba ang Auto Fuse ngayon? (ginagamit ng priority system para ihinto ang Halloween)
-	function LH.FuseHasWorkNow()
-		if AutoFuse ~= true or AutoSellPet or AutoSellAllPets then return false end
-		if os.clock() < (LH.FuseBackoffUntil or 0) then return false end
-		if IsFusionBusy() then return false end
-
-		local missing = GetMissingSlots()
-		if #missing > 0 then
-			return #GetFuseCandidates() >= #missing -- kulang ang pets = walang gagawin, tuloy ang Halloween
+	-- may trabaho ba ang Auto Claim Fused Pets? (claim / Fuse pagkatapos ng timer / reveal)
+	function LH.ClaimJobPending()
+		if not AutoClaimFusedPets then return false end
+		if LocalPlayer:GetAttribute("FusionPresentationPending") == true then return true end
+		local result = LocalPlayer:FindFirstChild("FusionResult")
+		if result and result:FindFirstChild("Pet") then return true end
+		local slots = LocalPlayer:FindFirstChild("FusionSlots")
+		if slots and slots:GetAttribute("FusionStatus") == "Waiting" then
+			return workspace:GetServerTimeNow() >= (slots:GetAttribute("EndsAt") or 0)
 		end
-		return true -- kumpleto na ang 4, Start na lang
+		return false
+	end
+
+	LH.FuseHasWorkNow = function()
+		return LH.FuseJobPending() or LH.ClaimJobPending()
 	end
 
 	local function RunAutoFuse()
 		if LH.FarmPaused() then return end
-		if os.clock() < (LH.FuseBackoffUntil or 0) then return end
 		local remotes = Svc.ReplicatedStorage:FindFirstChild("Remotes")
 		local gameFolder = remotes and remotes:FindFirstChild("Game")
 		local PlaceRemote = gameFolder and gameFolder:FindFirstChild("FusionPetPlace")
@@ -4529,26 +4400,7 @@ do
 		if IsFusionBusy() then
 			FusePlaced = {}
 			FuseStartTries = 0
-			LH.FusePlaceFails = 0
 			return
-		end
-
-		-- alamin muna kung may magagawa BAGO mag-teleport (iwas pabalik-balik na TP kung kulang ang pets)
-		local missing = GetMissingSlots()
-		local candidates = {}
-		if #missing > 0 then
-			candidates = GetFuseCandidates()
-			if #candidates < #missing then return end
-		end
-
-		-- bumaba muna sa sinasakyang pet (para hindi ito mailagay sa machine / mapalitan ng ie-equip)
-		if #missing > 0 and LH.IsRiding and LH.IsRiding() and LH.DismountPet then
-			LH.DismountPet()
-			char = LocalPlayer.Character
-			humanoid = char and char:FindFirstChildOfClass("Humanoid")
-			if not humanoid or humanoid.Health <= 0 then return end
-			candidates = GetFuseCandidates()
-			if #candidates < #missing then return end
 		end
 
 		-- mag-teleport sa fusion machine (kung malayo pa)
@@ -4559,8 +4411,20 @@ do
 			task.wait(0.3)
 		end
 
+		-- alin ang may laman na (local record + nakita sa FusionSlots)
+		local detected = DetectFilledSlots()
+		local missing = {}
+		for slot = 1, 4 do
+			if not (FusePlaced[slot] or detected[slot]) then
+				table.insert(missing, slot)
+			end
+		end
+
 		-- lagyan LANG ang mga walang laman na slot; ang may laman na ay hindi ginagalaw
 		if #missing > 0 then
+			local candidates = GetFuseCandidates()
+			if #candidates < #missing then return end
+
 			for i, slot in ipairs(missing) do
 				if not AutoFuse or not LH.Alive or LH.FarmPaused() then return end
 
@@ -4579,16 +4443,9 @@ do
 				if petTool.Parent == char or petTool.Parent == backpack then
 					pcall(function() humanoid:UnequipTools() end)
 					task.wait(0.5) -- huwag i-spam; subukan ulit mamaya
-					LH.FusePlaceFails += 1
-					if LH.FusePlaceFails >= 3 then
-						-- paulit-ulit na bigo: magpahinga muna para tuloy ang Halloween
-						LH.FusePlaceFails = 0
-						LH.FuseBackoffUntil = os.clock() + 20
-					end
 					return
 				end
 
-				LH.FusePlaceFails = 0
 				FusePlaced[slot] = true
 			end
 		end
@@ -4600,69 +4457,38 @@ do
 			FuseStartTries += 1
 			task.wait(0.5)
 			if FuseStartTries >= 3 then
-				-- ayaw pa mag-start (kulang cash?): magpahinga muna, tapos subukan ulit (hindi na magpapalit ng pets)
-				FuseStartTries = 0
-				LH.FuseBackoffUntil = os.clock() + 20
+				FuseRetryAt = os.clock() + 15
+				task.wait(1) -- ayaw pa mag-start (kulang cash?), mas mabagal na retry pero hindi na ulit magpapalit ng pets
 			end
 		end
 	end
 
 	task.spawn(function()
 		while LH.Alive do
-			if AutoFuse and not LH.FarmPaused() and LH.FuseHasWorkNow() then
-				LH.FuseBusy = true -- i-lock agad para huminto ang Halloween, tapos hintayin silang tumigil
-				LH.FuseWaitYield()
-				if AutoFuse and not LH.FarmPaused() then
-					LH.BgRun(RunAutoFuse)
-				end
-				LH.FuseBusy = false
+			if IsFusionBusy() then
+				FusePlaced = {}
+				FuseStartTries = 0
+				FuseRetryAt = 0
+			end
+
+			if AutoFuse and not AutoSellPet and not AutoSellAllPets and not LH.FarmPaused() and LH.FuseJobPending() then
+				LH.FuseLockN += 1
+				pcall(LH.FuseYield)
+				LH.BgRun(RunAutoFuse)
+				LH.FuseLockN = math.max(0, LH.FuseLockN - 1)
 				task.wait(0.5)
 			else
-				LH.FuseBusy = false
 				task.wait(0.3)
 			end
 		end
 	end)
 end
 
--- AUTO CLAIM FUSED PETS  (PRIORITY #2 din)
+-- AUTO CLAIM FUSED PETS
 do
-	-- mag-teleport sa fusion machine (kailangan nandoon para gumana ang reveal/claim)
-	local function GoToMachine()
-		if LH.FarmPaused() then return false end
-		local char = LocalPlayer.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart")
-		if not hrp then return false end
-		if (hrp.Position - FuseMachineCFrame.Position).Magnitude > 8 then
-			hrp.CFrame = FuseMachineCFrame
-			task.wait(0.2)
-		end
-		return true
-	end
-
-	-- may magagawa ba ang Auto Claim ngayon? (ginagamit ng priority system para ihinto ang Halloween)
-	function LH.ClaimHasWorkNow()
-		if AutoClaimFusedPets ~= true then return false end
-		if os.clock() < (LH.ClaimBackoffUntil or 0) then return false end
-
-		-- habang may reveal / claim na ginagawa, huwag munang gumalaw ang Halloween
-		if os.clock() < (LH.FuseHoldUntil or 0) then return true end
-		if LocalPlayer:GetAttribute("FusionPresentationPending") == true then return false end
-
-		local result = LocalPlayer:FindFirstChild("FusionResult")
-		if result and result:FindFirstChild("Pet") then return true end
-
-		local slots = LocalPlayer:FindFirstChild("FusionSlots")
-		if slots and slots:GetAttribute("FusionStatus") == "Waiting" then
-			return workspace:GetServerTimeNow() >= (slots:GetAttribute("EndsAt") or 0)
-		end
-		return false
-	end
-
 	-- Flow ng game: matapos ang timer ("Ready") -> "Fuse" -> lalabas ang FusionResult.Pet -> "Claim", Pet.PetKey
 	local function RunAutoClaimFused()
 		if LH.FarmPaused() then return end
-		if os.clock() < (LH.ClaimBackoffUntil or 0) then return end
 		local remotes = Svc.ReplicatedStorage:FindFirstChild("Remotes")
 		local gameFolder = remotes and remotes:FindFirstChild("Game")
 		local ActionRemote = gameFolder and gameFolder:FindFirstChild("FusionAction")
@@ -4674,31 +4500,28 @@ do
 		local result = LocalPlayer:FindFirstChild("FusionResult")
 		local resultPet = result and result:FindFirstChild("Pet")
 
+		-- mag-teleport sa fusion machine (kailangan nandoon para gumana ang reveal/claim)
+		local function GoToMachine()
+			if LH.FarmPaused() then return false end
+			local char = LocalPlayer.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if not hrp then return false end
+			if (hrp.Position - FuseMachineCFrame.Position).Magnitude > 8 then
+				hrp.CFrame = FuseMachineCFrame
+				task.wait(0.2)
+			end
+			return true
+		end
+
 		-- 1) May resulta na: pumunta sa machine, tapos i-claim gamit ang PetKey (random na UID)
 		if resultPet then
 			if not GoToMachine() then return end
 			local petKey = resultPet:GetAttribute("PetKey")
-			local keyId = tostring(petKey or "nokey")
-
-			if LH.ClaimLastKey == keyId then
-				LH.ClaimTries += 1
-			else
-				LH.ClaimLastKey, LH.ClaimTries = keyId, 1
-			end
-
 			if petKey then
 				ActionRemote:FireServer("Claim", petKey)
 			end
-			LH.FuseHoldUntil = 0
-
-			if LH.ClaimTries >= 5 then
-				-- hindi ma-claim (inventory full?): magpahinga para hindi ma-block ang Halloween
-				LH.ClaimTries, LH.ClaimLastKey = 0, nil
-				LH.ClaimBackoffUntil = os.clock() + 20
-			end
 			return
 		end
-		LH.ClaimTries, LH.ClaimLastKey = 0, nil
 
 		-- 2) Walang resulta pa: kung tapos na ang timer ("Ready"), ipadala ang "Fuse"
 		local slots = LocalPlayer:FindFirstChild("FusionSlots")
@@ -4706,7 +4529,6 @@ do
 			local endsAt = slots:GetAttribute("EndsAt") or 0
 			if workspace:GetServerTimeNow() >= endsAt then
 				if not GoToMachine() then return end
-				LH.FuseHoldUntil = os.clock() + 15 -- manatili sa machine hanggang ma-claim
 				ActionRemote:FireServer("Fuse")
 				task.wait(6) -- hayaan munang tumakbo ang reveal (~5s)
 			end
@@ -4715,39 +4537,17 @@ do
 
 	task.spawn(function()
 		while LH.Alive do
-			if AutoClaimFusedPets and not LH.FarmPaused() and LH.ClaimHasWorkNow() then
-				LH.ClaimBusy = true -- i-lock agad para huminto ang Halloween, tapos hintayin silang tumigil
-				LH.FuseWaitYield()
-				if AutoClaimFusedPets and not LH.FarmPaused() then
-					LH.BgRun(RunAutoClaimFused)
-				end
-				LH.ClaimBusy = false
+			if AutoClaimFusedPets and not LH.FarmPaused() and LH.ClaimJobPending() then
+				LH.FuseLockN += 1
+				pcall(LH.FuseYield)
+				LH.BgRun(RunAutoClaimFused)
+				LH.FuseLockN = math.max(0, LH.FuseLockN - 1)
 				task.wait(0.5)
 			else
-				LH.ClaimBusy = false
 				task.wait(0.3)
 			end
 		end
 	end)
-end
-
--- FUSE PRIORITY CHECK (ginagamit ng Halloween autos: Buy / Ritual / Knock / Candy)
--- true = may ginagawa o may kailangang gawin ang Auto Fuse / Auto Claim, kaya hihinto muna ang Halloween
-LH.FuseActiveAt, LH.FuseActiveCache = 0, false
-function LH.FuseActive()
-	if AutoFuse ~= true and AutoClaimFusedPets ~= true then return false end
-	if LH.FuseBusy == true or LH.ClaimBusy == true then return true end
-	if AutoClaimFusedPets == true and os.clock() < (LH.FuseHoldUntil or 0) then return true end
-
-	-- i-cache saglit para hindi mabigat (maraming loop ang nagtatanong nito)
-	local now = os.clock()
-	if now - LH.FuseActiveAt < 0.25 then return LH.FuseActiveCache end
-	LH.FuseActiveAt = now
-
-	local okF, fuseWork = pcall(LH.FuseHasWorkNow)
-	local okC, claimWork = pcall(LH.ClaimHasWorkNow)
-	LH.FuseActiveCache = (okF and fuseWork == true) or (okC and claimWork == true)
-	return LH.FuseActiveCache
 end
 
 -- AUTO UPGRADE HATCH LUCK
@@ -5113,7 +4913,7 @@ end
 
 function LH.WaitCandyGone(candy, seconds)
 	local started = os.clock()
-	while candy.Parent and os.clock() - started < seconds and not LH.HigherBusy()
+	while candy.Parent and os.clock() - started < seconds and not LH.HallPaused()
 			and not LH.RitualActive() and not LH.BuyActive() do
 		task.wait(0.05)
 	end
@@ -5121,7 +4921,7 @@ function LH.WaitCandyGone(candy, seconds)
 end
 
 function LH.EnsureInEvent()
-	if LH.HigherBusy() then return true end 
+	if LH.HallPaused() then return true end 
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
@@ -5146,7 +4946,7 @@ function LH.CollectCandy(candy)
 	local pos = LH.GetCandyPos(candy)
 
 	for _ = 1, 2 do
-		if LH.HigherBusy() or not LH.AutoCandy or LH.KnockActive() or LH.BuyActive() or LH.RitualActive() then return true end 
+		if LH.HallPaused() or not LH.AutoCandy or LH.KnockActive() or LH.BuyActive() or LH.RitualActive() then return true end 
 
 		if pos then
 			hrp.CFrame = LH.UprightCFrame(pos + Vector3.new(0, 2, 0))
@@ -5167,7 +4967,7 @@ function LH.CollectCandy(candy)
 
 		if remote then
 			for _, id in ipairs(LH.GetCandyIds(candy)) do
-				if LH.HigherBusy() then return true end
+				if LH.HallPaused() then return true end
 				local args = { id }
 				pcall(function()
 					if remote:IsA("RemoteFunction") then
@@ -5371,7 +5171,7 @@ end
 
 function LH.TweenToCandyHome()
 	return LH.TweenToCFrame(LH.CandyHome, function()
-		return LH.Alive and LH.AutoCandy and not LH.HigherBusy() and not LH.BuyActive() and not LH.RitualActive()
+		return LH.Alive and LH.AutoCandy and not LH.HallPaused() and not LH.BuyActive() and not LH.RitualActive()
 	end)
 end
 
@@ -5397,11 +5197,11 @@ function LH.TweenToMyPlot()
 end
 
 function LH.GoCandyHome()
-	if LH.HigherBusy() or LH.BuyActive() or LH.RitualActive() then return end
+	if LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return end
 	LH.TweenToCandyHome()
 	-- 0.5s delay bago kumuha ulit ng candy
 	local started = os.clock()
-	while LH.Alive and LH.AutoCandy and not LH.HigherBusy() and os.clock() - started < LH.CandyHomeWait do
+	while LH.Alive and LH.AutoCandy and not LH.HallPaused() and os.clock() - started < LH.CandyHomeWait do
 		task.wait(0.05)
 	end
 end
@@ -5432,7 +5232,7 @@ function LH.CandyStep()
 		LH.CandySkip[candy] = os.clock() + 2
 	end
 
-	if LH.Alive and LH.AutoCandy and not LH.HigherBusy() and not LH.RitualActive() and not LH.BuyActive() then
+	if LH.Alive and LH.AutoCandy and not LH.HallPaused() and not LH.RitualActive() and not LH.BuyActive() then
 		LH.BgRun(LH.GoCandyHome)
 		if LH.CandyDismountAfterDrop then
 			LH.BgRun(LH.DismountPet)
@@ -5448,7 +5248,7 @@ task.spawn(function()
 			continue
 		end
 
-		if not LH.AutoCandy or LH.HigherBusy() then
+		if not LH.AutoCandy or LH.HallPaused() then
 			LH.CandyActing = false
 			if not LH.AutoCandy and not AutoPickup and LH.RodeByScript then
 				LH.BgRun(LH.DismountPet)
@@ -5579,14 +5379,14 @@ function LH.KnockAtDoor(entry)
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
-	if not LH.AutoKnock or LH.HigherBusy() or LH.BuyActive() or LH.RitualActive() then return false end
+	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return false end
 
 	-- TP sa door
 	hrp.CFrame = LH.UprightCFrame(entry.Pos + Vector3.new(0, 3, 0))
 	LH.Stabilize()
 	task.wait(LH.KnockTPDelay)
 
-	if not LH.AutoKnock or LH.HigherBusy() or LH.BuyActive() or LH.RitualActive() then return false end
+	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return false end
 
 	-- KNOCK
 	LH.KnockLastResult = nil
@@ -5602,7 +5402,7 @@ end
 
 task.spawn(function()
 	while LH.Alive do
-		if not LH.AutoKnock or LH.HigherBusy() then
+		if not LH.AutoKnock or LH.HallPaused() then
 			LH.KnockHasDoor = false
 			LH.KnockActing = false
 			task.wait(0.3)
@@ -5655,7 +5455,6 @@ LH.HalloweenNPC = CFrame.new(
 
 -- kailangan malapit sa NPC para gumana ang bili
 function LH.GoToHalloweenNPC()
-	if LH.HigherBusy() then return false end
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
@@ -5677,7 +5476,7 @@ task.spawn(function()
 	local buyRemote = GameRemotes:WaitForChild("BuyHalloweenEgg", 15)
 
 	while LH.Alive do
-		if not LH.AutoHaEgg or not buyRemote or LH.HigherBusy() then
+		if not LH.AutoHaEgg or not buyRemote or LH.HallPaused() then
 			LH.HaEggFails = 0
 			task.wait(0.5)
 			continue
@@ -5880,7 +5679,7 @@ function LH.RitualHasWorkNow()
 end
 
 function LH.RitualCanRun()
-	return LH.Alive and LH.AutoRitual == true and not LH.BuyActive() and not LH.HigherBusy()
+	return LH.Alive and LH.AutoRitual == true and not LH.BuyActive() and not LH.HallPaused()
 end
 
 -- hintayin munang tumigil ang Candy / Knock bago mag-TP (para walang mag-overwrite ng position)
@@ -5918,7 +5717,6 @@ function LH.FireRitualPrompt(prompt)
 end
 
 function LH.RitualTP(cf)
-	if LH.HigherBusy() then return false end
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
@@ -6148,7 +5946,7 @@ end
 
 task.spawn(function()
 	while LH.Alive do
-		if not LH.AutoRitual or LH.HigherBusy() then
+		if not LH.AutoRitual or LH.HallPaused() then
 			LH.RitualLock = false
 			LH.RitualBusyCave = false
 			task.wait(0.3)
@@ -6343,7 +6141,6 @@ task.spawn(function()
 
 		if not LH.FarmBusy then
 			LH.FarmBusy = true
-			LH.FarmWaitYield() -- hintayin tumigil ang Fuse / Halloween bago magsimula
 
 			pcall(function()
 				if LocalPlayer:GetAttribute("IsRiding") ~= true then
@@ -6510,6 +6307,7 @@ local function FullCleanup()
 	LH.Alive = false -- humihinto lahat ng while LH.Alive loops
 	if LH.RodeByScript then task.spawn(LH.DismountPet) end
 	LH.FarmBusy = false
+	LH.FuseLockN, LH.BuyActing = 0, false
 
 	AutoPickup, AutoVolcanoDip, AutoPlaceEgg, AutoHatchEgg = false, false, false, false
 	AutoHatchSelectedEggs, AutoClaimIndex = false, false
