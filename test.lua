@@ -174,6 +174,10 @@ local function NewDefaultConfig()
 		ThemeName = "Dark",
 		ThemeEnabled = false,
 		AutoExecute = false,
+
+		-- PLAYER
+		noclip = false,
+		infjump = false,
 	}
 end
 
@@ -1648,7 +1652,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v.1.0.2.4",
+	Title = "v.1.0.2.5",
 	Color = "ElementBackground",
 })
 
@@ -2369,18 +2373,6 @@ UIElements.AutoKnock = Secs.FuseSection1:Toggle({
 	end,
 })
 
-UIElements.AutoSearch = Secs.FuseSection1:Toggle({
-	Title = "Auto Search Pumpkins",
-    Locked = true,
-	Value = ConfigData.AutoSearch == true,
-
-	Callback = function(value)
-		AutoSearch = value
-		ConfigData.AutoSearch = value
-		SaveConfig()
-	end,
-})
-
 UIElements.AutoRitual = Secs.FuseSection1:Toggle({
 	Title = "Auto Ritual",
 	Value = ConfigData.AutoRitual == true,
@@ -2670,6 +2662,9 @@ Secs.ConfigSection:Button({
 		SelectedTheme = "Dark"
 		ThemeEnabled = false
 
+		-- PLAYER
+		LH.StopMovement()
+
 		ConfigData = NewDefaultConfig()
 
 		-- ibalik ang laman ng UI sa default
@@ -2727,6 +2722,8 @@ Secs.ConfigSection:Button({
 		SetUIValue(UIElements.HideEggs, false)
 		SetUIValue(UIElements.ThemeSelect, "Dark")
 		SetUIValue(UIElements.ThemeEnabled, false)
+		SetUIValue(UIElements.noclip, false)
+		SetUIValue(UIElements.infjump, false)
 		pcall(function() WindUI:SetTheme("Dark") end)
 
 		WindUI:Notify({
@@ -2882,14 +2879,14 @@ LH.RemoveAutoExec = function()
 	end
 end
 
-Secs.AutoExecSection = Tabs.Tab9:Section({
+Secs.PlayerSection = Tabs.Tab9:Section({
 	Title = "Players",
 	Icon = "user",
 	Box = true,
 	BoxBorder = true,
 })
 
-UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
+--[[UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
 	Title = "Auto Execute",
 	Value = ConfigData.AutoExecute == true,
 
@@ -2914,6 +2911,127 @@ UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
 				WindUI:Notify({
 					Title = "Auto Execute",
 					Content = msg,
+					Icon = "solar:bell-bold",
+					Duration = 5,
+					CanClose = true,
+				})
+			end
+		else
+			LH.RemoveAutoExec()
+			if LH.AutoExecReady then
+				WindUI:Notify({
+					Title = "Auto Execute",
+					Content = "Auto Execute turned off.",
+					Icon = "solar:bell-bold",
+					Duration = 4,
+					CanClose = true,
+				})
+			end
+		end
+	end,
+})
+]]
+
+--// NO CLIP & INFINITE JUMP (functions)
+LH.Noclip = { Conn = nil, Parts = setmetatable({}, { __mode = "k" }) }
+LH.InfJump = { Conn = nil }
+
+-- patayin ang collision ng buong character habang naka-ON
+LH.NoclipStep = function()
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	for _, part in ipairs(char:GetDescendants()) do
+		if part:IsA("BasePart") and part.CanCollide then
+			LH.Noclip.Parts[part] = true -- tandaan para maibalik pag OFF
+			part.CanCollide = false
+		end
+	end
+end
+
+LH.SetNoclip = function(state)
+	if state then
+		if LH.Noclip.Conn then return end -- naka-ON na
+		LH.Noclip.Conn = Svc.RunService.Stepped:Connect(LH.NoclipStep)
+	else
+		if LH.Noclip.Conn then
+			LH.Noclip.Conn:Disconnect()
+			LH.Noclip.Conn = nil
+		end
+		-- ibalik ang collision ng mga parts na ginalaw natin
+		for part in pairs(LH.Noclip.Parts) do
+			if part.Parent then
+				part.CanCollide = true
+			end
+		end
+		table.clear(LH.Noclip.Parts)
+	end
+end
+
+LH.SetInfJump = function(state)
+	if state then
+		if LH.InfJump.Conn then return end
+		LH.InfJump.Conn = Svc.UserInputService.JumpRequest:Connect(function()
+			local char = LocalPlayer.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health > 0 then
+				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	elseif LH.InfJump.Conn then
+		LH.InfJump.Conn:Disconnect()
+		LH.InfJump.Conn = nil
+	end
+end
+
+-- cleanup ng dalawa (tinatawag sa FullCleanup)
+LH.StopMovement = function()
+	LH.SetNoclip(false)
+	LH.SetInfJump(false)
+end
+
+UIElements.noclip = Secs.PlayerSection:Toggle({
+	Title = "No Clip",
+	Value = ConfigData.noclip == true,
+
+	Callback = function(value)
+		ConfigData.noclip = value
+		SaveConfig()
+		LH.SetNoclip(value)
+	end,
+})
+
+UIElements.infjump = Secs.PlayerSection:Toggle({
+	Title = "Infinite Jump",
+	Value = ConfigData.infjump == true,
+
+	Callback = function(value)
+		ConfigData.infjump = value
+		SaveConfig()
+		LH.SetInfJump(value)
+	end,
+})
+
+-- i-apply agad ang saved config pagka-load
+if ConfigData.noclip == true then LH.SetNoclip(true) end
+if ConfigData.infjump == true then LH.SetInfJump(true) end
+
+UIElements.AutoExecute = Secs.PlayerSection:Toggle({
+	Title = "Auto Execute",
+	Value = ConfigData.AutoExecute == true,
+
+	Callback = function(value)
+		ConfigData.AutoExecute = value
+		SaveConfig()
+
+		if value then
+			LH.Queued = false
+			LH.QueueLoader()
+			LH.WriteAutoExec()
+			if LH.AutoExecReady then
+				WindUI:Notify({
+					Title = "Auto Execute",
+					Content = "Auto execute turned on.",
 					Icon = "solar:bell-bold",
 					Duration = 5,
 					CanClose = true,
@@ -6461,6 +6579,7 @@ local function FullCleanup()
 	if FPSBoost then FPSBoost = false; pcall(ApplyFPSBoost, false) end
 	if HideEggs then HideEggs = false; pcall(ToggleHideEggs, false) end
 	pcall(ClearAllESP)
+	pcall(LH.StopMovement) -- noclip + infinite jump
 
 	for _, c in ipairs(LH.Conns) do pcall(function() c:Disconnect() end) end
 	table.clear(LH.Conns)
