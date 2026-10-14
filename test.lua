@@ -1,3 +1,10 @@
+--// LUNA HUB LOADER (Ride A Pet)
+--// Pattakbuhin ito ng isang beses: sine-save nito ang buong script sa
+--// workspace/LUNA HUB/Ride A Pet/LunaHub_Script.lua (file, hindi URL) at saka ito nilo-load.
+local FOLDER = "LUNA HUB/Ride A Pet"
+local FILE = FOLDER .. "/LunaHub_Script.lua"
+
+local SRC = [==[
 --// LUNA HUB LIFECYCLE (fresh start / full cleanup)
 local LH = { Alive = true, Conns = {} }
 local Svc, Mods, Rem, PD, Tabs, Secs = {}, {}, {}, {}, {}, {} -- grouped para hindi lumampas sa 200 local limit
@@ -173,6 +180,7 @@ local function NewDefaultConfig()
 		HideEggs = false,
 		ThemeName = "Dark",
 		ThemeEnabled = false,
+		AutoExecute = false,
 	}
 end
 
@@ -2842,6 +2850,138 @@ UIElements.HideEggs = Secs.SettingsSection:Toggle({
 	end,
 })
 
+--// AUTO EXECUTE (queue_on_teleport + autoexec) -- naka-save sa FILE, hindi URL
+LH.ScriptFile = ConfigFolder .. "/LunaHub_Script.lua"
+LH.AutoExecPaths = { "../autoexec/LunaHub_AutoLoad.lua", "autoexec/LunaHub_AutoLoad.lua" }
+LH.QueueFn = queue_on_teleport or queueonteleport
+	or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+LH.Queued = false
+LH.AutoExecReady = false
+
+LH.BuildLoaderStub = function(forAutoExec)
+	local s = ""
+	if forAutoExec then
+		-- ang autoexec folder ay tumatakbo sa lahat ng game: ito lang ang game na ito ang mag-load
+		s = s .. string.format("if game.GameId ~= %d then return end\n", game.GameId)
+	end
+	s = s .. [[
+if not game:IsLoaded() then game.Loaded:Wait() end
+local genv = (getgenv and getgenv()) or _G
+if genv.LunaHubStubBusy then return end
+genv.LunaHubStubBusy = true
+task.delay(20, function() genv.LunaHubStubBusy = nil end)
+local cfgOk, cfg = pcall(function()
+	return game:GetService("HttpService"):JSONDecode(readfile("]] .. ConfigFile .. [["))
+end)
+if not (cfgOk and type(cfg) == "table" and cfg.AutoExecute == true) then return end
+if not (isfile and isfile("]] .. LH.ScriptFile .. [[")) then return end
+local fn = loadstring(readfile("]] .. LH.ScriptFile .. [["))
+if fn then fn() end
+]]
+	return s
+end
+
+LH.QueueLoader = function()
+	if LH.Queued then return true end
+	if not LH.QueueFn then return false end
+	if not (isfile and isfile(LH.ScriptFile)) then return false end
+	local ok = pcall(LH.QueueFn, LH.BuildLoaderStub(false))
+	if ok then LH.Queued = true end
+	return ok
+end
+
+LH.QueueIfEnabled = function()
+	if ConfigData.AutoExecute == true then
+		return LH.QueueLoader()
+	end
+end
+
+LH.WriteAutoExec = function()
+	if not writefile then return false end
+	local code = "-- LUNA HUB auto load (Ride A Pet)\n" .. LH.BuildLoaderStub(true)
+	for _, path in ipairs(LH.AutoExecPaths) do
+		if pcall(writefile, path, code) then
+			return true
+		end
+	end
+	return false
+end
+
+LH.RemoveAutoExec = function()
+	if not (isfile and delfile) then return end
+	for _, path in ipairs(LH.AutoExecPaths) do
+		pcall(function()
+			if isfile(path) then delfile(path) end
+		end)
+	end
+end
+
+Secs.AutoExecSection = Tabs.Tab9:Section({
+	Title = "Auto Execute",
+	Icon = "rotate-cw",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
+	Title = "Auto Execute (Rejoin / Server Hop / Reconnect)",
+	Desc = "ON = kusang mag-load ang script pagkatapos ng teleport, rejoin, hop, reconnect, o kapag bumalik sa game. OFF = hindi na mag-load.",
+	Value = ConfigData.AutoExecute == true,
+
+	Callback = function(value)
+		ConfigData.AutoExecute = value
+		SaveConfig()
+
+		if value then
+			LH.Queued = false
+			local queued = LH.QueueLoader()
+			local autoexec = LH.WriteAutoExec()
+			if LH.AutoExecReady then
+				local msg
+				if not (isfile and isfile(LH.ScriptFile)) then
+					msg = "Walang script file. I-run muli ang loader para ma-save ito sa LUNA HUB/Ride A Pet."
+				elseif not LH.QueueFn then
+					msg = "Walang queue_on_teleport ang executor mo."
+				else
+					msg = "ON: queue_on_teleport " .. (queued and "OK" or "failed")
+						.. " | autoexec " .. (autoexec and "OK" or "hindi supported")
+				end
+				WindUI:Notify({
+					Title = "Auto Execute",
+					Content = msg,
+					Icon = "solar:bell-bold",
+					Duration = 5,
+					CanClose = true,
+				})
+			end
+		else
+			LH.RemoveAutoExec()
+			if LH.AutoExecReady then
+				WindUI:Notify({
+					Title = "Auto Execute",
+					Content = "OFF: hindi na mag-a-auto load ang script pagkatapos ng rejoin/hop.",
+					Icon = "solar:bell-bold",
+					Duration = 4,
+					CanClose = true,
+				})
+			end
+		end
+	end,
+})
+
+-- kapag ON na sa saved config: i-queue agad pagka-load (para sa susunod na teleport)
+if ConfigData.AutoExecute == true then
+	LH.QueueLoader()
+	LH.WriteAutoExec()
+end
+
+-- bago ang bawat teleport (kasama ang game-initiated reconnect/kick-teleport): siguraduhing naka-queue
+Bind(Player.OnTeleport, function()
+	LH.QueueIfEnabled()
+end)
+
+LH.AutoExecReady = true
+
 Secs.SettingsSection1 = Tabs.Tab9:Section({
 	Title = "Servers",
 	Icon = "globe",
@@ -2850,6 +2990,7 @@ Secs.SettingsSection1 = Tabs.Tab9:Section({
 })
 
 local function RejoinServer()
+	LH.QueueIfEnabled()
 	pcall(function()
 		Svc.TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
 	end)
@@ -2896,6 +3037,7 @@ local function ServerHop()
 				Duration = 3,
 				CanClose = true,
 			})
+			LH.QueueIfEnabled()
 			task.wait(0.5)
 			pcall(function()
 				Svc.TeleportService:TeleportToPlaceInstance(game.PlaceId, result.id, Player)
@@ -6347,3 +6489,15 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+]==]
+
+pcall(function()
+	if makefolder and isfolder then
+		if not isfolder("LUNA HUB") then makefolder("LUNA HUB") end
+		if not isfolder(FOLDER) then makefolder(FOLDER) end
+	end
+	if writefile then writefile(FILE, SRC) end
+end)
+
+local fn, err = loadstring(SRC)
+if fn then fn() else warn("[LUNA HUB] load error: " .. tostring(err)) end
