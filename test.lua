@@ -2809,42 +2809,6 @@ Secs.WebhookSection:Button({
 --==================================================
 -- TAB 9 (SETTINGS)
 --==================================================
-
-Secs.SettingsSection = Tabs.Tab9:Section({
-	Title = "Performance",
-	Icon = "zap",
-	Box = true,
-	BoxBorder = true,
-})
-
-UIElements.FPSBoost = Secs.SettingsSection:Toggle({
-	Title = "FPS Boost",
-	Desc = "Lower graphics quality to increase FPS performance",
-	Value = ConfigData.FPSBoost,
-
-	Callback = function(value)
-		FPSBoost = value
-		ConfigData.FPSBoost = value
-		SaveConfig()
-		ApplyFPSBoost(value)
-	end,
-})
-
-UIElements.HideEggs = Secs.SettingsSection:Toggle({
-	Title = "Hide All Eggs",
-	Desc = "Hide all eggs in your plot and other players' plots",
-	Value = ConfigData.HideEggs,
-
-	Callback = function(value)
-		HideEggs = value
-		ConfigData.HideEggs = value
-		SaveConfig()
-		ToggleHideEggs(value)
-	end,
-})
-
---// AUTO EXECUTE (queue_on_teleport + autoexec) -- naglo-load mula sa URL
--- ILAGAY DITO ANG URL NG SCRIPT MO (raw link). Pwede rin: getgenv().LunaHubURL = "..." bago i-run.
 LH.ScriptURL = "https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/test.lua"
 do
 	local ok, env = pcall(function() return getgenv() end)
@@ -2919,14 +2883,14 @@ LH.RemoveAutoExec = function()
 end
 
 Secs.AutoExecSection = Tabs.Tab9:Section({
-	Title = "Auto Execute",
-	Icon = "rotate-cw",
+	Title = "Players",
+	Icon = "user",
 	Box = true,
 	BoxBorder = true,
 })
 
 UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
-	Title = "Auto Execute (Rejoin / Server Hop / Reconnect)",
+	Title = "Auto Execute",
 	Value = ConfigData.AutoExecute == true,
 
 	Callback = function(value)
@@ -2960,7 +2924,7 @@ UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
 			if LH.AutoExecReady then
 				WindUI:Notify({
 					Title = "Auto Execute",
-					Content = "OFF: hindi na mag-a-auto load ang script pagkatapos ng rejoin/hop.",
+					Content = "Auto Execute turned off.",
 					Icon = "solar:bell-bold",
 					Duration = 4,
 					CanClose = true,
@@ -2982,6 +2946,39 @@ Bind(Player.OnTeleport, function()
 end)
 
 LH.AutoExecReady = true
+
+Secs.SettingsSection = Tabs.Tab9:Section({
+	Title = "Performance",
+	Icon = "zap",
+	Box = true,
+	BoxBorder = true,
+})
+
+UIElements.FPSBoost = Secs.SettingsSection:Toggle({
+	Title = "FPS Boost",
+	Desc = "Lower graphics quality to increase FPS performance",
+	Value = ConfigData.FPSBoost,
+
+	Callback = function(value)
+		FPSBoost = value
+		ConfigData.FPSBoost = value
+		SaveConfig()
+		ApplyFPSBoost(value)
+	end,
+})
+
+UIElements.HideEggs = Secs.SettingsSection:Toggle({
+	Title = "Hide All Eggs",
+	Desc = "Hide all eggs in your plot and other players' plots",
+	Value = ConfigData.HideEggs,
+
+	Callback = function(value)
+		HideEggs = value
+		ConfigData.HideEggs = value
+		SaveConfig()
+		ToggleHideEggs(value)
+	end,
+})
 
 Secs.SettingsSection1 = Tabs.Tab9:Section({
 	Title = "Servers",
