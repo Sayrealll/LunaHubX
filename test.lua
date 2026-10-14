@@ -1656,7 +1656,7 @@ local Window = WindUI:CreateWindow({
 --==================================================
 
 -- >>> DITO LANG KA MAGBABAGO NG VERSION <<<
-local ScriptVersion = "1.0.2.6"
+local ScriptVersion = "1.0.2.7"
 
 -- >>> DITO MO ISULAT YUNG CHANGE LOGS <<<
 local ChangeLogs = [[
@@ -1966,7 +1966,7 @@ UIElements.SelectedEggs = Secs.EggSection:Dropdown({
 })
 
 UIElements.MinWeightInput = Secs.EggSection:Input({
-	Title = "Minimum KG",
+	Title = "Weight Threshold",
 	Desc = "Skip eggs below minimum kg (e.g.100) ",
 	Value = (ConfigData.MinWeightText and ConfigData.MinWeightText ~= "") and ConfigData.MinWeightText or "0",
 	Placeholder = "0",
@@ -1986,6 +1986,7 @@ UIElements.MinWeightInput = Secs.EggSection:Input({
 
 UIElements.FarmTweenSpeed = Secs.EggSection:Slider({
 	Title = "Tween Speed",
+    Desc = "Fast speed pet = High tween speed | Low speed pet = Low tween speed ",
 	Step = 1,
 	Value = {
 		Min = 100,
@@ -2433,6 +2434,7 @@ UIElements.AutoCandy = Secs.FuseSection1:Toggle({
 
 UIElements.CandyTweenSpeed = Secs.FuseSection1:Slider({
 	Title = "Tween Speed",
+     Desc = "Fast speed pet = High tween speed | Low speed pet = Low tween speed ",
 	Step = 1,
 	Value = {
 		Min = 100,
