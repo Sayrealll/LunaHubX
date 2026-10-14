@@ -1651,11 +1651,95 @@ local Window = WindUI:CreateWindow({
 	},
 })
 
+--==================================================
+-- VERSION + CHANGE LOGS
+--==================================================
+
+-- >>> DITO LANG KA MAGBABAGO NG VERSION <<<
+local ScriptVersion = "1.0.2.6"
+
+-- >>> DITO MO ISULAT YUNG CHANGE LOGS <<<
+local ChangeLogs = [[
+* Delivery Failed?
+* Slow pets = Low tween
+* Fast pets = High tween
+
+Added Features:
+* Fixed Prioritize Functions 
+* Added Player Section
+* Added No Clip 
+* Added Infinite Jump
+* Added Auto Execute
+
+
+]]
+
+local MaxShows = 4 -- ilang beses lang lalabas ang change logs
+
 Window:Tag({
-	Title = "v.1.0.2.5",
+	Title = "v." .. ScriptVersion,
 	Color = "ElementBackground",
 })
 
+do
+	local LogFile = ConfigFolder .. "/ChangeLog_Seen.json"
+	local data = { Version = "", Count = 0 }
+
+	-- basahin yung na-save na data
+	if isfile and readfile and isfile(LogFile) then
+		local ok, res = pcall(function()
+			return Svc.HttpService:JSONDecode(readfile(LogFile))
+		end)
+		if ok and type(res) == "table" then
+			data.Version = tostring(res.Version or "")
+			data.Count = tonumber(res.Count) or 0
+		end
+	end
+
+	-- kapag nag-iba ang version, i-reset ang count
+	if data.Version ~= ScriptVersion then
+		data.Version = ScriptVersion
+		data.Count = 0
+	end
+
+	-- ipakita lang kung hindi pa umabot sa 3
+	if data.Count < MaxShows then
+		data.Count += 1
+
+		EnsureFolders()
+		if writefile then
+			pcall(function()
+				writefile(LogFile, Svc.HttpService:JSONEncode(data))
+			end)
+		end
+
+		task.delay(1.5, function()
+			if not LH.Alive then return end
+			local shown = pcall(function()
+				Window:Dialog({
+					Title = "Change Logs v." .. ScriptVersion,
+					Content = ChangeLogs,
+					Buttons = {
+						{
+							Title = "OK",
+							Callback = function() end,
+						},
+					},
+				})
+			end)
+			-- fallback kung walang Dialog sa WindUI version mo
+			if not shown then
+				pcall(function()
+					WindUI:Notify({
+						Title = "Change Logs v." .. ScriptVersion,
+						Content = ChangeLogs,
+						Duration = 10,
+					})
+				end)
+			end
+		end)
+	end
+end
 
 --==================================================
 -- CUSTOM FLOATING LOGO BUTTON
