@@ -2845,7 +2845,7 @@ UIElements.HideEggs = Secs.SettingsSection:Toggle({
 
 --// AUTO EXECUTE (queue_on_teleport + autoexec) -- naglo-load mula sa URL
 -- ILAGAY DITO ANG URL NG SCRIPT MO (raw link). Pwede rin: getgenv().LunaHubURL = "..." bago i-run.
-LH.ScriptURL = "PASTE_YOUR_SCRIPT_URL_HERE"
+LH.ScriptURL = "https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/test.lua"
 do
 	local ok, env = pcall(function() return getgenv() end)
 	if ok and type(env) == "table" and type(env.LunaHubURL) == "string" and env.LunaHubURL ~= "" then
