@@ -2,9 +2,9 @@
 local LH = { Alive = true, Conns = {} }
 local Svc, Mods, Rem, PD, Tabs, Secs = {}, {}, {}, {}, {}, {} -- grouped para hindi lumampas sa 200 local limit
 
---// AUTO RELOAD (queue_on_teleport) - pwede ring baguhin sa UI: SETTINGS > Auto Reload
-LH.ScriptURL = ""                                  -- raw link ng script (GitHub raw / Pastebin raw). Optional kung may file sa baba
-LH.ScriptFile = "LUNA HUB/Ride A Pet/LunaHub.lua"  -- fallback: file sa workspace folder ng executor mo
+--// AUTO RELOAD (queue_on_teleport)
+LH.ScriptURL = "https://raw.githubusercontent.com/Sayrealll/LunaHubX/refs/heads/main/test.lua"
+LH.ScriptFile = "" -- optional fallback: file sa workspace folder ng executor (hal. "LUNA HUB/Ride A Pet/LunaHub.lua")
 
 LH.TrimNum = function(n)
 	return (string.format("%.2f", n):gsub("%.?0+$", ""))
@@ -174,7 +174,6 @@ local function NewDefaultConfig()
 
 		-- RELOAD
 		AutoReconnect = true,
-		ScriptURL = "",
 
 		-- SETTINGS
 		FPSBoost = false,
@@ -242,10 +241,7 @@ end
 
 -- code na tatakbo sa bagong server (kukunin ang script sa URL, kung wala o pumalya, sa file)
 function LH.BuildReloadPayload()
-	local url = string.match(tostring(ConfigData.ScriptURL or ""), "^%s*(.-)%s*$") or ""
-	if url == "" then
-		url = string.match(tostring(LH.ScriptURL or ""), "^%s*(.-)%s*$") or ""
-	end
+	local url = tostring(LH.ScriptURL or "")
 	local file = tostring(LH.ScriptFile or "")
 
 	return table.concat({
@@ -2768,9 +2764,7 @@ Secs.ConfigSection:Button({
 		SelectedTheme = "Dark"
 		ThemeEnabled = false
 
-		local keepURL = ConfigData.ScriptURL -- huwag burahin ang Script URL
 		ConfigData = NewDefaultConfig()
-		ConfigData.ScriptURL = keepURL or ""
 		LH.AutoReconnect = true
 
 		-- ibalik ang laman ng UI sa default
@@ -3047,46 +3041,6 @@ UIElements.AutoReconnect = Secs.ReloadSection:Toggle({
 		LH.AutoReconnect = value == true
 		ConfigData.AutoReconnect = value == true
 		SaveConfig()
-	end,
-})
-
-UIElements.ScriptURLInput = Secs.ReloadSection:Input({
-	Title = "Script URL (Auto Reload)",
-	Desc = "Raw link ng script mo (GitHub raw / Pastebin raw). Ginagamit ng queue_on_teleport",
-	Value = ConfigData.ScriptURL or "",
-	Placeholder = "https://raw.githubusercontent.com/...",
-
-	Callback = function(text)
-		ConfigData.ScriptURL = tostring(text or "")
-		SaveConfig()
-	end,
-})
-
-Secs.ReloadSection:Button({
-	Title = "Check Auto Reload",
-	Desc = "Check kung supported ng executor mo at may mapagkukunan ng script",
-	Justify = "Center",
-	Callback = function()
-		local url = string.match(tostring(ConfigData.ScriptURL or ""), "^%s*(.-)%s*$") or ""
-		if url == "" then url = tostring(LH.ScriptURL or "") end
-		local hasFile = isfile and LH.ScriptFile ~= "" and isfile(LH.ScriptFile)
-
-		local msg
-		if not LH.GetQueueFn() then
-			msg = "Hindi supported ng executor mo ang queue_on_teleport."
-		elseif url == "" and not hasFile then
-			msg = "Supported, pero walang Script URL o file. Maglagay ng Script URL sa taas."
-		else
-			msg = "Ready na ang Auto Reload."
-		end
-
-		WindUI:Notify({
-			Title = "Auto Reload",
-			Content = msg,
-			Icon = "solar:bell-bold",
-			Duration = 5,
-			CanClose = true,
-		})
 	end,
 })
 
