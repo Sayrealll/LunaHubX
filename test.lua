@@ -5193,12 +5193,13 @@ function LH.GetCandyRemote()
 end
 
 -- PRIORITY NG CANDY (mas mababang number = mas inuuna)
---  1) RitualCandy:<random>   (resulta ng ritual)
+--  1) kahit anong may "Ritual" sa pangalan (RitualCandy:<random>, ritual Egg, etc.)
 --  2) DoorCandy:<random>     (resulta ng Auto Knock Doors)
 --  3) Candy_04  4) Candy_03  5) Candy_02  6) Candy_01  (candy na nakakalat sa map)
 function LH.GetCandyRank(candy)
 	local name = candy.Name
-	if name:sub(1, 12) == "RitualCandy:" or name:sub(1, 11) == "RitualCandy" then return 1 end
+	-- FIX: dati "RitualCandy" lang; ngayon kahit anong named na "Ritual" (kasama ang Egg reward)
+	if string.find(string.lower(name), "ritual", 1, true) then return 1 end
 	if name:sub(1, 10) == "DoorCandy:" or name:sub(1, 9) == "DoorCandy" then return 2 end
 	local n = tonumber(name:match("^Candy_?(%d+)"))
 	if n then return 100 - n end -- Candy_04 = 96, Candy_03 = 97 ... (mas mataas na number = mas mataas na priority)
@@ -5385,6 +5386,14 @@ LH.CandyHomeWait = 0.5        -- delay pagkabalik sa home bago kumuha ulit ng ca
 LH.MeasuredRideSpeed = 0
 LH.Tweening = false
 
+-- FIX: "delivering" state = nakuha na ang candy pero hindi pa nakakauwi sa Candy Home.
+-- Habang naka-ON ito, naghihintay ang Knock / Ritual / Buy Egg para hindi maputol ang tween pauwi.
+LH.CandyCarry = false
+LH.CandyCarryUntil = 0
+function LH.CandyDelivering()
+	return LH.CandyCarry == true and os.clock() < (LH.CandyCarryUntil or 0) -- safety timeout para hindi ma-stuck
+end
+
 -- Sinusukat ang totoong bilis ng pet habang nakasakay ka (kapag ikaw mismo ang gumalaw)
 Bind(Svc.RunService.Heartbeat, function()
 	if LH.Tweening or not LH.IsRiding() then return end
@@ -5557,7 +5566,8 @@ end
 
 function LH.TweenToCandyHome()
 	return LH.TweenToCFrame(LH.CandyHome, function()
-		return LH.Alive and LH.AutoCandy and not LH.HallPaused() and not LH.BuyActive() and not LH.RitualActive()
+		-- FIX: huwag putulin ng Buy Egg / Ritual ang tween pauwi; patapusin muna ang delivery
+		return LH.Alive and LH.AutoCandy and not LH.HallPaused()
 	end)
 end
 
@@ -5583,7 +5593,7 @@ function LH.TweenToMyPlot()
 end
 
 function LH.GoCandyHome()
-	if LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return end
+	if LH.HallPaused() then return end
 	LH.TweenToCandyHome()
 	-- 0.5s delay bago kumuha ulit ng candy
 	local started = os.clock()
@@ -5624,12 +5634,16 @@ function LH.CandyStep()
 		return
 	end
 
-	if LH.Alive and LH.AutoCandy and not LH.HallPaused() and not LH.RitualActive() and not LH.BuyActive() then
+	-- FIX: nakuha na ang candy -> i-lock hanggang makauwi sa Candy Home (bago mag-Knock / Ritual / Buy Egg)
+	LH.CandyCarry = true
+	LH.CandyCarryUntil = os.clock() + 60
+	if LH.Alive and LH.AutoCandy and not LH.HallPaused() then
 		LH.BgRun(LH.GoCandyHome)
 		if LH.CandyDismountAfterDrop then
 			LH.BgRun(LH.DismountPet)
 		end
 	end
+	LH.CandyCarry = false
 end
 
 task.spawn(function()
@@ -5779,14 +5793,14 @@ function LH.KnockAtDoor(entry)
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
-	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return false end
+	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() or LH.CandyDelivering() then return false end
 
 	-- TP sa door
 	hrp.CFrame = LH.UprightCFrame(entry.Pos + Vector3.new(0, 3, 0))
 	LH.Stabilize()
 	task.wait(LH.KnockTPDelay)
 
-	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() then return false end
+	if not LH.AutoKnock or LH.HallPaused() or LH.BuyActive() or LH.RitualActive() or LH.CandyDelivering() then return false end
 
 	-- KNOCK
 	LH.KnockLastResult = nil
@@ -5813,6 +5827,13 @@ task.spawn(function()
 		if LH.BuyActive() or LH.RitualActive() then
 			LH.KnockActing = false
 			task.wait(0.2)
+			continue
+		end
+
+		-- FIX: may candy na papunta pa sa Candy Home -> hintayin muna bago mag-TP sa door
+		if LH.CandyDelivering() then
+			LH.KnockActing = false
+			task.wait(0.1)
 			continue
 		end
 
@@ -5879,6 +5900,12 @@ task.spawn(function()
 		if not LH.AutoHaEgg or not buyRemote or LH.HallPaused() then
 			LH.HaEggFails = 0
 			task.wait(0.5)
+			continue
+		end
+
+		-- FIX: hintayin munang makauwi sa Candy Home ang hawak na candy bago pumunta sa NPC
+		if LH.CandyDelivering() then
+			task.wait(0.1)
 			continue
 		end
 
@@ -6357,6 +6384,13 @@ task.spawn(function()
 		if LH.BuyActive() then
 			LH.RitualLock = false
 			task.wait(0.2)
+			continue
+		end
+
+		-- FIX: hintayin munang makauwi sa Candy Home ang hawak na candy bago mag-TP sa Yin/Yang
+		if LH.CandyDelivering() then
+			LH.RitualLock = false
+			task.wait(0.1)
 			continue
 		end
 
