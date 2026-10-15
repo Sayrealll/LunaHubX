@@ -5296,8 +5296,7 @@ end
 
 function LH.WaitCandyGone(candy, seconds)
 	local started = os.clock()
-	while candy.Parent and os.clock() - started < seconds and not LH.HallPaused()
-			and not LH.RitualActive() and not LH.BuyActive() do
+	while candy.Parent and os.clock() - started < seconds and not LH.HallPaused() do
 		task.wait(0.05)
 	end
 	return candy.Parent == nil
@@ -5329,7 +5328,7 @@ function LH.CollectCandy(candy)
 	local pos = LH.GetCandyPos(candy)
 
 	for _ = 1, 3 do
-		if LH.HallPaused() or not LH.AutoCandy or LH.KnockActive() or LH.BuyActive() or LH.RitualActive() then return true end 
+		if LH.HallPaused() or not LH.AutoCandy then return true end
 		if not candy.Parent then return true end
 
 		-- nasa candy na: sumakay muna sa pet bago i-pick up
@@ -5390,8 +5389,12 @@ LH.Tweening = false
 -- Habang naka-ON ito, naghihintay ang Knock / Ritual / Buy Egg para hindi maputol ang tween pauwi.
 LH.CandyCarry = false
 LH.CandyCarryUntil = 0
+LH.CandyCycle = false      -- true mula nang may napiling candy hanggang makauwi sa Candy Home
+LH.CandyCycleUntil = 0
 function LH.CandyDelivering()
-	return LH.CandyCarry == true and os.clock() < (LH.CandyCarryUntil or 0) -- safety timeout para hindi ma-stuck
+	local now = os.clock()
+	if LH.CandyCycle == true and now < (LH.CandyCycleUntil or 0) then return true end
+	return LH.CandyCarry == true and now < (LH.CandyCarryUntil or 0) -- safety timeout para hindi ma-stuck
 end
 
 -- Sinusukat ang totoong bilis ng pet habang nakasakay ka (kapag ikaw mismo ang gumalaw)
@@ -5615,6 +5618,10 @@ function LH.CandyStep()
 		return
 	end
 
+	-- FIX: i-lock ang buong cycle (kuha -> tween pauwi) para hindi mag-TP ang Ritual / Knock / Buy Egg sa gitna
+	LH.CandyCycle = true
+	LH.CandyCycleUntil = os.clock() + 75
+
 	if not LH.IsRiding() then
 		LH.BgRun(LH.RidePet)
 	end
@@ -5673,6 +5680,7 @@ task.spawn(function()
 
 		LH.CandyActing = true
 		pcall(LH.CandyStep)
+		LH.CandyCycle = false
 		LH.CandyActing = false
 
 		task.wait()
@@ -5940,9 +5948,21 @@ end)
 
 
 --==================================================
--- AUTO RITUAL (HALLOWEEN EVENT - YIN & YANG)
+-- AUTO RITUAL (HALLOWEEN EVENT - YIN & YANG)  [REFACTORED]
 -- Priority: Auto Farm > Auto Fuse/Claim > 1) Auto Buy Halloween Egg  2) Auto Ritual  3) Auto Knock  4) Auto Collect Candy
--- TP sa piece -> pick up -> TP sa Yin Yang Cave -> ilagay ang piece -> kapag kumpleto, buksan ang cave
+--
+-- FLOW:
+--  1) May Yin/Yang piece sa mapa -> TP -> pickup
+--  2) Hawak na ang piece -> TP sa Yin Yang Cave -> ilagay
+--  3) Kapag pareho nang nailagay (Yin + Yang) -> buksan ang cave
+--
+-- MGA BUG NA INAYOS:
+--  A) "You Already Have The Yin/Yang Half"
+--     -> hindi na pipilitin kunin. Itinuturing na HAWAK na natin ito: diretso TP sa cave at ilagay.
+--  B) "You Already Collected Yin/Yang. Wait For The Next Egg Restock."
+--     -> 2 fire lang kada pickup. Kapag pareho ang resulta: BACKOFF 20s -> 30s -> 40s -> 50s (50s na ang max).
+--        Habang naka-backoff, HINDI hawak ng Ritual ang priority, kaya tuloy ang Candy / Knock / Farm.
+--  C) Kapag hindi mailagay sa cave nang ilang beses -> parehong backoff din (walang infinite TP loop).
 --==================================================
 LH.YinYangCave = CFrame.new(
 	-46388.4453, 40345.9258, -19674.6621,
@@ -5951,29 +5971,41 @@ LH.YinYangCave = CFrame.new(
 	-0.615023494, -1.23150826e-07, -0.788508773
 )
 LH.RitualHalves = { "Yin", "Yang" }
-LH.RitualPickupWait = 2       -- segundo hintayin kung na-pickup na ang piece
+LH.RitualPickupFires = 2      -- ilang beses lang i-fire ang pickup prompt kada attempt
+LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
+LH.RitualBackoff = { 20, 30, 40, 50 } -- seconds: 1st fail = 20s, 2nd = 30s, 3rd = 40s, 4th+ = 50s (max)
 LH.RitualDepositTime = 12     -- max segundo sa cave
 LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
 LH.RitualIdleLimit = 4        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
-LH.RitualMaxTries = 6         -- max na pag-fire kada prompt
-LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt
+LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
+LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
 LH.RitualRestTime = 4         -- pahinga kapag bigo ang paglagay
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
-LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete" (para hindi mag-TP kung kusa namang magbubukas)
+LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
 LH.RitualFinishRest = 8       -- pahinga pagkatapos subukang buksan ang cave
-LH.RitualMaxDepositFails = 3  -- ilang beses subukang ilagay ang piece bago sukuan
-LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari
+LH.RitualMaxDepositFails = 3  -- ilang beses subukang ilagay ang piece bago i-backoff
+LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari (kasama ang messages)
 
-LH.RitualSkip = setmetatable({}, { __mode = "k" }) -- [piece] = oras hanggang kailan lalaktawan kung bigo ang pickup
+LH.RitualBusyCave = false
+LH.RitualSkip = setmetatable({}, { __mode = "k" }) -- [piece] = oras hanggang kailan lalaktawan (piece na walang prompt)
 
 -- STATE NG RITUAL (nare-reset kapag nag-iba ang RoundId)
 LH.RitualCarrying = {}        -- [half] = true kapag NAKUHA na natin ang piece pero HINDI pa nailalagay
 LH.RitualPlaced = {}          -- [half] = true kapag nailagay na natin (backup lang; mas pinagkakatiwalaan ang RitualView)
 LH.RitualDepositFails = {}    -- [half] = ilang beses nang bigo ang paglagay
+LH.RitualBlock = {}           -- [half] = { Strikes = n, Until = oras } (backoff)
+LH.RitualMsg = {}             -- [half] = { Have = oras, Collected = oras } (galing sa message ng laro)
+LH.RitualAttempt = nil        -- half na kasalukuyang kinukuha (para sa message na walang nakasulat na half)
 LH.RitualRound = nil
 LH.RitualCompleteSince = nil
 LH.RitualFinishUntil = 0
 LH.RitualIdleUntil = 0
+
+function LH.RitualLog(...)
+	if LH.RitualDebug then
+		warn("[Ritual]", ...)
+	end
+end
 
 function LH.RitualFolder(half)
 	local root = workspace:FindFirstChild("HeadlessRitual")
@@ -5985,12 +6017,125 @@ function LH.IsHoldingHalf(half)
 	return LocalPlayer:GetAttribute("Ritual" .. half) == true
 end
 
-function LH.RitualLog(...)
-	if LH.RitualDebug then
-		warn("[Ritual]", ...)
+--==================================================
+-- BACKOFF (20s -> 30s -> 40s -> 50s max)
+--==================================================
+function LH.RitualBlocked(half)
+	local b = LH.RitualBlock[half]
+	return b ~= nil and os.clock() < b.Until
+end
+
+function LH.RitualBlockHalf(half, why)
+	local b = LH.RitualBlock[half]
+	if not b then
+		b = { Strikes = 0, Until = 0 }
+		LH.RitualBlock[half] = b
+	end
+	b.Strikes += 1
+	local list = LH.RitualBackoff
+	local delay = list[math.min(b.Strikes, #list)]
+	b.Until = os.clock() + delay
+	LH.RitualLog("backoff", half, why or "?", "strike", b.Strikes, "wait", delay .. "s")
+end
+
+function LH.RitualUnblock(half)
+	LH.RitualBlock[half] = nil
+end
+
+--==================================================
+-- MESSAGE LISTENER
+--  "You Already Have The Yin/Yang Half"                         -> Have
+--  "You Already Collected Yin/Yang. Wait For The Next Egg Restock" -> Collected
+-- Binabasa mula sa (1) kahit anong RemoteEvent na may string args, at (2) text ng kahit anong GUI label.
+--==================================================
+function LH.RitualMsgEntry(half)
+	local e = LH.RitualMsg[half]
+	if not e then
+		e = { Have = 0, Collected = 0 }
+		LH.RitualMsg[half] = e
+	end
+	return e
+end
+
+function LH.OnRitualText(raw)
+	if not LH.Alive or type(raw) ~= "string" or #raw > 300 then return end
+	local text = string.lower((raw:gsub("<[^>]+>", "")))
+
+	local kind
+	if string.find(text, "already have", 1, true) then
+		kind = "Have"
+	elseif string.find(text, "already collected", 1, true) or string.find(text, "egg restock", 1, true) then
+		kind = "Collected"
+	else
+		return
+	end
+
+	local half
+	if string.find(text, "yang", 1, true) then
+		half = "Yang"
+	elseif string.find(text, "yin", 1, true) then
+		half = "Yin"
+	else
+		half = LH.RitualAttempt -- walang nakasulat na half: gamitin ang kasalukuyang kinukuha
+	end
+	if not half then return end
+
+	LH.RitualMsgEntry(half)[kind] = os.clock()
+	LH.RitualLog("message", kind, half, "|", raw)
+
+	-- Already Have: hawak na natin ito -> ilagay na lang sa cave (huwag nang kunin ulit)
+	if kind == "Have" and not LH.RitualIsPlaced(half) then
+		LH.RitualCarrying[half] = true
+		LH.RitualIdleUntil = 0
 	end
 end
 
+task.spawn(function()
+	-- (1) RemoteEvents
+	local function ScanArgs(value, depth)
+		if depth > 3 then return end
+		if type(value) == "string" then
+			LH.OnRitualText(value)
+		elseif type(value) == "table" then
+			for _, v in pairs(value) do ScanArgs(v, depth + 1) end
+		end
+	end
+
+	local okR, remotes = pcall(function() return Svc.ReplicatedStorage:WaitForChild("Remotes", 10) end)
+	if okR and remotes then
+		for _, r in ipairs(remotes:GetDescendants()) do
+			if r:IsA("RemoteEvent") then
+				Bind(r.OnClientEvent, function(...)
+					for _, a in ipairs({ ... }) do ScanArgs(a, 0) end
+				end)
+			end
+		end
+	end
+
+	-- (2) GUI text (toast / notification label)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+	if not playerGui then return end
+
+	local function Watch(inst)
+		if inst:IsA("TextLabel") or inst:IsA("TextButton") then
+			inst:GetPropertyChangedSignal("Text"):Connect(function()
+				if LH.Alive and inst.Text ~= "" then LH.OnRitualText(inst.Text) end
+			end)
+		end
+	end
+
+	for _, d in ipairs(playerGui:GetDescendants()) do Watch(d) end
+	Bind(playerGui.DescendantAdded, function(d)
+		Watch(d)
+		if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.Text ~= "" then
+			LH.OnRitualText(d.Text)
+		end
+	end)
+end)
+
+--==================================================
+-- RITUAL STATE
+--==================================================
 -- LocalPlayer.RitualView: Phase ("Pending" / "Open" / "Closing"), RoundId, YinStartedAt, YangStartedAt
 function LH.RitualView()
 	return LocalPlayer:FindFirstChild("RitualView")
@@ -5999,23 +6144,6 @@ end
 function LH.RitualPhase()
 	local rv = LH.RitualView()
 	return rv and rv:GetAttribute("Phase") or nil
-end
-
--- i-reset ang lahat ng state kapag bagong round
-function LH.RitualSync()
-	local rv = LH.RitualView()
-	local round = rv and rv:GetAttribute("RoundId") or nil
-	if round ~= LH.RitualRound then
-		LH.RitualRound = round
-		LH.RitualCarrying = {}
-		LH.RitualPlaced = {}
-		LH.RitualDepositFails = {}
-		LH.RitualCompleteSince = nil
-		LH.RitualFinishUntil = 0
-		LH.RitualIdleUntil = 0
-		LH.RitualLog("new round", tostring(round))
-	end
-	return rv
 end
 
 -- NAILAGAY NA ba ang piece sa cave? (server truth: YinStartedAt / YangStartedAt)
@@ -6027,13 +6155,40 @@ function LH.RitualIsPlaced(half)
 	return LH.RitualPlaced[half] == true
 end
 
--- hawak natin ang piece at HINDI pa nailalagay = kailangan nang mag-TP sa cave para ilagay
+-- i-reset ang lahat ng state kapag bagong round + i-detect ang hawak na piece
+function LH.RitualSync()
+	local rv = LH.RitualView()
+	local round = rv and rv:GetAttribute("RoundId") or nil
+	if round ~= LH.RitualRound then
+		LH.RitualRound = round
+		LH.RitualCarrying = {}
+		LH.RitualPlaced = {}
+		LH.RitualDepositFails = {}
+		LH.RitualBlock = {}
+		LH.RitualMsg = {}
+		LH.RitualCompleteSince = nil
+		LH.RitualFinishUntil = 0
+		LH.RitualIdleUntil = 0
+		LH.RitualLog("new round", tostring(round))
+	end
+
+	-- FIX (Already Have): kung HAWAK na natin ang piece (attribute Ritual<half>) at hindi pa nailalagay,
+	-- huwag nang hanapin sa mapa; ilagay na lang sa cave.
+	for _, half in ipairs(LH.RitualHalves) do
+		if LH.IsHoldingHalf(half) and not LH.RitualIsPlaced(half) and not LH.RitualBlocked(half) then
+			LH.RitualCarrying[half] = true
+		end
+	end
+	return rv
+end
+
+-- hawak natin ang piece at HINDI pa nailalagay at HINDI naka-backoff = kailangan nang mag-TP sa cave
 function LH.RitualCarryingNow(half)
 	if LH.RitualIsPlaced(half) then
 		LH.RitualCarrying[half] = nil
 		return false
 	end
-	return LH.RitualCarrying[half] == true
+	return LH.RitualCarrying[half] == true and not LH.RitualBlocked(half)
 end
 
 function LH.RitualAnyCarrying()
@@ -6068,7 +6223,9 @@ function LH.RitualNeedsFinish()
 	return now >= (LH.RitualFinishUntil or 0)
 end
 
+-- pinakamalapit na piece ng half (hindi kasama kung naka-backoff ang half)
 function LH.GetRitualPiece(half)
+	if LH.RitualBlocked(half) then return nil end
 	local folder = LH.RitualFolder(half)
 	if not folder then return nil end
 	local char = GetCharacter()
@@ -6088,17 +6245,17 @@ function LH.GetRitualPiece(half)
 end
 
 -- may trabaho ba ang Auto Ritual?
---  1) may piece sa mapa na hindi pa nakukuha
---  2) may hawak tayong piece na hindi pa nailalagay sa cave
+--  1) may piece sa mapa na pwedeng kunin (hindi naka-backoff)
+--  2) may hawak tayong piece na hindi pa nailalagay (at hindi naka-backoff)
 --  3) kumpleto na ang Yin + Yang at hindi pa bukas ang cave
--- Kung isa pa lang ang nailagay at wala pang spawn ang isa -> FALSE (tuloy ang Candy/Knock, walang TP)
+-- Kapag naka-backoff / wala pang spawn -> FALSE (tuloy ang Candy/Knock/Farm, walang TP)
 function LH.RitualHasWorkNow()
 	if LH.RitualBusyCave then return true end
 	LH.RitualSync()
 	local now = os.clock()
 	for _, half in ipairs(LH.RitualHalves) do
 		if LH.RitualCarryingNow(half) and now >= (LH.RitualIdleUntil or 0) then return true end
-		if not LH.RitualIsPlaced(half) and not LH.RitualCarrying[half] then
+		if not LH.RitualIsPlaced(half) and not LH.RitualCarrying[half] and not LH.RitualBlocked(half) then
 			if LH.RitualFolder(half) and LH.GetRitualPiece(half) then return true end
 		end
 	end
@@ -6153,7 +6310,16 @@ function LH.RitualTP(cf)
 	return true
 end
 
+--==================================================
+-- PICKUP (2 fire lang; kapag pareho ang resulta -> backoff)
+--==================================================
 function LH.PickupRitualPiece(half)
+	-- hawak na pala natin: huwag nang kunin, ilagay na lang
+	if LH.IsHoldingHalf(half) then
+		LH.RitualCarrying[half] = true
+		return true
+	end
+
 	local piece = LH.GetRitualPiece(half)
 	if not piece then return false end
 	local pos = LH.GetCandyPos(piece)
@@ -6168,10 +6334,15 @@ function LH.PickupRitualPiece(half)
 	local pieceCF = LH.UprightCFrame(pos + Vector3.new(0, 3, 0))
 	if not LH.RitualTP(pieceCF) then return false end
 
-	local wasHolding = LH.IsHoldingHalf(half)
-	local started = os.clock()
-	while os.clock() - started < LH.RitualPickupWait do
-		if not LH.RitualCanRun() then return false end
+	LH.RitualAttempt = half
+	local t0 = os.clock()
+	local result = "fail" -- "ok" | "have" | "collected" | "fail"
+
+	for fire = 1, LH.RitualPickupFires do
+		if not LH.RitualCanRun() then
+			LH.RitualAttempt = nil
+			return false
+		end
 
 		-- kung may nag-alis sa atin sa piece, bumalik
 		local char = GetCharacter()
@@ -6181,26 +6352,49 @@ function LH.PickupRitualPiece(half)
 		end
 
 		LH.FireRitualPrompt(prompt)
-		task.wait(0.25)
 
-		-- success: nawala ang piece sa mapa, o nag-iba ang hawak natin
-		if not piece.Parent or not piece:IsDescendantOf(workspace) then
-			LH.RitualLog("pickup ok (piece gone)", half)
-			LH.RitualCarrying[half] = true
-			return true
+		-- hintayin ang sagot ng server (poll para mabilis kung may sagot na)
+		local waited = 0
+		while waited < LH.RitualFireGap do
+			task.wait(0.1)
+			waited += 0.1
+
+			local msg = LH.RitualMsg[half]
+			if not piece.Parent or not piece:IsDescendantOf(workspace) or LH.IsHoldingHalf(half) then
+				result = "ok"
+				break
+			end
+			if msg and msg.Have >= t0 then
+				result = "have"
+				break
+			end
+			if msg and msg.Collected >= t0 then
+				result = "collected"
+				break
+			end
 		end
-		if not wasHolding and LH.IsHoldingHalf(half) then
-			LH.RitualLog("pickup ok (holding)", half)
-			LH.RitualCarrying[half] = true
-			return true
-		end
+
+		if result ~= "fail" then break end
 	end
 
-	LH.RitualLog("pickup failed, skipping piece", half)
-	LH.RitualSkip[piece] = os.clock() + 4
+	LH.RitualAttempt = nil
+
+	if result == "ok" or result == "have" then
+		-- nakuha na (o hawak na pala) -> ilagay sa cave
+		LH.RitualLog("pickup", result, half)
+		LH.RitualCarrying[half] = true
+		LH.RitualUnblock(half)
+		return true
+	end
+
+	-- "collected" o walang nangyari pagkatapos ng 2 fire -> parehong resulta: backoff 20/30/40/50s
+	LH.RitualBlockHalf(half, result)
 	return false
 end
 
+--==================================================
+-- CAVE (place / finish)
+--==================================================
 -- lahat ng ritual prompt na nasa cave (pinapauna ang hindi suppressed)
 function LH.GetCavePrompts(fallbackAll)
 	local out = {}
@@ -6324,33 +6518,53 @@ function LH.DepositAtCave(mode)
 	return firedAny
 end
 
+--==================================================
+-- CYCLE
+--==================================================
 function LH.RitualCycle()
 	LH.RitualSync()
 
-	-- 1) kunin ang Yin / Yang piece na naka-spawn sa mapa (isa lang kada half)
+	-- 1) kunin ang Yin / Yang piece na naka-spawn sa mapa
 	for _, half in ipairs(LH.RitualHalves) do
-		while not LH.RitualIsPlaced(half) and not LH.RitualCarrying[half] and LH.GetRitualPiece(half) do
+		while not LH.RitualIsPlaced(half) and not LH.RitualCarrying[half]
+				and not LH.RitualBlocked(half) and LH.GetRitualPiece(half) do
 			if not LH.RitualCanRun() then return end
-			if not LH.PickupRitualPiece(half) then break end
+			if not LH.PickupRitualPiece(half) then break end -- bigo = naka-backoff na ang half, lilipat sa susunod
 		end
 		if not LH.RitualCanRun() then return end
 	end
 
 	-- 2) may hawak na piece na hindi pa nailalagay -> TP sa cave at ilagay
 	if LH.RitualAnyCarrying() and os.clock() >= (LH.RitualIdleUntil or 0) then
-		LH.DepositAtCave("place")
+		local pending = {}
 		for _, half in ipairs(LH.RitualHalves) do
+			if LH.RitualCarryingNow(half) then table.insert(pending, half) end
+		end
+
+		LH.DepositAtCave("place")
+
+		for _, half in ipairs(pending) do
 			if LH.RitualCarryingNow(half) then
 				-- hindi pa rin nailalagay (hintayin sandali ang server)
 				local t0 = os.clock()
 				while os.clock() - t0 < 1.5 and not LH.RitualIsPlaced(half) do task.wait(0.1) end
 			end
-			if LH.RitualCarryingNow(half) then
+
+			if LH.RitualIsPlaced(half) then
+				LH.RitualDepositFails[half] = 0
+				LH.RitualUnblock(half)
+			elseif LH.RitualCarryingNow(half) then
 				LH.RitualDepositFails[half] = (LH.RitualDepositFails[half] or 0) + 1
 				LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
 				if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
-					LH.RitualCarrying[half] = nil -- sumuko na; hahanapin ulit sa mapa kung may piece
 					LH.RitualDepositFails[half] = 0
+					if LH.IsHoldingHalf(half) then
+						-- talagang hawak natin pero ayaw ilagay -> backoff 20/30/40/50s (walang infinite TP)
+						LH.RitualBlockHalf(half, "deposit")
+					else
+						-- hindi pala natin hawak; hahanapin ulit sa mapa
+						LH.RitualCarrying[half] = nil
+					end
 				end
 				LH.RitualIdleUntil = os.clock() + LH.RitualRestTime
 			end
@@ -6387,7 +6601,7 @@ task.spawn(function()
 			continue
 		end
 
-		-- FIX: hintayin munang makauwi sa Candy Home ang hawak na candy bago mag-TP sa Yin/Yang
+		-- hintayin munang makauwi sa Candy Home ang hawak na candy bago mag-TP sa Yin/Yang
 		if LH.CandyDelivering() then
 			LH.RitualLock = false
 			task.wait(0.1)
