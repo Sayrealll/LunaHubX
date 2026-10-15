@@ -4747,6 +4747,14 @@ do
 			return
 		end
 
+		-- FIX: bumaba muna sa pet bago mag-TP sa fusion machine (naiipit kapag nakasakay)
+		if LH.IsRiding and LH.IsRiding() then
+			LH.DismountPet()
+			char = LocalPlayer.Character
+			humanoid = char and char:FindFirstChildOfClass("Humanoid")
+			if not humanoid then return end
+		end
+
 		-- mag-teleport sa fusion machine (kung malayo pa)
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		if not hrp then return end
@@ -4847,6 +4855,10 @@ do
 		-- mag-teleport sa fusion machine (kailangan nandoon para gumana ang reveal/claim)
 		local function GoToMachine()
 			if LH.FarmPaused() then return false end
+			-- FIX: bumaba muna sa pet bago pumunta sa machine (Claim / Fuse)
+			if LH.IsRiding and LH.IsRiding() then
+				LH.DismountPet()
+			end
 			local char = LocalPlayer.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if not hrp then return false end
@@ -5146,7 +5158,8 @@ LH.CandyHome = CFrame.new(
 	0.0985061005, 1.8307281e-08, -0.99513644
 )
 
-LH.CandyEventRadius = 1500 
+LH.FarmWantUntil = 0 -- itinatakda ng Auto Farm kapag may egg na kukunin (hindi na magsisimula ng bagong candy cycle)
+LH.CandyEventRadius = 100000 -- FIX: malaking radius para hindi ma-reset ang position sa loob ng event
 LH.CandyEventWait = 0.5
 LH.CandyHomeWait = 0.5
 LH.CandySkip = setmetatable({}, { __mode = "k" })
@@ -5179,6 +5192,19 @@ function LH.GetCandyRemote()
 	return r
 end
 
+-- PRIORITY NG CANDY (mas mababang number = mas inuuna)
+--  1) RitualCandy:<random>   (resulta ng ritual)
+--  2) DoorCandy:<random>     (resulta ng Auto Knock Doors)
+--  3) Candy_04  4) Candy_03  5) Candy_02  6) Candy_01  (candy na nakakalat sa map)
+function LH.GetCandyRank(candy)
+	local name = candy.Name
+	if name:sub(1, 12) == "RitualCandy:" or name:sub(1, 11) == "RitualCandy" then return 1 end
+	if name:sub(1, 10) == "DoorCandy:" or name:sub(1, 9) == "DoorCandy" then return 2 end
+	local n = tonumber(name:match("^Candy_?(%d+)"))
+	if n then return 100 - n end -- Candy_04 = 96, Candy_03 = 97 ... (mas mataas na number = mas mataas na priority)
+	return 1000
+end
+
 function LH.GetNextCandy()
 	local folder = workspace:FindFirstChild("HalloweenCandy")
 	if not folder then return nil end
@@ -5186,15 +5212,17 @@ function LH.GetNextCandy()
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local now = os.clock()
-	local best, bestDist
+	local best, bestRank, bestDist
 
 	for _, candy in ipairs(folder:GetChildren()) do
 		local skipUntil = LH.CandySkip[candy]
 		if not skipUntil or now >= skipUntil then
+			local rank = LH.GetCandyRank(candy)
 			local pos = LH.GetCandyPos(candy)
 			local dist = (hrp and pos) and (hrp.Position - pos).Magnitude or math.huge
-			if not bestDist or dist < bestDist then
-				best, bestDist = candy, dist
+			-- unahin ang pinakamataas na priority; kung pareho, ang pinakamalapit
+			if not best or rank < bestRank or (rank == bestRank and dist < bestDist) then
+				best, bestRank, bestDist = candy, rank, dist
 			end
 		end
 	end
@@ -5215,6 +5243,16 @@ function LH.GetCandyIds(candy)
 	for _, d in ipairs(candy:GetDescendants()) do
 		if d:IsA("StringValue") then add(d.Value) end
 		for _, v in pairs(d:GetAttributes()) do add(v) end
+	end
+
+	local rank = LH.GetCandyRank(candy)
+	if rank <= 2 then
+		-- RitualCandy / DoorCandy: pangalan muna ang ID, kasunod ang iba pang nakita
+		local out = { candy.Name }
+		for _, id in ipairs(ids) do
+			if id ~= candy.Name then table.insert(out, id) end
+		end
+		return out
 	end
 
 	local matched = {}
@@ -5289,14 +5327,9 @@ function LH.CollectCandy(candy)
 	local remote = LH.GetCandyRemote()
 	local pos = LH.GetCandyPos(candy)
 
-	for _ = 1, 2 do
+	for _ = 1, 3 do
 		if LH.HallPaused() or not LH.AutoCandy or LH.KnockActive() or LH.BuyActive() or LH.RitualActive() then return true end 
-
-		if pos then
-			hrp.CFrame = LH.UprightCFrame(pos + Vector3.new(0, 2, 0))
-			LH.Stabilize()
-			task.wait(0.2)
-		end
+		if not candy.Parent then return true end
 
 		-- nasa candy na: sumakay muna sa pet bago i-pick up
 		if not LH.IsRiding() then
@@ -5304,8 +5337,17 @@ function LH.CollectCandy(candy)
 			if not candy.Parent then return true end
 		end
 
+		-- FIX: mag-TP SA CANDY pagkatapos sumakay (nagbabago ang position kapag sumasakay) at bago i-pick up
+		pos = LH.GetCandyPos(candy) or pos
+		if pos then
+			hrp = (GetCharacter() or char):FindFirstChild("HumanoidRootPart") or hrp
+			hrp.CFrame = LH.UprightCFrame(pos + Vector3.new(0, 2, 0))
+			LH.Stabilize()
+			task.wait(0.25)
+		end
+
 		LH.TriggerCandyPrompt(candy)
-		if LH.WaitCandyGone(candy, 0.5) then
+		if LH.WaitCandyGone(candy, 0.8) then
 			return true
 		end
 
@@ -5576,6 +5618,12 @@ function LH.CandyStep()
 		LH.CandySkip[candy] = os.clock() + 2
 	end
 
+	-- FIX: kapag hindi nakuha ang candy (nandoon pa rin), huwag mag-tween sa Candy Home; subukan ulit sa susunod
+	if candy.Parent ~= nil then
+		LH.CandySkip[candy] = os.clock() + 1
+		return
+	end
+
 	if LH.Alive and LH.AutoCandy and not LH.HallPaused() and not LH.RitualActive() and not LH.BuyActive() then
 		LH.BgRun(LH.GoCandyHome)
 		if LH.CandyDismountAfterDrop then
@@ -5598,6 +5646,14 @@ task.spawn(function()
 				LH.BgRun(LH.DismountPet)
 			end
 			task.wait(0.3)
+			continue
+		end
+
+		-- FIX: may egg na kukunin ang Auto Farm -> huwag nang magsimula ng bagong candy cycle,
+		-- hayaan munang matapos ang kasalukuyang cycle (kuha + tween pauwi sa Candy Home)
+		if os.clock() < (LH.FarmWantUntil or 0) then
+			LH.CandyActing = false
+			task.wait(0.05)
 			continue
 		end
 
@@ -6479,11 +6535,32 @@ task.spawn(function()
 		if not Egg then
 			LH.FarmBusy = false
 			LH.FarmFails = 0
+			LH.FarmWantUntil = 0
 			task.wait(0.2)
 			continue
 		end
 
 		if not LH.FarmBusy then
+			-- FIX: egg pa rin ang priority, pero patapusin muna ang candy loop (kuha + tween sa Candy Home)
+			-- para hindi mag-agawan ang tween at TP papuntang Volcano / ibang dimension
+			LH.FarmWantUntil = os.clock() + 3
+			local waitStart = os.clock()
+			while LH.Alive and AutoPickup and LH.CandyActing and os.clock() - waitStart < 15 do
+				LH.FarmWantUntil = os.clock() + 3
+				task.wait(0.05)
+			end
+			if not (LH.Alive and AutoPickup) then
+				LH.FarmWantUntil = 0
+				continue
+			end
+			-- tapos na ang candy cycle (o walang ginagawa): puwede nang mag-farm
+			Egg = FindSelectedEgg()
+			if not Egg then
+				LH.FarmWantUntil = 0
+				task.wait(0.2)
+				continue
+			end
+
 			LH.FarmBusy = true
 
 			pcall(function()
