@@ -1656,7 +1656,7 @@ local Window = WindUI:CreateWindow({
 --==================================================
 
 -- >>> DITO LANG KA MAGBABAGO NG VERSION <<<
-local ScriptVersion = "1.0.2.7"
+local ScriptVersion = "1.0.2.8"
 
 -- >>> DITO MO ISULAT YUNG CHANGE LOGS <<<
 local ChangeLogs = [[
@@ -1664,12 +1664,12 @@ local ChangeLogs = [[
 * Slow pets = Low tween
 * Fast pets = High tween
 
-Added Features:
-* Fixed Prioritize Functions 
-* Added Player Section
-* Added No Clip 
-* Added Infinite Jump
-* Added Auto Execute
+Changelogs:
+* Fixed prioritize high value candies 
+* Bug fixed on stuck on fuse machine
+* Bug fixed on stock tweening
+* Fixed Minor bugs
+
 
 
 ]]
@@ -1990,11 +1990,11 @@ UIElements.FarmTweenSpeed = Secs.EggSection:Slider({
 	Step = 1,
 	Value = {
 		Min = 100,
-		Max = 1500,
-		Default = math.clamp(tonumber(ConfigData.FarmTweenSpeed) or 100, 100, 1500),
+		Max = 1000,
+		Default = math.clamp(tonumber(ConfigData.FarmTweenSpeed) or 100, 100, 1000),
 	},
 	Callback = function(value)
-		LH.FarmTweenSpeed = math.clamp(tonumber(value) or 100, 100, 1500)
+		LH.FarmTweenSpeed = math.clamp(tonumber(value) or 100, 100, 1000)
 		ConfigData.FarmTweenSpeed = LH.FarmTweenSpeed
 		SaveConfig()
 	end,
@@ -2438,11 +2438,11 @@ UIElements.CandyTweenSpeed = Secs.FuseSection1:Slider({
 	Step = 1,
 	Value = {
 		Min = 100,
-		Max = 1500,
-		Default = math.clamp(tonumber(ConfigData.CandyTweenSpeed) or 100, 100, 1500),
+		Max = 1000,
+		Default = math.clamp(tonumber(ConfigData.CandyTweenSpeed) or 100, 100, 1000),
 	},
 	Callback = function(value)
-		LH.CandyTweenSpeed = math.clamp(tonumber(value) or 100, 100, 1500)
+		LH.CandyTweenSpeed = math.clamp(tonumber(value) or 100, 100, 1000)
 		ConfigData.CandyTweenSpeed = LH.CandyTweenSpeed
 		SaveConfig()
 	end,
