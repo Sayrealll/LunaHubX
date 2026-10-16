@@ -1480,7 +1480,6 @@ local RenderedEggs = workspace:WaitForChild("RenderedEggs")
 --// EGG LIST
 local EggNames = {
 	"Volcanic Egg",
-    "Headless Egg",
 	"Cherub Egg",
 	"Halloween Egg",    
 	"Solaris Egg",
