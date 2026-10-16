@@ -6015,15 +6015,15 @@ LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita an
 LH.RitualBackoff = { 20, 30, 40, 50 } -- seconds: 1st fail = 20s, 2nd = 30s, 3rd = 40s, 4th+ = 50s (max)
 LH.RitualDepositTime = 12     -- max segundo sa cave
 LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
-LH.RitualIdleLimit = 4        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
+LH.RitualIdleLimit = 2        -- tapos na kapag walang na-fire sa loob ng ganitong segundo (cooldown/walang prompt = umalis agad)
 LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
 LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
 LH.RitualRestTime = 2         -- maikling pahinga sa pagitan ng 2 subok sa cave
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
 LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
 LH.RitualFinishRest = 8       -- pahinga pagkatapos subukang buksan ang cave
-LH.RitualMaxDepositFails = 2  -- ilang beses subukang ilagay ang piece sa cave bago mag-wait (backoff)
-LH.RitualDepositBackoff = { 10, 20, 30 } -- seconds: bigo ng 2x = wait 10s -> 20s -> 30s (max). Kapag SUCCESS ang paglagay, balik sa 10s
+LH.RitualMaxDepositFails = 1  -- 1 bigong punta sa cave = backoff agad
+LH.RitualDepositBackoff = { 10, 20, 30, 40 } -- seconds: bigo #1 = 10s, #2 = 20s, #3 = 30s, #4 = 40s (max), tapos balik sa 10s. SUCCESS = reset sa 10s
 LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari (kasama ang messages)
 
 LH.RitualBusyCave = false
@@ -6076,7 +6076,9 @@ function LH.RitualBlockHalf(half, why, kind)
 	local list, strikes
 	if kind == "deposit" then
 		b.DepStrikes = (b.DepStrikes or 0) + 1
-		list, strikes = LH.RitualDepositBackoff, b.DepStrikes
+		list = LH.RitualDepositBackoff
+		if b.DepStrikes > #list then b.DepStrikes = 1 end -- lampas na sa 40s -> ulit sa 10s
+		strikes = b.DepStrikes
 	else
 		b.Strikes += 1
 		list, strikes = LH.RitualBackoff, b.Strikes
@@ -6606,13 +6608,11 @@ function LH.RitualCycle()
 				LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
 				if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
 					LH.RitualDepositFails[half] = 0
-					if LH.IsHoldingHalf(half) then
-						-- talagang hawak natin pero ayaw ilagay -> backoff 20/30/40/50s (walang infinite TP)
-						LH.RitualBlockHalf(half, "deposit", "deposit") -- 10s -> 20s -> 30s
-					else
-						-- hindi pala natin hawak; hahanapin ulit sa mapa
-						LH.RitualCarrying[half] = nil
-					end
+					-- FIX: laging mag-backoff kapag bigo ang paglagay (10s -> 20s -> 30s -> 40s -> 10s...)
+					-- dati kapag hindi na-detect ang IsHoldingHalf, walang backoff at paulit-ulit ang TP
+					-- habang naka-backoff, hindi hawak ng Ritual ang priority: tuloy ang Candy / Knock / Farm
+					LH.RitualCarrying[half] = true
+					LH.RitualBlockHalf(half, "deposit", "deposit")
 				end
 				LH.RitualIdleUntil = os.clock() + LH.RitualRestTime
 			end
