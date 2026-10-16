@@ -5404,7 +5404,7 @@ LH.CandyClearance = 15        -- taas sa ibabaw ng pinakamataas na puno/bundok s
 LH.CandyScanStep = 8          -- layo ng bawat scan point sa daan (studs)
 LH.CandyScanWidth = 6         -- scan sa kaliwa/kanan ng daan para hindi madaplisan ang puno
 LH.CandyMaxRise = 400         -- max na taas na i-scan / aakyatin
-LH.CandyHomeWait = 0.5        -- delay pagkabalik sa home bago kumuha ulit ng candy
+LH.CandyHomeWait = 0.8       -- delay pagkabalik sa home bago kumuha ulit ng candy
 LH.MeasuredRideSpeed = 0
 LH.Tweening = false
 
@@ -6004,20 +6004,17 @@ end)
 --  C) Kapag hindi mailagay sa cave nang ilang beses -> parehong backoff din (walang infinite TP loop).
 --==================================================
 LH.YinYangCave = CFrame.new(
-	-46388.4453, 40345.9258, -19674.6621,
-	-0.788508773, 7.22429974e-08, 0.615023494,
-	-1.87764098e-08, 1, -1.41536646e-07,
-	-0.615023494, -1.23150826e-07, -0.788508773
+-46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572
 )
 LH.RitualHalves = { "Yin", "Yang" }
-LH.RitualPickupFires = 2      -- ilang beses lang i-fire ang pickup prompt kada attempt
+LH.RitualPickupFires = 1      -- ilang beses lang i-fire ang pickup prompt kada attempt
 LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
 LH.RitualBackoff = { 20, 30, 40, 50 } -- seconds: 1st fail = 20s, 2nd = 30s, 3rd = 40s, 4th+ = 50s (max)
-LH.RitualDepositTime = 12     -- max segundo sa cave
+LH.RitualDepositTime = 5     -- max segundo sa cave
 LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
 LH.RitualIdleLimit = 2        -- tapos na kapag walang na-fire sa loob ng ganitong segundo (cooldown/walang prompt = umalis agad)
-LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
-LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
+LH.RitualMaxTries = 3         -- max na pag-fire kada prompt sa cave
+LH.RitualRetryDelay = 0.3       -- delay bago ulit i-fire ang parehong prompt sa cave
 LH.RitualRestTime = 2         -- maikling pahinga sa pagitan ng 2 subok sa cave
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
 LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
