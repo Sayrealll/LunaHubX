@@ -6134,7 +6134,7 @@ function LH.OnRitualText(raw)
 	LH.RitualLog("message", kind, half, "|", raw)
 
 	-- Already Have: hawak na natin ito -> ilagay na lang sa cave (huwag nang kunin ulit)
-	if kind == "Have" and not LH.RitualIsPlaced(half) then
+	if kind == "Have" and not LH.RitualIsPlaced(half) and not LH.RitualBlocked(half) then
 		LH.RitualCarrying[half] = true
 		LH.RitualIdleUntil = 0
 	end
@@ -6218,6 +6218,7 @@ function LH.RitualSync()
 		LH.RitualMsg = {}
 		LH.RitualCompleteSince = nil
 		LH.RitualFinishUntil = 0
+		LH.RitualFinishFails = 0
 		LH.RitualIdleUntil = 0
 		LH.RitualLog("new round", tostring(round))
 	end
@@ -6608,10 +6609,13 @@ function LH.RitualCycle()
 				LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
 				if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
 					LH.RitualDepositFails[half] = 0
-					-- FIX: laging mag-backoff kapag bigo ang paglagay (10s -> 20s -> 30s -> 40s -> 10s...)
-					-- dati kapag hindi na-detect ang IsHoldingHalf, walang backoff at paulit-ulit ang TP
+					-- laging mag-backoff kapag bigo ang paglagay (10s -> 20s -> 30s -> 40s -> 10s...)
 					-- habang naka-backoff, hindi hawak ng Ritual ang priority: tuloy ang Candy / Knock / Farm
-					LH.RitualCarrying[half] = true
+					if LH.IsHoldingHalf(half) then
+						LH.RitualCarrying[half] = true   -- talagang hawak, hindi lang mailagay (cooldown)
+					else
+						LH.RitualCarrying[half] = nil    -- FIX: wala naman palang hawak -> huwag nang mag-TP sa cave para dito
+					end
 					LH.RitualBlockHalf(half, "deposit", "deposit")
 				end
 				LH.RitualIdleUntil = os.clock() + LH.RitualRestTime
@@ -6624,7 +6628,16 @@ function LH.RitualCycle()
 	if LH.RitualNeedsFinish() then
 		LH.RitualLog("complete -> opening cave")
 		LH.DepositAtCave("finish")
-		LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
+		local ph = LH.RitualPhase()
+		if ph == nil or ph == "Pending" then
+			-- hindi pa rin bukas ang cave -> 10s -> 20s -> 30s -> 40s -> 10s...
+			local list = LH.RitualDepositBackoff
+			LH.RitualFinishFails = (LH.RitualFinishFails or 0) % #list + 1
+			LH.RitualFinishUntil = os.clock() + list[LH.RitualFinishFails]
+		else
+			LH.RitualFinishFails = 0
+			LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
+		end
 		if LH.RitualPhase() == nil then
 			-- walang RitualView; i-reset ang local state para hindi umulit
 			LH.RitualPlaced = {}
