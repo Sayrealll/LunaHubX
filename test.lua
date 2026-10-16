@@ -6458,13 +6458,19 @@ function LH.DepositAtCave(mode)
 	mode = mode or "place"
 	LH.RitualBusyCave = true
 
-	if not LH.RitualTP(LH.YinYangCave) then
-		LH.RitualBusyCave = false
-		return false
+	-- FIX: kung nasa cave na tayo, huwag nang mag-TP ulit (ito ang "bigla ulit nag-TP sa cave")
+	local char0 = GetCharacter()
+	local hrp0 = char0 and char0:FindFirstChild("HumanoidRootPart")
+	local alreadyThere = hrp0 and (hrp0.Position - LH.YinYangCave.Position).Magnitude <= 15
+	if not alreadyThere then
+		if not LH.RitualTP(LH.YinYangCave) then
+			LH.RitualBusyCave = false
+			return false
+		end
+		-- bigyan ng oras ang laro para i-update ang RitualSuppressed pagkatapos ng TP
+		task.wait(LH.RitualCaveGrace)
 	end
-
-	-- bigyan ng oras ang laro para i-update ang RitualSuppressed pagkatapos ng TP
-	task.wait(LH.RitualCaveGrace)
+	local reTPs = 0
 
 	local started = os.clock()
 	local lastAction = os.clock()
@@ -6486,8 +6492,10 @@ function LH.DepositAtCave(mode)
 		if not hrp then break end
 
 		-- kung may nag-alis sa atin sa cave, bumalik
-		if (hrp.Position - LH.YinYangCave.Position).Magnitude > 25 then
-			LH.RitualLog("displaced from cave, re-TP")
+		if (hrp.Position - LH.YinYangCave.Position).Magnitude > 40 then
+			if reTPs >= 2 then break end -- FIX: huwag mag-TP nang paulit-ulit
+			reTPs += 1
+			LH.RitualLog("displaced from cave, re-TP", reTPs)
 			if not LH.RitualTP(LH.YinYangCave) then break end
 			task.wait(LH.RitualCaveGrace)
 			lastAction = os.clock()
@@ -6505,7 +6513,7 @@ function LH.DepositAtCave(mode)
 					tries[p] = 0
 				end
 
-				if p.Enabled and suppressed == false
+				if p.Enabled and suppressed ~= true
 						and now >= (nextFire[p] or 0)
 						and (tries[p] or 0) < LH.RitualMaxTries then
 					LH.RitualLog("fire prompt", p:GetFullName(), "try", (tries[p] or 0) + 1)
@@ -6590,16 +6598,18 @@ function LH.RitualCycle()
 				LH.RitualDepositFails[half] = 0
 				LH.RitualUnblock(half)
 			elseif LH.RitualCarryingNow(half) then
-				LH.RitualDepositFails[half] = (LH.RitualDepositFails[half] or 0) + 1
-				LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
-				if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
+				if not LH.IsHoldingHalf(half) then
+					-- FIX: hindi pala natin hawak (stale flag) -> hanapin ulit sa mapa, huwag nang bumalik sa cave
+					LH.RitualLog("not holding, clear carrying", half)
+					LH.RitualCarrying[half] = nil
 					LH.RitualDepositFails[half] = 0
-					if LH.IsHoldingHalf(half) then
+				else
+					LH.RitualDepositFails[half] = (LH.RitualDepositFails[half] or 0) + 1
+					LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
+					if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
+						LH.RitualDepositFails[half] = 0
 						-- talagang hawak natin pero ayaw ilagay -> backoff 20/30/40/50s (walang infinite TP)
 						LH.RitualBlockHalf(half, "deposit")
-					else
-						-- hindi pala natin hawak; hahanapin ulit sa mapa
-						LH.RitualCarrying[half] = nil
 					end
 				end
 				LH.RitualIdleUntil = os.clock() + LH.RitualRestTime
