@@ -6018,11 +6018,12 @@ LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro
 LH.RitualIdleLimit = 4        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
 LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
 LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
-LH.RitualRestTime = 4         -- pahinga kapag bigo ang paglagay
+LH.RitualRestTime = 2         -- maikling pahinga sa pagitan ng 2 subok sa cave
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
 LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
 LH.RitualFinishRest = 8       -- pahinga pagkatapos subukang buksan ang cave
-LH.RitualMaxDepositFails = 3  -- ilang beses subukang ilagay ang piece bago i-backoff
+LH.RitualMaxDepositFails = 2  -- ilang beses subukang ilagay ang piece sa cave bago mag-wait (backoff)
+LH.RitualDepositBackoff = { 10, 20, 30 } -- seconds: bigo ng 2x = wait 10s -> 20s -> 30s (max). Kapag SUCCESS ang paglagay, balik sa 10s
 LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari (kasama ang messages)
 
 LH.RitualBusyCave = false
@@ -6064,17 +6065,25 @@ function LH.RitualBlocked(half)
 	return b ~= nil and os.clock() < b.Until
 end
 
-function LH.RitualBlockHalf(half, why)
+-- kind = "deposit" -> sariling strikes + list (10/20/30s) para sa paglagay sa cave
+-- kind = nil       -> pickup backoff (20/30/40/50s)
+function LH.RitualBlockHalf(half, why, kind)
 	local b = LH.RitualBlock[half]
 	if not b then
-		b = { Strikes = 0, Until = 0 }
+		b = { Strikes = 0, DepStrikes = 0, Until = 0 }
 		LH.RitualBlock[half] = b
 	end
-	b.Strikes += 1
-	local list = LH.RitualBackoff
-	local delay = list[math.min(b.Strikes, #list)]
+	local list, strikes
+	if kind == "deposit" then
+		b.DepStrikes = (b.DepStrikes or 0) + 1
+		list, strikes = LH.RitualDepositBackoff, b.DepStrikes
+	else
+		b.Strikes += 1
+		list, strikes = LH.RitualBackoff, b.Strikes
+	end
+	local delay = list[math.min(strikes, #list)]
 	b.Until = os.clock() + delay
-	LH.RitualLog("backoff", half, why or "?", "strike", b.Strikes, "wait", delay .. "s")
+	LH.RitualLog("backoff", half, why or "?", "strike", strikes, "wait", delay .. "s")
 end
 
 function LH.RitualUnblock(half)
@@ -6599,7 +6608,7 @@ function LH.RitualCycle()
 					LH.RitualDepositFails[half] = 0
 					if LH.IsHoldingHalf(half) then
 						-- talagang hawak natin pero ayaw ilagay -> backoff 20/30/40/50s (walang infinite TP)
-						LH.RitualBlockHalf(half, "deposit")
+						LH.RitualBlockHalf(half, "deposit", "deposit") -- 10s -> 20s -> 30s
 					else
 						-- hindi pala natin hawak; hahanapin ulit sa mapa
 						LH.RitualCarrying[half] = nil
