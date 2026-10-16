@@ -6905,7 +6905,6 @@ local function FinishEgg(eggName, hrp, basketEgg, eggPos, tpDeadline)
         return
     end
 
-    -- VOLCANO DIP: panatilihin ang existing behavior
     if AutoVolcanoDip then
         VolcanoDip(hrp)
 
@@ -6916,11 +6915,6 @@ local function FinishEgg(eggName, hrp, basketEgg, eggPos, tpDeadline)
             basketEgg = current
         end
     end
-
-    -- tapos na ang buong Volcano Dip: kung lampas na ang deadline (nagsimula pagkakuha ng egg), TP agad
-    LH.DeliverEggToPlot(eggPos, tpDeadline)
-
-    -- nakasakay pa rin sa pet; bababa lang kapag na-OFF ang toggle
 
     SendWebhookNotification(eggName, basketEgg)
 
@@ -6934,7 +6928,6 @@ task.spawn(function()
 		if not AutoPickup then
 			LH.FarmBusy = false
 			LH.FarmFails = 0
-			-- na-OFF ang Auto Farm (at Auto Candy): bumaba na sa pet
 			if LH.RodeByScript and not LH.AutoCandy then
 				LH.BgRun(LH.DismountPet)
 			end
@@ -6953,8 +6946,7 @@ task.spawn(function()
 		end
 
 		if not LH.FarmBusy then
-			-- FIX: egg pa rin ang priority, pero patapusin muna ang candy loop (kuha + tween sa Candy Home)
-			-- para hindi mag-agawan ang tween at TP papuntang Volcano / ibang dimension
+
 			LH.FarmWantUntil = os.clock() + 3
 			local waitStart = os.clock()
 			while LH.Alive and AutoPickup and LH.CandyActing and os.clock() - waitStart < 15 do
@@ -6965,7 +6957,7 @@ task.spawn(function()
 				LH.FarmWantUntil = 0
 				continue
 			end
-			-- tapos na ang candy cycle (o walang ginagawa): puwede nang mag-farm
+			
 			Egg = FindSelectedEgg()
 			if not Egg then
 				LH.FarmWantUntil = 0
@@ -7000,7 +6992,6 @@ task.spawn(function()
 			continue
 		end
 
-		-- may egg na na-detect: i-check kung nakasakay na; kung hindi pa, sakyan ang best pet
 		if not LH.IsRiding() then
 			LH.RidePet()
 			char = GetCharacter()
@@ -7011,13 +7002,11 @@ task.spawn(function()
 			end
 		end
 
-		-- i-save ang posisyon ng egg bago kunin (mawawala na ito sa RenderedEggs pagkakuha)
 		local eggPart0 = GetEggPart(Egg)
 		local eggPos = eggPart0 and eggPart0.Position
 
-		--==================================================
+		
 		-- VOLCANIC EGG
-		--==================================================
 		if eggName == "Volcanic Egg" then
 			hrp.CFrame = VOLCANO_1_CFRAME
 			task.wait(0.1)
@@ -7030,16 +7019,11 @@ task.spawn(function()
 			if eggPart then
 				hrp.CFrame = LH.UprightCFrame(eggPart.Position + Vector3.new(0, 3, 0))
 				LH.Stabilize()
-				task.wait(0.3)
-
-				-- sakay sa pet bago kunin ang egg
+				task.wait(0.3)				
 				LH.RidePet()
-
-				-- Pickup + GET ACTUAL BASKET EGG
 				local basketEgg = PickupAndConfirm(Egg)
 
 				if basketEgg then
-					-- NAKUHA NA ang egg: dito magsisimula ang timer (distance ng egg -> plot / speed ng pet)
 					local tpDeadline = LH.GetFarmTPDeadline(eggPos)
 
 					task.wait(0.2)
@@ -7048,7 +7032,7 @@ task.spawn(function()
 					task.wait(0.2)
 
 					TweenToCFrame(VOLCANO_1_CFRAME)
-					task.wait(0.5)
+					task.wait(1)
 
 					FinishEgg(eggName, hrp, basketEgg, eggPos, tpDeadline)
 				end
@@ -7056,21 +7040,18 @@ task.spawn(function()
 				task.wait(0.1)
 			end
 
-			--==================================================
-			-- NORMAL EGG
-			--==================================================
+         --NORMAL EGG
 		else
 			if TeleportToEgg(Egg) then
-				task.wait(1)
+				task.wait(0.5)
 
-				-- sakay sa pet bago kunin ang egg
 				LH.RidePet()
 
-				-- Pickup + GET ACTUAL BASKET EGG
+
 				local basketEgg = PickupAndConfirm(Egg)
 
 				if basketEgg then
-					-- NAKUHA NA ang egg: dito magsisimula ang timer (distance ng egg -> plot / speed ng pet)
+					
 					local tpDeadline = LH.GetFarmTPDeadline(eggPos)
 
 					task.wait(0.1)
@@ -7085,8 +7066,6 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
-
-
 
 LH.NoFallStates = {
 	Enum.HumanoidStateType.FallingDown,
@@ -7137,10 +7116,7 @@ task.spawn(function()
 	if LH.Alive then OpenHomeTab() end
 end)
 
-
---==================================================
--- FULL CLEANUP + WINDOW CLOSE HOOKS
---==================================================
+--FULL CLEAN UP
 local function FullCleanup()
 	if not LH.Alive then return end
 	LH.Alive = false -- humihinto lahat ng while LH.Alive loops
