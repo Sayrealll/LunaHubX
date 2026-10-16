@@ -5474,6 +5474,24 @@ function LH.SetMoveControls(enabled)
 	end)
 end
 
+-- Instant TP lock: parehong ginagawa ng Tween (disable ang paggalaw at pagtalon habang naghihintay ng TP)
+function LH.BeginTPLock()
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	LH.TPLock = { hum = hum, autoRotate = hum and hum.AutoRotate }
+	LH.SetMoveControls(false)
+	if hum then hum.AutoRotate = false end
+end
+
+function LH.EndTPLock()
+	local lock = LH.TPLock
+	LH.TPLock = nil
+	if lock and lock.hum and lock.hum.Parent and lock.autoRotate ~= nil then
+		lock.hum.AutoRotate = lock.autoRotate
+	end
+	LH.SetMoveControls(true)
+end
+
 -- Pinakamataas na bagay (puno, bundok, bato) sa daan mula a papuntang b
 function LH.ScanTopY(a, b, char)
 	local ignore = { char }
@@ -5655,18 +5673,24 @@ function LH.TPToMyPlot()
 	local speed = math.max(LH.GetMountedPetSpeed(), 1)
 	local waitTime = math.clamp(distance / speed, 0, 30) -- max 30s para hindi ma-stuck
 
+	LH.BeginTPLock() -- disabled ang paggalaw at pagtalon habang naghihintay (gaya ng Tween)
+
 	local started = os.clock()
 	while LH.Alive and AutoPickup == true and os.clock() - started < waitTime do
 		task.wait(0.05)
 	end
 
-	-- na-OFF ang Auto Farm habang naghihintay: huwag mag-TP
-	if not (LH.Alive and AutoPickup == true) then return false end
+	-- na-OFF ang Auto Farm habang naghihintay: huwag mag-TP (ibalik ang movement)
+	if not (LH.Alive and AutoPickup == true) then
+		LH.EndTPLock()
+		return false
+	end
 
 	hrp = (GetCharacter() and GetCharacter():FindFirstChild("HumanoidRootPart")) or hrp
 	hrp.CFrame = cf
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	hrp.AssemblyAngularVelocity = Vector3.zero
+	LH.EndTPLock() -- ibalik ang movement pagkatapos mag-TP
 	LH.Stabilize()
 	return true
 end
@@ -5714,19 +5738,25 @@ function LH.TPToCandyHome()
 	if not hrp then return false end
 
 	local waitTime = LH.GetCandyTravelTime()
+	LH.BeginTPLock() -- disabled ang paggalaw at pagtalon habang naghihintay (gaya ng Tween)
+
 	local started = os.clock()
 	while LH.Alive and LH.AutoCandy and not LH.HallPaused()
 		and os.clock() - started < waitTime do
 		task.wait(0.05)
 	end
 
-	-- na-OFF / napause habang naghihintay: huwag mag-TP
-	if not (LH.Alive and LH.AutoCandy) or LH.HallPaused() then return false end
+	-- na-OFF / napause habang naghihintay: huwag mag-TP (ibalik ang movement)
+	if not (LH.Alive and LH.AutoCandy) or LH.HallPaused() then
+		LH.EndTPLock()
+		return false
+	end
 
 	hrp = (GetCharacter() and GetCharacter():FindFirstChild("HumanoidRootPart")) or hrp
 	hrp.CFrame = LH.CandyHome
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	hrp.AssemblyAngularVelocity = Vector3.zero
+	LH.EndTPLock() -- ibalik ang movement pagkatapos mag-TP
 	LH.Stabilize()
 	return true
 end
@@ -7186,6 +7216,7 @@ local function FullCleanup()
 	if HideEggs then HideEggs = false; pcall(ToggleHideEggs, false) end
 	pcall(ClearAllESP)
 	pcall(LH.StopMovement) -- noclip + infinite jump
+	if LH.TPLock then pcall(LH.EndTPLock) end -- ibalik ang movement kung na-close habang naghihintay ng TP
 
 	for _, c in ipairs(LH.Conns) do pcall(function() c:Disconnect() end) end
 	table.clear(LH.Conns)
