@@ -5404,7 +5404,7 @@ LH.CandyClearance = 15        -- taas sa ibabaw ng pinakamataas na puno/bundok s
 LH.CandyScanStep = 8          -- layo ng bawat scan point sa daan (studs)
 LH.CandyScanWidth = 6         -- scan sa kaliwa/kanan ng daan para hindi madaplisan ang puno
 LH.CandyMaxRise = 400         -- max na taas na i-scan / aakyatin
-LH.CandyHomeWait = 0.8       -- delay pagkabalik sa home bago kumuha ulit ng candy
+LH.CandyHomeWait = 0.5        -- delay pagkabalik sa home bago kumuha ulit ng candy
 LH.MeasuredRideSpeed = 0
 LH.Tweening = false
 
@@ -6003,24 +6003,23 @@ end)
 --        Habang naka-backoff, HINDI hawak ng Ritual ang priority, kaya tuloy ang Candy / Knock / Farm.
 --  C) Kapag hindi mailagay sa cave nang ilang beses -> parehong backoff din (walang infinite TP loop).
 --==================================================
-LH.YinYangCave = CFrame.new(
--46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572
+LH.YinYangCave = CFrame.new( -46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572 
 )
+
 LH.RitualHalves = { "Yin", "Yang" }
-LH.RitualPickupFires = 1      -- ilang beses lang i-fire ang pickup prompt kada attempt
+LH.RitualPickupFires = 2      -- ilang beses lang i-fire ang pickup prompt kada attempt
 LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
 LH.RitualBackoff = { 20, 30, 40, 50 } -- seconds: 1st fail = 20s, 2nd = 30s, 3rd = 40s, 4th+ = 50s (max)
-LH.RitualDepositTime = 5     -- max segundo sa cave
+LH.RitualDepositTime = 12     -- max segundo sa cave
 LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
-LH.RitualIdleLimit = 2        -- tapos na kapag walang na-fire sa loob ng ganitong segundo (cooldown/walang prompt = umalis agad)
-LH.RitualMaxTries = 3         -- max na pag-fire kada prompt sa cave
-LH.RitualRetryDelay = 0.3       -- delay bago ulit i-fire ang parehong prompt sa cave
-LH.RitualRestTime = 2         -- maikling pahinga sa pagitan ng 2 subok sa cave
+LH.RitualIdleLimit = 4        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
+LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
+LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
+LH.RitualRestTime = 4         -- pahinga kapag bigo ang paglagay
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
 LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
 LH.RitualFinishRest = 8       -- pahinga pagkatapos subukang buksan ang cave
-LH.RitualMaxDepositFails = 1  -- 1 bigong punta sa cave = backoff agad
-LH.RitualDepositBackoff = { 10, 20, 30, 40 } -- seconds: bigo #1 = 10s, #2 = 20s, #3 = 30s, #4 = 40s (max), tapos balik sa 10s. SUCCESS = reset sa 10s
+LH.RitualMaxDepositFails = 3  -- ilang beses subukang ilagay ang piece bago i-backoff
 LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari (kasama ang messages)
 
 LH.RitualBusyCave = false
@@ -6062,27 +6061,17 @@ function LH.RitualBlocked(half)
 	return b ~= nil and os.clock() < b.Until
 end
 
--- kind = "deposit" -> sariling strikes + list (10/20/30s) para sa paglagay sa cave
--- kind = nil       -> pickup backoff (20/30/40/50s)
-function LH.RitualBlockHalf(half, why, kind)
+function LH.RitualBlockHalf(half, why)
 	local b = LH.RitualBlock[half]
 	if not b then
-		b = { Strikes = 0, DepStrikes = 0, Until = 0 }
+		b = { Strikes = 0, Until = 0 }
 		LH.RitualBlock[half] = b
 	end
-	local list, strikes
-	if kind == "deposit" then
-		b.DepStrikes = (b.DepStrikes or 0) + 1
-		list = LH.RitualDepositBackoff
-		if b.DepStrikes > #list then b.DepStrikes = 1 end -- lampas na sa 40s -> ulit sa 10s
-		strikes = b.DepStrikes
-	else
-		b.Strikes += 1
-		list, strikes = LH.RitualBackoff, b.Strikes
-	end
-	local delay = list[math.min(strikes, #list)]
+	b.Strikes += 1
+	local list = LH.RitualBackoff
+	local delay = list[math.min(b.Strikes, #list)]
 	b.Until = os.clock() + delay
-	LH.RitualLog("backoff", half, why or "?", "strike", strikes, "wait", delay .. "s")
+	LH.RitualLog("backoff", half, why or "?", "strike", b.Strikes, "wait", delay .. "s")
 end
 
 function LH.RitualUnblock(half)
@@ -6131,7 +6120,7 @@ function LH.OnRitualText(raw)
 	LH.RitualLog("message", kind, half, "|", raw)
 
 	-- Already Have: hawak na natin ito -> ilagay na lang sa cave (huwag nang kunin ulit)
-	if kind == "Have" and not LH.RitualIsPlaced(half) and not LH.RitualBlocked(half) then
+	if kind == "Have" and not LH.RitualIsPlaced(half) then
 		LH.RitualCarrying[half] = true
 		LH.RitualIdleUntil = 0
 	end
@@ -6215,7 +6204,6 @@ function LH.RitualSync()
 		LH.RitualMsg = {}
 		LH.RitualCompleteSince = nil
 		LH.RitualFinishUntil = 0
-		LH.RitualFinishFails = 0
 		LH.RitualIdleUntil = 0
 		LH.RitualLog("new round", tostring(round))
 	end
@@ -6606,14 +6594,13 @@ function LH.RitualCycle()
 				LH.RitualLog("deposit failed", half, LH.RitualDepositFails[half])
 				if LH.RitualDepositFails[half] >= LH.RitualMaxDepositFails then
 					LH.RitualDepositFails[half] = 0
-					-- laging mag-backoff kapag bigo ang paglagay (10s -> 20s -> 30s -> 40s -> 10s...)
-					-- habang naka-backoff, hindi hawak ng Ritual ang priority: tuloy ang Candy / Knock / Farm
 					if LH.IsHoldingHalf(half) then
-						LH.RitualCarrying[half] = true   -- talagang hawak, hindi lang mailagay (cooldown)
+						-- talagang hawak natin pero ayaw ilagay -> backoff 20/30/40/50s (walang infinite TP)
+						LH.RitualBlockHalf(half, "deposit")
 					else
-						LH.RitualCarrying[half] = nil    -- FIX: wala naman palang hawak -> huwag nang mag-TP sa cave para dito
+						-- hindi pala natin hawak; hahanapin ulit sa mapa
+						LH.RitualCarrying[half] = nil
 					end
-					LH.RitualBlockHalf(half, "deposit", "deposit")
 				end
 				LH.RitualIdleUntil = os.clock() + LH.RitualRestTime
 			end
@@ -6625,16 +6612,7 @@ function LH.RitualCycle()
 	if LH.RitualNeedsFinish() then
 		LH.RitualLog("complete -> opening cave")
 		LH.DepositAtCave("finish")
-		local ph = LH.RitualPhase()
-		if ph == nil or ph == "Pending" then
-			-- hindi pa rin bukas ang cave -> 10s -> 20s -> 30s -> 40s -> 10s...
-			local list = LH.RitualDepositBackoff
-			LH.RitualFinishFails = (LH.RitualFinishFails or 0) % #list + 1
-			LH.RitualFinishUntil = os.clock() + list[LH.RitualFinishFails]
-		else
-			LH.RitualFinishFails = 0
-			LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
-		end
+		LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
 		if LH.RitualPhase() == nil then
 			-- walang RitualView; i-reset ang local state para hindi umulit
 			LH.RitualPlaced = {}
