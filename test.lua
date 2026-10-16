@@ -5986,8 +5986,8 @@ task.spawn(function()
 end)
 
 
---==================================================
--- AUTO RITUAL (HALLOWEEN EVENT - YIN & YANG)  [REFACTORED]
+---==================================================
+-- AUTO RITUAL (HALLOWEEN EVENT - YIN & YANG)  [REFACTORED + CAVE BACKOFF]
 -- Priority: Auto Farm > Auto Fuse/Claim > 1) Auto Buy Halloween Egg  2) Auto Ritual  3) Auto Knock  4) Auto Collect Candy
 --
 -- FLOW:
@@ -6002,6 +6002,9 @@ end)
 --     -> 2 fire lang kada pickup. Kapag pareho ang resulta: BACKOFF 20s -> 30s -> 40s -> 50s (50s na ang max).
 --        Habang naka-backoff, HINDI hawak ng Ritual ang priority, kaya tuloy ang Candy / Knock / Farm.
 --  C) Kapag hindi mailagay sa cave nang ilang beses -> parehong backoff din (walang infinite TP loop).
+--  D) [BAGO] Kapag 2x bumalik sa cave at HINDI nabuksan (may cooldown ang pagbukas):
+--     -> BACKOFF 20s -> 30s -> 40s -> balik 20s. Habang naka-backoff, nagpapatuloy ang mas mababang priority.
+--        Kapag nabuksan na ang cave -> reset sa 20s.
 --==================================================
 LH.YinYangCave = CFrame.new(
 -46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572
@@ -6021,6 +6024,13 @@ LH.RitualCompleteDelay = 1.5  -- hintay bago ituring na "complete"
 LH.RitualFinishRest = 8       -- pahinga pagkatapos subukang buksan ang cave
 LH.RitualMaxDepositFails = 3  -- ilang beses subukang ilagay ang piece bago i-backoff
 LH.RitualDebug = false        -- i-set sa true para makita sa output kung ano ang nangyayari (kasama ang messages)
+
+-- [BAGO] BACKOFF PARA SA PAGBUKAS NG CAVE
+LH.RitualFinishBackoff = { 20, 30, 40 } -- seconds: 2 bigong attempt = 20s, tapos 30s, tapos 40s, tapos balik sa 20s
+LH.RitualFinishMaxAttempts = 2          -- ilang beses bumalik sa cave bago mag-backoff
+LH.RitualFinishPhaseWait = 2            -- max segundo na hihintayin ang server para makita kung bukas na ang cave
+LH.RitualFinishFails = 0                -- bilang ng bigong attempt sa kasalukuyang batch
+LH.RitualFinishStrikes = 0              -- ilang beses nang na-backoff (pang-pili ng 20/30/40)
 
 LH.RitualBusyCave = false
 LH.RitualSkip = setmetatable({}, { __mode = "k" }) -- [piece] = oras hanggang kailan lalaktawan (piece na walang prompt)
@@ -6205,6 +6215,8 @@ function LH.RitualSync()
 		LH.RitualCompleteSince = nil
 		LH.RitualFinishUntil = 0
 		LH.RitualIdleUntil = 0
+		LH.RitualFinishFails = 0
+		LH.RitualFinishStrikes = 0
 		LH.RitualLog("new round", tostring(round))
 	end
 
@@ -6242,7 +6254,7 @@ function LH.RitualComplete()
 	return true
 end
 
--- mag-TP lang para BUKSAN ang cave kapag kumpleto na AT hindi pa bukas
+-- mag-TP lang para BUKSAN ang cave kapag kumpleto na AT hindi pa bukas AT wala sa backoff
 function LH.RitualNeedsFinish()
 	if not LH.RitualComplete() then
 		LH.RitualCompleteSince = nil
@@ -6256,7 +6268,7 @@ function LH.RitualNeedsFinish()
 	local now = os.clock()
 	LH.RitualCompleteSince = LH.RitualCompleteSince or now
 	if now - LH.RitualCompleteSince < LH.RitualCompleteDelay then return false end
-	return now >= (LH.RitualFinishUntil or 0)
+	return now >= (LH.RitualFinishUntil or 0) -- naka-backoff kapag FinishUntil pa ang oras
 end
 
 -- pinakamalapit na piece ng half (hindi kasama kung naka-backoff ang half)
@@ -6283,7 +6295,7 @@ end
 -- may trabaho ba ang Auto Ritual?
 --  1) may piece sa mapa na pwedeng kunin (hindi naka-backoff)
 --  2) may hawak tayong piece na hindi pa nailalagay (at hindi naka-backoff)
---  3) kumpleto na ang Yin + Yang at hindi pa bukas ang cave
+--  3) kumpleto na ang Yin + Yang, hindi pa bukas ang cave, at tapos na ang finish backoff
 -- Kapag naka-backoff / wala pang spawn -> FALSE (tuloy ang Candy/Knock/Farm, walang TP)
 function LH.RitualHasWorkNow()
 	if LH.RitualBusyCave then return true end
@@ -6562,6 +6574,19 @@ function LH.DepositAtCave(mode)
 	return firedAny
 end
 
+-- [BAGO] nabuksan ba ang cave? (hihintayin sandali ang server na i-update ang phase)
+function LH.RitualFinishOpened()
+	local t0 = os.clock()
+	while os.clock() - t0 < LH.RitualFinishPhaseWait do
+		local phase = LH.RitualPhase()
+		if phase ~= nil and phase ~= "Pending" then
+			return true
+		end
+		task.wait(0.1)
+	end
+	return false
+end
+
 --==================================================
 -- CYCLE
 --==================================================
@@ -6622,11 +6647,34 @@ function LH.RitualCycle()
 	if LH.RitualNeedsFinish() then
 		LH.RitualLog("complete -> opening cave")
 		LH.DepositAtCave("finish")
-		LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
+
 		if LH.RitualPhase() == nil then
 			-- walang RitualView; i-reset ang local state para hindi umulit
+			LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
 			LH.RitualPlaced = {}
 			LH.RitualCarrying = {}
+		elseif LH.RitualFinishOpened() then
+			-- SUCCESS: bukas na ang cave -> reset ang backoff pabalik sa 20s
+			LH.RitualFinishFails = 0
+			LH.RitualFinishStrikes = 0
+			LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
+			LH.RitualLog("cave opened, backoff reset")
+		else
+			-- FAILED: hindi nabuksan ang cave (may cooldown)
+			LH.RitualFinishFails += 1
+			if LH.RitualFinishFails >= LH.RitualFinishMaxAttempts then
+				-- 2 bigong attempt -> backoff 20 -> 30 -> 40 -> balik 20
+				LH.RitualFinishFails = 0
+				local list = LH.RitualFinishBackoff
+				local delay = list[(LH.RitualFinishStrikes % #list) + 1]
+				LH.RitualFinishStrikes += 1
+				LH.RitualFinishUntil = os.clock() + delay
+				LH.RitualLog("cave not opened x" .. LH.RitualFinishMaxAttempts, "backoff", delay .. "s", "strike", LH.RitualFinishStrikes)
+			else
+				-- unang bigong attempt: pahinga muna (RitualFinishRest) bago ang pangalawa
+				LH.RitualFinishUntil = os.clock() + LH.RitualFinishRest
+				LH.RitualLog("cave not opened, attempt", LH.RitualFinishFails)
+			end
 		end
 	end
 end
