@@ -5618,11 +5618,51 @@ function LH.TweenToMyPlot()
 	end, LH.FarmTweenSpeed)
 end
 
--- Instant TP: diretsong teleport sa Candy Home (walang tween)
+-- Speed ng pet na naka-mount ngayon (studs/sec)
+function LH.GetMountedPetSpeed()
+	local char = GetCharacter()
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+	-- 1) WalkSpeed habang nakasakay (kadalasan ito ang speed ng mounted pet)
+	if LH.IsRiding() and hum and hum.WalkSpeed > 20 then
+		return hum.WalkSpeed
+	end
+	-- 2) nasukat na bilis habang nakasakay
+	if LH.MeasuredRideSpeed >= 20 then
+		return LH.MeasuredRideSpeed
+	end
+	-- 3) fallback
+	return LH.CandyTweenFallback
+end
+
+-- Ilang segundo bago makarating sa Candy Home (distance / speed)
+function LH.GetCandyTravelTime()
+	local char = GetCharacter()
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return 0 end
+
+	local distance = (hrp.Position - LH.CandyHome.Position).Magnitude
+	local speed = math.max(LH.GetMountedPetSpeed(), 1)
+	return math.clamp(distance / speed, 0, 30) -- max 30s para hindi ma-stuck
+end
+
+-- Instant TP: maghihintay ng computed travel time bago mag-teleport sa Candy Home
 function LH.TPToCandyHome()
 	local char = GetCharacter()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return false end
+
+	local waitTime = LH.GetCandyTravelTime()
+	local started = os.clock()
+	while LH.Alive and LH.AutoCandy and not LH.HallPaused()
+		and os.clock() - started < waitTime do
+		task.wait(0.05)
+	end
+
+	-- na-OFF / napause habang naghihintay: huwag mag-TP
+	if not (LH.Alive and LH.AutoCandy) or LH.HallPaused() then return false end
+
+	hrp = (GetCharacter() and GetCharacter():FindFirstChild("HumanoidRootPart")) or hrp
 	hrp.CFrame = LH.CandyHome
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	hrp.AssemblyAngularVelocity = Vector3.zero
