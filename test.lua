@@ -6011,12 +6011,12 @@ LH.YinYangCave = CFrame.new(
 )
 LH.RitualHalves = { "Yin", "Yang" }
 LH.RitualPickupFires = 2      -- ilang beses lang i-fire ang pickup prompt kada attempt
-LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
+LH.RitualFireGap = 0.4        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
 LH.RitualBackoff = { 20, 30, 40, 50 } -- seconds: 1st fail = 20s, 2nd = 30s, 3rd = 40s, 4th+ = 50s (max)
-LH.RitualDepositTime = 12     -- max segundo sa cave
-LH.RitualCaveGrace = 1        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
-LH.RitualIdleLimit = 4        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
-LH.RitualMaxTries = 6         -- max na pag-fire kada prompt sa cave
+LH.RitualDepositTime = 7.5     -- max segundo sa cave
+LH.RitualCaveGrace = 0.5        -- hintay pagkatapos mag-TP para ma-update ng laro ang RitualSuppressed
+LH.RitualIdleLimit = 1.5        -- tapos na kapag walang na-fire sa loob ng ganitong segundo
+LH.RitualMaxTries = 4         -- max na pag-fire kada prompt sa cave
 LH.RitualRetryDelay = 1       -- delay bago ulit i-fire ang parehong prompt sa cave
 LH.RitualRestTime = 4         -- pahinga kapag bigo ang paglagay
 LH.RitualYieldWait = 4        -- max segundo na hihintayin para magpahinga ang Candy/Knock
