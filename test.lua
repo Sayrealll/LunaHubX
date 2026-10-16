@@ -1,6 +1,6 @@
 --// LUNA HUB LIFECYCLE (fresh start / full cleanup)
 local LH = { Alive = true, Conns = {} }
-local Svc, Mods, Rem, PD, Tabs, Secs = {}, {}, {}, {}, {}, {} -- grouped para hindi lumampas sa 200 local limit
+local Svc, Mods, Rem, PD, Tabs, Secs = {}, {}, {}, {}, {}, {} 
 
 LH.TrimNum = function(n)
 	return (string.format("%.2f", n):gsub("%.?0+$", ""))
@@ -13,7 +13,7 @@ end
 do
 	local ok, env = pcall(function() return getgenv() end)
 	if ok and type(env) == "table" and type(env.LunaHubCleanup) == "function" then
-		pcall(env.LunaHubCleanup) -- patayin muna ang lumang instance bago mag-load ng bago
+		pcall(env.LunaHubCleanup) 
 	end
 end
 local function Bind(signal, fn)
@@ -81,7 +81,7 @@ Rem.PickupPetRemote = GameRemotes:WaitForChild("PickupPet")
 Rem.ClaimIndexReward = GameRemotes:WaitForChild("ClaimIndexReward")
 Rem.FavoritePetRemote = GameRemotes:WaitForChild("FavoritePet")
 
--- VOLCANO DIP REMOTE
+
 Rem.VolcanoDipRemote = Svc.ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net"):WaitForChild("RE/VolcanoDip")
 
 --// WINDUI INITIALIZATION
@@ -372,8 +372,7 @@ function LH.RitualActive()
 	return false
 end
 
--- Auto Buy Halloween Egg ang PINAKAMATAAS na priority (higit sa Auto Knock at Auto Collect Candy)
--- Active kapag naka-ON, sapat ang token, at hindi paulit-ulit na pumapalya ang bili
+
 LH.HalloweenEggPrice = 350
 LH.HaEggFails = 0
 function LH.BuyActive()
@@ -3018,51 +3017,6 @@ Secs.PlayerSection = Tabs.Tab9:Section({
 	BoxBorder = true,
 })
 
---[[UIElements.AutoExecute = Secs.AutoExecSection:Toggle({
-	Title = "Auto Execute",
-	Value = ConfigData.AutoExecute == true,
-
-	Callback = function(value)
-		ConfigData.AutoExecute = value
-		SaveConfig()
-
-		if value then
-			LH.Queued = false
-			local queued = LH.QueueLoader()
-			local autoexec = LH.WriteAutoExec()
-			if LH.AutoExecReady then
-				local msg
-				if not LH.HasURL() then
-					msg = "Walang script URL. Ilagay ang link sa LH.ScriptURL sa script."
-				elseif not LH.QueueFn then
-					msg = "Walang queue_on_teleport ang executor mo."
-				else
-					msg = "ON: queue_on_teleport " .. (queued and "OK" or "failed")
-						.. " | autoexec " .. (autoexec and "OK" or "hindi supported")
-				end
-				WindUI:Notify({
-					Title = "Auto Execute",
-					Content = msg,
-					Icon = "solar:bell-bold",
-					Duration = 5,
-					CanClose = true,
-				})
-			end
-		else
-			LH.RemoveAutoExec()
-			if LH.AutoExecReady then
-				WindUI:Notify({
-					Title = "Auto Execute",
-					Content = "Auto Execute turned off.",
-					Icon = "solar:bell-bold",
-					Duration = 4,
-					CanClose = true,
-				})
-			end
-		end
-	end,
-})
-]]
 
 --// NO CLIP & INFINITE JUMP (functions)
 LH.Noclip = { Conn = nil, Parts = setmetatable({}, { __mode = "k" }) }
