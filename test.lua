@@ -6003,9 +6003,9 @@ end)
 --        Habang naka-backoff, HINDI hawak ng Ritual ang priority, kaya tuloy ang Candy / Knock / Farm.
 --  C) Kapag hindi mailagay sa cave nang ilang beses -> parehong backoff din (walang infinite TP loop).
 --==================================================
-LH.YinYangCave = CFrame.new( -46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572 
+LH.YinYangCave = CFrame.new(
+-46378.4648, 40345.7656, -19666.6895, -0.781531572, 7.42021058e-08, 0.623865664, -1.59661617e-08, 1, -1.38940436e-07, -0.623865664, -1.18547078e-07, -0.781531572
 )
-
 LH.RitualHalves = { "Yin", "Yang" }
 LH.RitualPickupFires = 2      -- ilang beses lang i-fire ang pickup prompt kada attempt
 LH.RitualFireGap = 0.6        -- hintay pagkatapos ng bawat fire (para makita ang sagot ng server)
