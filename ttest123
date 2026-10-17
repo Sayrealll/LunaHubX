@@ -2695,8 +2695,10 @@ do
 		if Title then Title.Text = title end
 		if Body then Body.Text = body end
 	end
+	-- "Show Tracker" toggle: ON = lalabas ang floating EGGS button, OFF = mawawala ang button AT ang window
 	function TW.Show(v)
-		Gui.Enabled = v == true
+		if TW.BtnGui then TW.BtnGui.Enabled = v == true end
+		if v ~= true then Gui.Enabled = false end
 	end
 end
 
@@ -2707,6 +2709,7 @@ do
 	local BtnGui = Instance.new("ScreenGui")
 	BtnGui.Name = "LunaHubTrackerButtonGui"
 	BtnGui.ResetOnSpawn = false
+	BtnGui.Enabled = ConfigData.ShowTracker == true -- naka-off ang toggle = nakatago
 	BtnGui.IgnoreGuiInset = true -- para nasa pinakataas talaga (sagad)
 	if gethui then
 		BtnGui.Parent = gethui()
@@ -2727,7 +2730,7 @@ do
 	Btn.BackgroundTransparency = 0
 	Btn.AutoButtonColor = false
 	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 10
+	Btn.TextSize = 11
 	Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Btn.Text = "EGGS"
 	Btn.Parent = BtnGui
@@ -2739,11 +2742,7 @@ do
 	BStroke.Parent = Btn
 
 	Btn.MouseButton1Click:Connect(function()
-		local new = not TW.Gui.Enabled
-		ConfigData.ShowTracker = new
-		SaveConfig()
-		TW.Show(new)
-		SetUIValue(UIElements.ShowTracker, new) -- i-sync ang "Show Tracker" toggle
+		TW.Gui.Enabled = not TW.Gui.Enabled -- open / close ang tracker window
 	end)
 end
 
