@@ -2720,14 +2720,14 @@ do
 
 	local Btn = Instance.new("TextButton")
 	Btn.Name = "FloatingEggs"
-	Btn.Size = UDim2.new(0, 40, 0, 35)
+	Btn.Size = UDim2.new(0, 50, 0, 20)
 	Btn.AnchorPoint = Vector2.new(0.5, 0)
 	Btn.Position = UDim2.new(0.5, 0, 0, 12)
 	Btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	Btn.BackgroundTransparency = 0
 	Btn.AutoButtonColor = false
 	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 11
+	Btn.TextSize = 10
 	Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Btn.Text = "EGGS"
 	Btn.Parent = BtnGui
@@ -2738,32 +2738,7 @@ do
 	BStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	BStroke.Parent = Btn
 
-	local dragging, moved, dragInput, dragStart, startPos = false, false, nil, nil, nil
-	Btn.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging, moved = true, false
-			dragStart = input.Position
-			startPos = Btn.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
-		end
-	end)
-	Btn.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
-		end
-	end)
-	Bind(Svc.UserInputService.InputChanged, function(input)
-		if input == dragInput and dragging then
-			local d = input.Position - dragStart
-			if d.Magnitude > 6 then moved = true end
-			Btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-		end
-	end)
-
 	Btn.MouseButton1Click:Connect(function()
-		if moved then moved = false return end -- drag lang, hindi click
 		local new = not TW.Gui.Enabled
 		ConfigData.ShowTracker = new
 		SaveConfig()
