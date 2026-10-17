@@ -2748,7 +2748,6 @@ end
 
 UIElements.ShowTracker = Secs.EggsSection:Toggle({
 	Title = "Show Tracker",
-	Desc = "Show / hide floating tracker window",
 	Value = ConfigData.ShowTracker == true,
 
 	Callback = function(value)
