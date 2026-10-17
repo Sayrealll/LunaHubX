@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loadstring Converter</title>
+<style>
+:root{
+  --bg:#eef1f6; --panel:#ffffff; --ink:#1b2433; --muted:#6b778c; --line:#d9dfea;
+  --accent:#3b5bdb; --accent-ink:#ffffff; --code-bg:#141b2d; --code-ink:#dfe7ff; --ok:#1f9d63; --err:#d6336c;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1320; --panel:#161d2f; --ink:#e8edf8; --muted:#8c98b3; --line:#27304a;
+    --accent:#7c93ff; --accent-ink:#0e1320; --code-bg:#0a0f1c; --code-ink:#dfe7ff; --ok:#4cd39a; --err:#ff7aa8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1320; --panel:#161d2f; --ink:#e8edf8; --muted:#8c98b3; --line:#27304a;
+  --accent:#7c93ff; --accent-ink:#0e1320; --code-bg:#0a0f1c; --code-ink:#dfe7ff; --ok:#4cd39a; --err:#ff7aa8;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+main{width:100%;max-width:640px}
+h1{font-size:1.6rem;margin:0 0 6px;letter-spacing:-.02em}
+p.sub{margin:0 0 22px;color:var(--muted);font-size:.95rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+label{display:block;font-size:.85rem;font-weight:600;margin-bottom:8px}
+input{width:100%;padding:13px 14px;font:inherit;font-size:.95rem;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:10px;outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.msg{min-height:1.2em;margin:8px 0 0;font-size:.82rem;color:var(--err)}
+.out{margin-top:18px}
+pre{margin:0;padding:16px;background:var(--code-bg);color:var(--code-ink);border-radius:10px;
+  font:.88rem/1.55 ui-monospace,"SF Mono",Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-all;min-height:56px}
+.row{display:flex;gap:10px;margin-top:12px}
+button{flex:1;padding:12px 16px;font:inherit;font-weight:600;border-radius:10px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+</style>
+</head>
+<body>
+<main>
+  <h1>Loadstring Converter</h1>
+  <p class="sub">I-paste ang GitHub raw link, tapos kopyahin ang loadstring.</p>
+  <div class="card">
+    <label for="url">Raw link</label>
+    <input id="url" type="url" placeholder="https://raw.githubusercontent.com/user/repo/..." autocomplete="off" spellcheck="false">
+    <p class="msg" id="msg" role="alert"></p>
+    <div class="out">
+      <pre id="result" aria-live="polite">loadstring(game:HttpGet(""))()</pre>
+      <div class="row">
+        <button id="copy" class="primary" disabled>Copy</button>
+        <button id="clear">Clear</button>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  var input=document.getElementById('url'), result=document.getElementById('result'),
+      msg=document.getElementById('msg'), copy=document.getElementById('copy'), clr=document.getElementById('clear');
+  var current='';
+  function build(u){return 'loadstring(game:HttpGet("'+u+'"))()';}
+  function update(){
+    var u=input.value.trim().replace(/\s+/g,'');
+    msg.textContent='';
+    if(!u){current='';result.textContent=build('');copy.disabled=true;return;}
+    if(!/^https?:\/\//i.test(u)){msg.textContent='Dapat magsimula sa https://';current='';result.textContent=build('');copy.disabled=true;return;}
+    current=build(u);result.textContent=current;copy.disabled=false;
+  }
+  input.addEventListener('input',update);
+  copy.addEventListener('click',function(){
+    if(!current)return;
+    function done(){copy.textContent='Copied';copy.classList.add('ok');setTimeout(function(){copy.textContent='Copy';copy.classList.remove('ok');},1400);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(current).then(done,fallback);}else{fallback();}
+    function fallback(){var r=document.createRange();r.selectNodeContents(result);var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done();}catch(e){}}
+  });
+  clr.addEventListener('click',function(){input.value='';update();input.focus();});
+})();
+</script>
+</body>
+</html>
