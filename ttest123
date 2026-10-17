@@ -7219,7 +7219,7 @@ task.spawn(function()
 					task.wait(0.2)
 
 					TweenToCFrame(VOLCANO_1_CFRAME)
-					task.wait(1)
+					task.wait(2)
 
 					FinishEgg(eggName, hrp, basketEgg, eggPos, tpDeadline)
 				end
@@ -7232,7 +7232,7 @@ task.spawn(function()
 		
 		else
 			if TeleportToEgg(Egg) then
-				task.wait(1)
+				task.wait(0.03)
 
 			
 				LH.RidePet()
