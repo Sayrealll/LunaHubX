@@ -2720,7 +2720,7 @@ do
 
 	local Btn = Instance.new("TextButton")
 	Btn.Name = "FloatingEggs"
-	Btn.Size = UDim2.new(0, 50, 0, 20)
+	Btn.Size = UDim2.new(0, 50, 0, 30)
 	Btn.AnchorPoint = Vector2.new(0.5, 0)
 	Btn.Position = UDim2.new(0.5, 0, 0, 12)
 	Btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
