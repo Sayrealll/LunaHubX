@@ -2720,14 +2720,14 @@ do
 
 	local Btn = Instance.new("TextButton")
 	Btn.Name = "FloatingEggs"
-	Btn.Size = UDim2.new(0, 30, 0, 25)
+	Btn.Size = UDim2.new(0, 40, 0, 35)
 	Btn.AnchorPoint = Vector2.new(0.5, 0)
-	Btn.Position = UDim2.new(0.5, 0, 0, 0)
+	Btn.Position = UDim2.new(0.5, 0, 0, 12)
 	Btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	Btn.BackgroundTransparency = 0
 	Btn.AutoButtonColor = false
 	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 9
+	Btn.TextSize = 11
 	Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Btn.Text = "EGGS"
 	Btn.Parent = BtnGui
