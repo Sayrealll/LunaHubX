@@ -48,7 +48,7 @@ button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
 <body>
 <main>
   <h1>Loadstring Converter</h1>
-  <p class="sub">I-paste ang GitHub raw link, tapos kopyahin ang loadstring.</p>
+  <p class="sub">Paste your Github raw link below.</p>
   <div class="card">
     <label for="url">Raw link</label>
     <input id="url" type="url" placeholder="https://raw.githubusercontent.com/user/repo/..." autocomplete="off" spellcheck="false">
@@ -72,7 +72,7 @@ button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
     var u=input.value.trim().replace(/\s+/g,'');
     msg.textContent='';
     if(!u){current='';result.textContent=build('');copy.disabled=true;return;}
-    if(!/^https?:\/\//i.test(u)){msg.textContent='Dapat magsimula sa https://';current='';result.textContent=build('');copy.disabled=true;return;}
+    if(!/^https?:\/\//i.test(u)){msg.textContent='Invalid Github raw link!';current='';result.textContent=build('');copy.disabled=true;return;}
     current=build(u);result.textContent=current;copy.disabled=false;
   }
   input.addEventListener('input',update);
