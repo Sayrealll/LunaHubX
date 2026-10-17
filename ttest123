@@ -2581,9 +2581,9 @@ UIElements.ESPEnabled = Secs.VisualSection:Toggle({
 -- TAB 6 (TRACKER)
 --==================================================
 
-Secs.TrackerTabSection = Tabs.Tab6:Section({
-	Title = "Tracker Tab",
-	Icon = "layout-dashboard",
+Secs.EggsSection = Tabs.Tab6:Section({
+	Title = "Egg Tracker",
+	Icon = "radar",
 	Box = true,
 	BoxBorder = true,
 	Opened = true,
@@ -2746,7 +2746,7 @@ do
 	end)
 end
 
-UIElements.ShowTracker = Secs.TrackerTabSection:Toggle({
+UIElements.ShowTracker = Secs.EggsSection:Toggle({
 	Title = "Show Tracker",
 	Desc = "Show / hide floating tracker window",
 	Value = ConfigData.ShowTracker == true,
@@ -2756,14 +2756,6 @@ UIElements.ShowTracker = Secs.TrackerTabSection:Toggle({
 		SaveConfig()
 		LH.TrackerWin.Show(value)
 	end,
-})
-
-Secs.EggsSection = Tabs.Tab6:Section({
-	Title = "Egg Tracker",
-	Icon = "radar",
-	Box = true,
-	BoxBorder = true,
-	Opened = true,
 })
 
 local LiveEggParagraph = Secs.EggsSection:Paragraph({
