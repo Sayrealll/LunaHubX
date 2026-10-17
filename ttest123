@@ -2727,7 +2727,7 @@ do
 	Btn.BackgroundTransparency = 0
 	Btn.AutoButtonColor = false
 	Btn.Font = Enum.Font.GothamBold
-	Btn.TextSize = 13
+	Btn.TextSize = 10
 	Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Btn.Text = "EGGS"
 	Btn.Parent = BtnGui
