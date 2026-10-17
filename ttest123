@@ -5513,11 +5513,11 @@ function LH.CollectCandy(candy)
 			hrp = (GetCharacter() or char):FindFirstChild("HumanoidRootPart") or hrp
 			hrp.CFrame = LH.UprightCFrame(pos + Vector3.new(0, 2, 0))
 			LH.Stabilize()
-			task.wait(0.25)
+			task.wait(0.05)
 		end
 
 		LH.TriggerCandyPrompt(candy)
-		if LH.WaitCandyGone(candy, 0.8) then
+		if LH.WaitCandyGone(candy, 0.2) then
 			return true
 		end
 
